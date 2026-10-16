@@ -1,0 +1,9 @@
+# kustomize 가 k8s/ 밖의 ../redis/redis.conf 를 읽도록 허용 (이 저장소의 configMapGenerator 때문)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  kustomize.buildOptions: "--load-restrictor LoadRestrictionsNone"
+  # 이미지 로컬 로드(kind load) 를 쓰므로 레지스트리 접근 불필요

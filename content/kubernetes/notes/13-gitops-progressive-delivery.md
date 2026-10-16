@@ -126,6 +126,21 @@ git 에 평문 시크릿은 금지. 선택지:
 - 승격: dev overlay 태그 → PR 로 prod overlay 에 복사. 환경 간 차이는 overlay 패치로만.
 - 비상 롤백: git revert → 자동 동기화. 수 분 안에 끝나야 한다 — 그래서 이미지는 레지스트리에 남겨 둔다.
 
+## 이 프로젝트에 적용된 것
+
+```bash
+pnpm k8s:argocd            # ArgoCD 설치 + argocd-cm 에 kustomize buildOptions(load-restrictor) + Application(study) 적용
+pnpm k8s:argocd:password   # admin 비밀번호
+pnpm k8s:argocd:port       # https://localhost:18443 (자체 서명 인증서 경고 무시)
+kubectl -n argocd get application study          # SYNC STATUS Synced / HEALTH Healthy
+pnpm k8s:rollouts          # Argo Rollouts 설치 + web-canary Rollout(복제본 4, 25%→50%→100%, Prometheus 분석)
+pnpm k8s:rollouts:watch
+```
+
+- `k8s/argocd/application.yaml`: `automated.prune/selfHeal`, `ignoreDifferences` 로 HPA/Rollouts 가 바꾸는 replicas 는 드리프트로 보지 않는다.
+- `k8s/rollouts/web-rollout.yaml`: Ingress 없이 **복제본 비율**로 카나리. AnalysisTemplate 은 kube-prometheus-stack 의 Prometheus 에서 `study_redis_up` 과 타깃 `up` 을 본다 — 실패하면 자동 롤백.
+- 드리프트 실험: `kubectl -n study scale deploy/web --replicas=0` 하면 수 초~3분 안에 ArgoCD 가 2 로 되돌린다 (기본 폴링 3분, 웹훅 연결 시 즉시).
+
 ## 실습 체크리스트
 
 - [ ] kind 에 ArgoCD 를 설치하고 이 저장소 `k8s/` 를 Application 으로 등록, Synced/Healthy 확인

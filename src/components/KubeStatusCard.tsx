@@ -40,6 +40,16 @@ pnpm k8s:cluster`}</pre>
         <Badge tone="ok">kubectl {st.clientVersion}</Badge>
         {st.serverVersion && <Badge tone="ok">server {st.serverVersion}</Badge>}
       </div>
+      {st.addons && (
+        <div className="mb-3 flex flex-wrap gap-2 text-[12px]">
+          {st.addons.map((a) => (
+            <span key={a.name} className={`rounded border px-2 py-1 ${a.status === "ready" ? "border-ok/30 bg-ok/10" : "border-border bg-surface-2 text-muted"}`} title={a.detail}>
+              {a.name}: <span className={a.status === "ready" ? "text-ok" : ""}>{a.status}</span>
+              {a.detail && <span className="ml-1 font-mono text-[11px] text-muted">· {a.detail}</span>}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <div className="mb-1 text-[11px] uppercase tracking-wide text-muted">노드</div>

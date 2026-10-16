@@ -1,0 +1,83 @@
+# web 을 Deployment 대신 Argo Rollout(카나리) 로 배포하는 변형. (Kubernetes 노트 13)
+#   pnpm k8s:rollouts        → Argo Rollouts 설치 + 이 파일 적용 (web Deployment 는 scale 0)
+#   kubectl argo rollouts get rollout web-canary -n study --watch
+#   kubectl -n study argo rollouts set image web-canary web=study:dev2   # 새 버전으로 카나리 시작
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-canary-stable
+  namespace: study
+spec:
+  selector: { app: web-canary }
+  ports: [{ name: http, port: 3000, targetPort: http }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-canary-preview
+  namespace: study
+spec:
+  selector: { app: web-canary }
+  ports: [{ name: http, port: 3000, targetPort: http }]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: web-canary
+  namespace: study
+spec:
+  replicas: 4
+  selector:
+    matchLabels: { app: web-canary }
+  strategy:
+    canary:
+      stableService: web-canary-stable
+      canaryService: web-canary-preview
+      # Ingress/메시 없이도 복제본 비율로 카나리 (4개 중 1개 = 25%)
+      steps:
+        - setWeight: 25
+        - pause: { duration: 60s }
+        - analysis:
+            templates: [{ templateName: app-health }]
+        - setWeight: 50
+        - pause: { duration: 60s }
+        - setWeight: 100
+  template:
+    metadata:
+      labels: { app: web-canary }
+    spec:
+      containers:
+        - name: web
+          image: study:dev
+          imagePullPolicy: IfNotPresent
+          ports: [{ name: http, containerPort: 3000 }]
+          env: [{ name: REDIS_URL, value: redis://redis:6379 }]
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 512Mi } }
+          readinessProbe: { httpGet: { path: /api/metrics, port: http }, periodSeconds: 5 }
+---
+# 분석: kube-prometheus-stack 의 Prometheus 에서 앱이 Redis 에 연결돼 있는지(study_redis_up) 와 타깃 up 을 본다.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: app-health
+  namespace: study
+spec:
+  metrics:
+    - name: app-redis-up
+      interval: 20s
+      count: 3
+      successCondition: result[0] >= 1
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://kps-kube-prometheus-stack-prometheus.monitoring.svc:9090
+          query: min(study_redis_up{namespace="study"})
+    - name: target-up
+      interval: 20s
+      count: 3
+      successCondition: result[0] >= 1
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://kps-kube-prometheus-stack-prometheus.monitoring.svc:9090
+          query: min(up{namespace="study", job=~".*web.*"})

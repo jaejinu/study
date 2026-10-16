@@ -1,0 +1,32 @@
+# ArgoCD Application: 이 저장소의 k8s/ 를 kind 의 study 네임스페이스에 동기화한다. (Kubernetes 노트 13)
+#   pnpm k8s:argocd  → 설치 + 이 파일 적용
+#   pnpm k8s:argocd:port → https://localhost:18443 (admin / 아래 명령으로 비밀번호)
+#   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: study
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]      # Application 삭제 시 리소스도 정리
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jaejinu/study
+    targetRevision: main
+    path: k8s
+    kustomize: {}                                              # buildOptions 는 argocd-cm 에서 전역 설정 (load-restrictor)
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: study
+  syncPolicy:
+    automated:
+      prune: true          # git 에서 지운 리소스는 클러스터에서도 삭제
+      selfHeal: true       # kubectl 로 바꾼 드리프트를 git 상태로 되돌림
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+  ignoreDifferences:
+    # Rollouts/HPA 가 바꾸는 replicas 는 드리프트로 보지 않는다
+    - group: apps
+      kind: Deployment
+      jsonPointers: [/spec/replicas]

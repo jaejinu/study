@@ -9,6 +9,8 @@ export interface KubeStatus {
   nodes?: { name: string; status: string; version: string; roles: string }[];
   pods?: { namespace: string; name: string; status: string; ready: string }[];
   error?: string;
+  /** 부가 컴포넌트 상태 */
+  addons?: { name: string; status: string; detail?: string }[];
 }
 
 function run(args: string[], timeout = 5000): Promise<{ ok: boolean; out: string }> {
@@ -61,5 +63,18 @@ export async function getKubeStatus(): Promise<KubeStatus> {
           ready: `${(p.status.containerStatuses ?? []).filter((c) => c.ready).length}/${(p.status.containerStatuses ?? []).length}`,
         }))
     : [];
-  return { installed: true, clientVersion, context: ctx.out, connected: true, serverVersion: nodes[0]?.version, nodes, pods };
+  const addons: { name: string; status: string; detail?: string }[] = [];
+  const [ms, kps, argo, rollouts, app] = await Promise.all([
+    run(["-n", "kube-system", "get", "deploy", "metrics-server", "-o", "jsonpath={.status.readyReplicas}", "--request-timeout=4s"], 6000),
+    run(["-n", "monitoring", "get", "deploy", "-l", "app.kubernetes.io/name=grafana", "-o", "jsonpath={.items[0].status.readyReplicas}", "--request-timeout=4s"], 6000),
+    run(["-n", "argocd", "get", "deploy", "argocd-server", "-o", "jsonpath={.status.readyReplicas}", "--request-timeout=4s"], 6000),
+    run(["-n", "argo-rollouts", "get", "deploy", "argo-rollouts", "-o", "jsonpath={.status.readyReplicas}", "--request-timeout=4s"], 6000),
+    run(["-n", "argocd", "get", "application", "study", "-o", "jsonpath={.status.sync.status} {.status.health.status}", "--request-timeout=4s"], 6000),
+  ]);
+  const up = (r: { ok: boolean; out: string }) => (r.ok && Number(r.out) > 0 ? "ready" : "없음");
+  addons.push({ name: "metrics-server (HPA)", status: up(ms), detail: up(ms) === "없음" ? "pnpm k8s:metrics" : undefined });
+  addons.push({ name: "kube-prometheus-stack", status: up(kps), detail: up(kps) === "없음" ? "pnpm k8s:monitoring" : "pnpm k8s:grafana:port → :13001" });
+  addons.push({ name: "ArgoCD", status: up(argo), detail: up(argo) === "없음" ? "pnpm k8s:argocd" : app.ok && app.out.trim() ? `Application study: ${app.out}` : "Application 없음 (kubectl apply -f k8s/argocd/application.yaml)" });
+  addons.push({ name: "Argo Rollouts", status: up(rollouts), detail: up(rollouts) === "없음" ? "pnpm k8s:rollouts" : "kubectl argo rollouts get rollout web-canary -n study" });
+  return { installed: true, clientVersion, context: ctx.out, connected: true, serverVersion: nodes[0]?.version, nodes, pods, addons };
 }
