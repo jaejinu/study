@@ -3,7 +3,7 @@ import type { ChatCompletionChunk } from "openai/resources/chat/completions";
 import { executeTool, SYSTEM_PROMPT } from "@/lib/assistant/tools";
 import { estimateOpenAICost, OPENAI_MODEL, OPENAI_MODELS, openaiClient, openaiConfigured, openaiTools, type OpenAIMessage } from "@/lib/assistant/openai";
 import { getNote } from "@/lib/notes";
-import { searchSmart } from "@/lib/search";
+import { searchHybrid } from "@/lib/search";
 import { getSubject } from "@/lib/subjects";
 import { logger } from "@/lib/log";
 import { metrics } from "@/lib/metrics";
@@ -40,9 +40,13 @@ async function pageContext(ctx: PageContext, question: string): Promise<{ text: 
   } else if (ctx.pathname) parts.push(`현재 경로: ${ctx.pathname}`);
   if (ctx.selection?.trim()) parts.push(`사용자가 화면에서 선택한 텍스트:\n"""${ctx.selection.trim().slice(0, 2000)}"""`);
   // 모델이 툴을 안 쓰거나 검색어를 틀려도 근거가 있도록, 질문으로 관련 노트를 미리 찾아 붙인다 (검색 증강)
-  const hits = (await searchSmart(question, 5)).filter((h) => h.kind === "note" && !(m?.[2] && h.href.endsWith(`/${m[2]}`)));
-  if (hits.length) parts.push(`질문과 관련된 이 사이트의 노트 (근거로 쓰고 링크로 인용):\n${hits.map((h) => `- [${h.title}](${h.href}) — ${h.subjectName}: ${h.snippet}`).join("\n")}`);
-  for (const h of hits) sources.push({ title: h.title, href: h.href, subject: h.subjectName, kind: "related" });
+  // 하이브리드(BM25+벡터) 검색은 노트의 "가장 잘 맞는 섹션" 과 그 앵커를 준다. OpenSearch 가 꺼져 있으면 키워드 검색으로 폴백
+  const found = await searchHybrid(question, { limit: 6, snippetWidth: 480 });
+  const hits = found.hits.filter((h) => h.kind === "note" && !(m?.[2] && h.href.split("#")[0].endsWith(`/${m[2]}`))).slice(0, 5);
+  const label = (h: (typeof hits)[number]) => `${h.title}${h.section ? ` § ${h.section}` : ""}`;
+  if (hits.length) parts.push(`질문과 관련된 이 사이트의 노트 섹션 (${found.via === "keyword" ? "키워드" : "의미+키워드"} 검색 · 근거로 쓰고 링크로 인용):\n${hits.map((h) => `- [${label(h)}](${h.href}) — ${h.subjectName}: ${h.snippet}`).join("\n")}`);
+  for (const h of hits) sources.push({ title: label(h), href: h.href, subject: h.subjectName, kind: "related" });
+  logger.info("ask.grounding", { via: found.via, ms: found.ms, hits: hits.length });
   return { text: parts.join("\n\n"), sources };
 }
 

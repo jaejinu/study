@@ -60,6 +60,8 @@
     "tf:platform": "tofu -chdir=infra/local/20-platform",
     "search:up": "docker compose -p study --profile search up -d opensearch",
     "search:down": "docker compose -p study --profile search stop opensearch",
+    "search:index": "tsx scripts/search-index.mts",
+    "search:eval": "tsx scripts/search-eval.mts",
     "mq:up": "docker compose -p study --profile mq up -d rabbitmq nats",
     "mq:down": "docker compose -p study --profile mq stop rabbitmq nats",
     "mlflow:up": "docker compose -p study --profile mlflow up -d mlflow",

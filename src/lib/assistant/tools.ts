@@ -5,7 +5,7 @@ import { getNote, listNotes } from "@/lib/notes";
 import { getProgress } from "@/lib/progress";
 import { loadQuiz } from "@/lib/quiz";
 import { cardKey, fmtDuration, getQuizStats, getSubjectStudySeconds, summarizeReview } from "@/lib/study";
-import { searchSmart } from "@/lib/search";
+import { searchHybrid } from "@/lib/search";
 import { subjects } from "@/lib/subjects";
 
 /**
@@ -72,8 +72,9 @@ export async function executeTool(name: string, input: Record<string, unknown>):
         const q = String(input.query ?? "").slice(0, 200);
         const limit = Math.min(Number(input.limit ?? 6), 10);
         const subject = typeof input.subject === "string" ? input.subject : undefined;
-        const hits = (await searchSmart(q, 40)).filter((h) => !subject || h.subject === subject).slice(0, limit);
-        return { result: hits.map((h) => ({ kind: h.kind, subject: h.subjectName, title: h.title, href: h.href, snippet: h.snippet.slice(0, 240) })) };
+        // 의미+키워드 하이브리드 검색 (OpenSearch 가 꺼져 있으면 키워드 검색으로 폴백). 노트는 가장 잘 맞는 섹션 앵커를 준다
+        const { hits } = await searchHybrid(q, { limit, subject, labs: 2 });
+        return { result: hits.slice(0, limit).map((h) => ({ kind: h.kind, subject: h.subjectName, title: h.section ? `${h.title} § ${h.section}` : h.title, href: h.href, snippet: h.snippet.slice(0, 240) })) };
       }
       case "get_note": {
         const subject = String(input.subject ?? "");
