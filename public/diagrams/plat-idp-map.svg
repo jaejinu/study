@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="470" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">이 저장소를 내부 개발자 플랫폼(IDP)으로 보면</text>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+
+  <!-- user -->
+  <rect x="30" y="200" width="130" height="70" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="95" y="228" text-anchor="middle" fill="#e6edf3" font-weight="600">학습자</text>
+  <text x="95" y="248" text-anchor="middle" fill="#8b949e" font-size="11">(= 개발자)</text>
+  <line x1="162" y1="235" x2="218" y2="235" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- portal -->
+  <rect x="220" y="60" width="200" height="350" rx="12" fill="#161b22" stroke="#4338ca"/>
+  <text x="320" y="85" text-anchor="middle" fill="#818cf8" font-weight="600">개발자 포털</text>
+  <text x="320" y="103" text-anchor="middle" fill="#8b949e" font-size="11">Next.js 사이트</text>
+  <rect x="240" y="120" width="160" height="44" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="320" y="139" text-anchor="middle" fill="#e6edf3">카탈로그</text>
+  <text x="320" y="155" text-anchor="middle" fill="#8b949e" font-size="11">subjects.ts (주제 34)</text>
+  <rect x="240" y="174" width="160" height="44" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="320" y="193" text-anchor="middle" fill="#e6edf3">상태 점검</text>
+  <text x="320" y="209" text-anchor="middle" fill="#8b949e" font-size="11">env-checks.ts</text>
+  <rect x="240" y="228" width="160" height="44" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="320" y="247" text-anchor="middle" fill="#e6edf3">플러그인(실험)</text>
+  <text x="320" y="263" text-anchor="middle" fill="#8b949e" font-size="11">lab/registry.ts</text>
+  <rect x="240" y="282" width="160" height="44" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="320" y="301" text-anchor="middle" fill="#e6edf3">문서(TechDocs)</text>
+  <text x="320" y="317" text-anchor="middle" fill="#8b949e" font-size="11">content/*/notes</text>
+  <rect x="240" y="336" width="160" height="44" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="320" y="355" text-anchor="middle" fill="#e6edf3">검색 · AI 에게 묻기</text>
+  <text x="320" y="371" text-anchor="middle" fill="#8b949e" font-size="11">⌘K · ⌘/</text>
+
+  <!-- self-service -->
+  <rect x="480" y="60" width="210" height="170" rx="12" fill="#161b22" stroke="#22c55e"/>
+  <text x="585" y="85" text-anchor="middle" fill="#22c55e" font-weight="600">셀프서비스 인프라</text>
+  <text x="585" y="112" text-anchor="middle" fill="#e6edf3">pnpm &lt;대상&gt;:up</text>
+  <text x="585" y="132" text-anchor="middle" fill="#8b949e" font-size="11">compose 프로파일 12 · 스크립트 25</text>
+  <text x="585" y="160" text-anchor="middle" fill="#e6edf3">infra/local (OpenTofu)</text>
+  <text x="585" y="180" text-anchor="middle" fill="#8b949e" font-size="11">kind 클러스터 + 플랫폼</text>
+  <text x="585" y="210" text-anchor="middle" fill="#f59e0b" font-size="11">기본값: -p study · 포트 대역 고정</text>
+  <line x1="402" y1="196" x2="478" y2="150" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- guardrails -->
+  <rect x="480" y="250" width="210" height="160" rx="12" fill="#161b22" stroke="#f59e0b"/>
+  <text x="585" y="275" text-anchor="middle" fill="#f59e0b" font-weight="600">가드레일</text>
+  <text x="585" y="302" text-anchor="middle" fill="#e6edf3">정책을 코드로 (CI)</text>
+  <text x="585" y="320" text-anchor="middle" fill="#8b949e" font-size="11">tests/content.test.ts — 검사 12개</text>
+  <text x="585" y="350" text-anchor="middle" fill="#e6edf3">안전한 기본값</text>
+  <text x="585" y="368" text-anchor="middle" fill="#8b949e" font-size="11">deadman.ts — 실험 자동 원복</text>
+  <text x="585" y="392" text-anchor="middle" fill="#8b949e" font-size="11">타입 검사 (SubjectId 유니온)</text>
+  <line x1="402" y1="250" x2="478" y2="320" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- measure -->
+  <rect x="750" y="60" width="180" height="350" rx="12" fill="#161b22" stroke="#0891b2"/>
+  <text x="840" y="85" text-anchor="middle" fill="#22d3ee" font-weight="600">측정</text>
+  <text x="840" y="118" text-anchor="middle" fill="#e6edf3">DORA</text>
+  <text x="840" y="136" text-anchor="middle" fill="#8b949e" font-size="11">GitHub 커밋·CI 기록</text>
+  <text x="840" y="172" text-anchor="middle" fill="#e6edf3">카탈로그 완성도</text>
+  <text x="840" y="190" text-anchor="middle" fill="#8b949e" font-size="11">plat-catalog-validate</text>
+  <text x="840" y="226" text-anchor="middle" fill="#e6edf3">앱 메트릭 · 알림</text>
+  <text x="840" y="244" text-anchor="middle" fill="#8b949e" font-size="11">/api/metrics → Grafana</text>
+  <text x="840" y="280" text-anchor="middle" fill="#e6edf3">학습 기록</text>
+  <text x="840" y="298" text-anchor="middle" fill="#8b949e" font-size="11">진행률 · 복습 · 학습 시간</text>
+  <line x1="692" y1="150" x2="748" y2="150" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="692" y1="330" x2="748" y2="330" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <text x="480" y="450" text-anchor="middle" fill="#8b949e" font-size="12">사건 → 규칙 → 기본값: id 충돌 → 라우트 검사 · YAML 깨짐 → frontmatter 검사 · Redis 3시간 정지 → 데드맨 스위치</text>
+</svg>

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="360" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">골든 패스 — 사전(템플릿)과 사후(정책 검사)</text>
+  <defs><marker id="b" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+
+  <rect x="30" y="70" width="170" height="110" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="115" y="96" text-anchor="middle" fill="#e6edf3" font-weight="600">입력 (최소한)</text>
+  <text x="115" y="120" text-anchor="middle" fill="#8b949e" font-size="12">이름 · 소유자</text>
+  <text x="115" y="140" text-anchor="middle" fill="#8b949e" font-size="12">중요도 · 데이터 분류</text>
+  <text x="115" y="164" text-anchor="middle" fill="#8b949e" font-size="11">나머지는 기본값</text>
+  <line x1="202" y1="125" x2="248" y2="125" stroke="#8b949e" stroke-width="2" marker-end="url(#b)"/>
+
+  <rect x="250" y="70" width="210" height="110" rx="10" fill="#161b22" stroke="#4338ca"/>
+  <text x="355" y="96" text-anchor="middle" fill="#818cf8" font-weight="600">템플릿 (스캐폴더)</text>
+  <text x="355" y="120" text-anchor="middle" fill="#e6edf3" font-size="12">스켈레톤 + 변수 치환</text>
+  <text x="355" y="140" text-anchor="middle" fill="#e6edf3" font-size="12">저장소 생성 · 카탈로그 등록</text>
+  <text x="355" y="164" text-anchor="middle" fill="#8b949e" font-size="11">템플릿 CI: 렌더링 · 빌드 · 정책</text>
+  <line x1="462" y1="125" x2="508" y2="125" stroke="#8b949e" stroke-width="2" marker-end="url(#b)"/>
+
+  <rect x="510" y="70" width="200" height="110" rx="10" fill="#161b22" stroke="#22c55e"/>
+  <text x="610" y="96" text-anchor="middle" fill="#22c55e" font-weight="600">생성된 서비스</text>
+  <text x="610" y="120" text-anchor="middle" fill="#e6edf3" font-size="12">CI · 관측 · 보안 기본값</text>
+  <text x="610" y="140" text-anchor="middle" fill="#e6edf3" font-size="12">공유 부품을 참조 (@v3)</text>
+  <text x="610" y="164" text-anchor="middle" fill="#8b949e" font-size="11">스켈레톤엔 바뀌지 않을 것만</text>
+  <line x1="712" y1="125" x2="758" y2="125" stroke="#8b949e" stroke-width="2" marker-end="url(#b)"/>
+
+  <rect x="760" y="70" width="170" height="110" rx="10" fill="#161b22" stroke="#f59e0b"/>
+  <text x="845" y="96" text-anchor="middle" fill="#f59e0b" font-weight="600">변경마다 정책 검사</text>
+  <text x="845" y="120" text-anchor="middle" fill="#e6edf3" font-size="12">CI · OPA · 스코어카드</text>
+  <text x="845" y="140" text-anchor="middle" fill="#e6edf3" font-size="12">어긋남을 사후에 잡는다</text>
+  <text x="845" y="164" text-anchor="middle" fill="#8b949e" font-size="11">audit → enforce</text>
+
+  <rect x="250" y="220" width="460" height="110" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="480" y="246" text-anchor="middle" fill="#e6edf3" font-weight="600">탈출구 (escape hatch)</text>
+  <text x="480" y="270" text-anchor="middle" fill="#8b949e" font-size="12">확장점(extraEnv · 추가 단계) · 원본 매니페스트 직접 사용</text>
+  <text x="480" y="292" text-anchor="middle" fill="#8b949e" font-size="12">탈출은 금지가 아니라 "지원 범위 밖" — 스코어카드에 표시</text>
+  <text x="480" y="314" text-anchor="middle" fill="#f59e0b" font-size="12">탈출률 = 골든 패스가 불편하다는 가장 정직한 피드백</text>
+  <line x1="610" y1="182" x2="560" y2="218" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#b)"/>
+</svg>

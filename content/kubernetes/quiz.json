@@ -1,97 +1,212 @@
 [
- {
-  "note": "01-kubernetes-overview",
-  "q": "Deployment 의 Pod 을 삭제하면 다시 생기는 원리는?",
-  "a": "컨트롤러가 원하는 상태(replicas)와 현재 상태의 차이를 메우는 조정 루프 때문. ReplicaSet 이 새 Pod 을 만든다."
- },
- {
-  "note": "03-pod-deployment",
-  "q": "readinessProbe 와 livenessProbe 실패 시 각각 무슨 일이?",
-  "a": "readiness 실패: Service endpoints 에서 제외(재시작 없음). liveness 실패: 컨테이너 재시작."
- },
- {
-  "note": "03-pod-deployment",
-  "q": "CrashLoopBackOff 를 진단할 때 먼저 볼 명령은?",
-  "a": "kubectl describe pod (Events, Last State) 와 kubectl logs --previous."
- },
- {
-  "note": "04-service-ingress",
-  "q": "Pod IP 대신 Service 를 써야 하는 이유는?",
-  "a": "Pod 은 재생성되면 IP 가 바뀐다. Service 는 고정 ClusterIP 와 DNS 이름을 주고 Ready 인 Pod 으로만 보낸다."
- },
- {
-  "note": "04-service-ingress",
-  "q": "Ingress 리소스를 만들었는데 아무 일도 안 일어나는 흔한 이유는?",
-  "a": "Ingress Controller(nginx, traefik 등)가 설치되어 있지 않다. Ingress 는 규칙일 뿐이다."
- },
- {
-  "note": "05-configmap-secret",
-  "q": "ConfigMap 을 바꿨는데 환경 변수로 주입한 값이 안 바뀌는 이유는?",
-  "a": "환경 변수는 컨테이너 시작 시 고정된다. rollout restart 하거나 kustomize configMapGenerator 의 해시 이름으로 재배포."
- },
- {
-  "note": "06-storage-statefulset",
-  "q": "StatefulSet 의 Pod 을 지웠다 다시 만들면 데이터가 남는 이유는?",
-  "a": "volumeClaimTemplates 로 만든 PVC(data-redis-0)가 Pod 과 독립적으로 남고 같은 이름의 Pod 에 다시 붙는다."
- },
- {
-  "note": "07-deploy-resources",
-  "q": "requests 없이 배포하면 생기는 문제는?",
-  "a": "스케줄러가 부하를 몰라 한 노드에 몰아넣고, HPA 도 동작하지 않는다(requests 대비 사용률)."
- },
- {
-  "note": "08-ops-debugging",
-  "q": "셸이 없는 distroless 컨테이너를 디버깅하는 방법은?",
-  "a": "kubectl debug -it pod --image=netshoot --target=container 로 디버그 컨테이너를 같은 네임스페이스에 붙인다."
- },
- {
-  "note": "11-operators-crds",
-  "q": "컨트롤러가 '레벨 기반' 이라는 말의 의미는?",
-  "a": "이벤트가 아니라 현재 상태를 보고 조정한다. 이벤트를 놓쳐도 다음 reconcile 에서 맞춘다."
- },
- {
-  "note": "11-operators-crds",
-  "q": "CRD 만 만들면 무슨 일이 일어나나?",
-  "a": "저장·조회·스키마 검증·출력 컬럼은 되지만 동작은 없다. Operator(컨트롤러) 가 붙어야 reconcile 된다."
- },
- {
-  "note": "11-operators-crds",
-  "q": "finalizer 는 언제 필요한가?",
-  "a": "외부 자원(클라우드 디스크, DNS) 을 정리해야 할 때. finalizer 가 제거될 때까지 실제 삭제가 보류된다."
- },
- {
-  "note": "12-network-policy-mesh",
-  "q": "NetworkPolicy 로 기본 거부를 걸었는데 모든 통신이 깨지는 흔한 원인은?",
-  "a": "DNS(kube-system 53/UDP) egress 를 열지 않았다. 거부 규칙은 없고 허용의 합집합이므로 DNS 허용 정책이 필요."
- },
- {
-  "note": "12-network-policy-mesh",
-  "q": "Gateway API 가 Ingress 보다 나은 점은?",
-  "a": "표준 리소스로 역할(인프라/플랫폼/앱)을 분리하고 가중치·헤더 매칭·리다이렉트를 어노테이션 없이 선언한다."
- },
- {
-  "note": "13-gitops-progressive-delivery",
-  "q": "GitOps 의 pull 모델이 push 모델보다 안전한 이유는?",
-  "a": "클러스터 안 에이전트가 git 을 당겨 적용하므로 CI 에 클러스터 자격 증명이 필요 없고, 드리프트를 자동 복구한다."
- },
- {
-  "note": "13-gitops-progressive-delivery",
-  "q": "Argo Rollouts 의 AnalysisTemplate 은 무엇을 하나?",
-  "a": "카나리 단계에서 Prometheus 질의(성공률 등)를 평가해 자동 승격 또는 롤백한다."
- },
- {
-  "note": "14-scheduling-autoscaling-deep",
-  "q": "스케줄러가 쓰는 '화폐' 는 requests 인가 limits 인가?",
-  "a": "requests. limits 는 스케줄링에 쓰이지 않는다. requests 없이 배포하면 한 노드에 몰린다."
- },
- {
-  "note": "14-scheduling-autoscaling-deep",
-  "q": "PDB minAvailable: 1 에 복제본 1 이면 어떤 문제가 생기나?",
-  "a": "노드 drain 이 영원히 막힌다. 복제본을 2 이상으로 둔다."
- },
- {
-  "note": "14-scheduling-autoscaling-deep",
-  "q": "KEDA 가 HPA 와 다른 점은?",
-  "a": "외부 이벤트 소스(Kafka LAG, Redis 길이, cron 등)로 스케일하고 0 으로 줄일 수 있다."
- }
+  {
+    "note": "01-kubernetes-overview",
+    "q": "Deployment 의 Pod 을 삭제하면 다시 생기는 원리는?",
+    "a": "컨트롤러가 원하는 상태(replicas)와 현재 상태의 차이를 메우는 조정 루프 때문. ReplicaSet 이 새 Pod 을 만든다."
+  },
+  {
+    "note": "03-pod-deployment",
+    "q": "readinessProbe 와 livenessProbe 실패 시 각각 무슨 일이?",
+    "a": "readiness 실패: Service endpoints 에서 제외(재시작 없음). liveness 실패: 컨테이너 재시작."
+  },
+  {
+    "note": "03-pod-deployment",
+    "q": "CrashLoopBackOff 를 진단할 때 먼저 볼 명령은?",
+    "a": "kubectl describe pod (Events, Last State) 와 kubectl logs --previous."
+  },
+  {
+    "note": "04-service-ingress",
+    "q": "Pod IP 대신 Service 를 써야 하는 이유는?",
+    "a": "Pod 은 재생성되면 IP 가 바뀐다. Service 는 고정 ClusterIP 와 DNS 이름을 주고 Ready 인 Pod 으로만 보낸다."
+  },
+  {
+    "note": "04-service-ingress",
+    "q": "Ingress 리소스를 만들었는데 아무 일도 안 일어나는 흔한 이유는?",
+    "a": "Ingress Controller(nginx, traefik 등)가 설치되어 있지 않다. Ingress 는 규칙일 뿐이다."
+  },
+  {
+    "note": "05-configmap-secret",
+    "q": "ConfigMap 을 바꿨는데 환경 변수로 주입한 값이 안 바뀌는 이유는?",
+    "a": "환경 변수는 컨테이너 시작 시 고정된다. rollout restart 하거나 kustomize configMapGenerator 의 해시 이름으로 재배포."
+  },
+  {
+    "note": "06-storage-statefulset",
+    "q": "StatefulSet 의 Pod 을 지웠다 다시 만들면 데이터가 남는 이유는?",
+    "a": "volumeClaimTemplates 로 만든 PVC(data-redis-0)가 Pod 과 독립적으로 남고 같은 이름의 Pod 에 다시 붙는다."
+  },
+  {
+    "note": "07-deploy-resources",
+    "q": "requests 없이 배포하면 생기는 문제는?",
+    "a": "스케줄러가 부하를 몰라 한 노드에 몰아넣고, HPA 도 동작하지 않는다(requests 대비 사용률)."
+  },
+  {
+    "note": "08-ops-debugging",
+    "q": "셸이 없는 distroless 컨테이너를 디버깅하는 방법은?",
+    "a": "kubectl debug -it pod --image=netshoot --target=container 로 디버그 컨테이너를 같은 네임스페이스에 붙인다."
+  },
+  {
+    "note": "11-operators-crds",
+    "q": "컨트롤러가 '레벨 기반' 이라는 말의 의미는?",
+    "a": "이벤트가 아니라 현재 상태를 보고 조정한다. 이벤트를 놓쳐도 다음 reconcile 에서 맞춘다."
+  },
+  {
+    "note": "11-operators-crds",
+    "q": "CRD 만 만들면 무슨 일이 일어나나?",
+    "a": "저장·조회·스키마 검증·출력 컬럼은 되지만 동작은 없다. Operator(컨트롤러) 가 붙어야 reconcile 된다."
+  },
+  {
+    "note": "11-operators-crds",
+    "q": "finalizer 는 언제 필요한가?",
+    "a": "외부 자원(클라우드 디스크, DNS) 을 정리해야 할 때. finalizer 가 제거될 때까지 실제 삭제가 보류된다."
+  },
+  {
+    "note": "12-network-policy-mesh",
+    "q": "NetworkPolicy 로 기본 거부를 걸었는데 모든 통신이 깨지는 흔한 원인은?",
+    "a": "DNS(kube-system 53/UDP) egress 를 열지 않았다. 거부 규칙은 없고 허용의 합집합이므로 DNS 허용 정책이 필요."
+  },
+  {
+    "note": "12-network-policy-mesh",
+    "q": "Gateway API 가 Ingress 보다 나은 점은?",
+    "a": "표준 리소스로 역할(인프라/플랫폼/앱)을 분리하고 가중치·헤더 매칭·리다이렉트를 어노테이션 없이 선언한다."
+  },
+  {
+    "note": "13-gitops-progressive-delivery",
+    "q": "GitOps 의 pull 모델이 push 모델보다 안전한 이유는?",
+    "a": "클러스터 안 에이전트가 git 을 당겨 적용하므로 CI 에 클러스터 자격 증명이 필요 없고, 드리프트를 자동 복구한다."
+  },
+  {
+    "note": "13-gitops-progressive-delivery",
+    "q": "Argo Rollouts 의 AnalysisTemplate 은 무엇을 하나?",
+    "a": "카나리 단계에서 Prometheus 질의(성공률 등)를 평가해 자동 승격 또는 롤백한다."
+  },
+  {
+    "note": "14-scheduling-autoscaling-deep",
+    "q": "스케줄러가 쓰는 '화폐' 는 requests 인가 limits 인가?",
+    "a": "requests. limits 는 스케줄링에 쓰이지 않는다. requests 없이 배포하면 한 노드에 몰린다."
+  },
+  {
+    "note": "14-scheduling-autoscaling-deep",
+    "q": "PDB minAvailable: 1 에 복제본 1 이면 어떤 문제가 생기나?",
+    "a": "노드 drain 이 영원히 막힌다. 복제본을 2 이상으로 둔다."
+  },
+  {
+    "note": "14-scheduling-autoscaling-deep",
+    "q": "KEDA 가 HPA 와 다른 점은?",
+    "a": "외부 이벤트 소스(Kafka LAG, Redis 길이, cron 등)로 스케일하고 0 으로 줄일 수 있다."
+  },
+  {
+    "note": "01-kubernetes-overview",
+    "q": "Kubernetes 에서 '선언과 조정 루프' 란 무엇인가?",
+    "a": "'이렇게 해라' 가 아니라 '이런 상태여야 한다' 를 선언하면, 컨트롤러들이 끊임없이 현재 상태와 원하는 상태를 비교해 차이를 메우는 방식이다. Pod 하나가 죽으면 복제본 수가 모자라니 하나를 더 만드는 자가 치유가 이 원리에서 나온다."
+  },
+  {
+    "note": "01-kubernetes-overview",
+    "q": "Kubernetes 클러스터에서 백업해야 할 유일한 진실의 원천은? 노드에서 컨테이너를 실제로 돌리는 것은?",
+    "a": "클러스터 상태는 etcd 에 저장되므로 백업 대상은 etcd 다. 노드에서 컨테이너를 돌리는 것은 Docker 데몬이 아니라 containerd 이며, Docker 로 빌드한 이미지는 OCI 표준이라 그대로 쓸 수 있다."
+  },
+  {
+    "note": "02-local-cluster-kubectl",
+    "q": "kubectl describe 가 문제 진단의 출발점인 이유는?",
+    "a": "오브젝트의 상세 정보와 함께 이벤트(스케줄링 실패, 이미지 pull 실패, probe 실패 등)를 보여 주기 때문이다. get 은 요약만 보여 주므로 왜 그런 상태인지는 describe 의 이벤트에서 찾는다."
+  },
+  {
+    "note": "02-local-cluster-kubectl",
+    "q": "운영 클러스터와 로컬 클러스터 컨텍스트가 섞여 있을 때의 위험과 대책은?",
+    "a": "현재 컨텍스트를 착각해 운영 클러스터에서 kubectl delete 같은 사고가 난다. kubectl config current-context 로 확인하고, kube-ps1 로 프롬프트에 표시하거나 kubectx/kubens 로 명시적으로 전환한다."
+  },
+  {
+    "note": "02-local-cluster-kubectl",
+    "q": "명령형(kubectl create)과 선언형(kubectl apply -f)은 언제 쓰나? 둘을 잇는 요령은?",
+    "a": "명령형은 빠른 실험용이고, 실제 작업은 git 에 남는 선언형 파일로 한다. kubectl create … --dry-run=client -o yaml 로 명령형으로 매니페스트 초안을 뽑고, 적용 전에는 kubectl diff 로 변경점을 본다."
+  },
+  {
+    "note": "03-pod-deployment",
+    "q": "'Pod 은 일회용' 이라는 말의 의미와 그 결과는?",
+    "a": "Pod 은 죽으면 같은 Pod 이 살아나는 게 아니라 새 IP 를 가진 새 Pod 이 만들어진다. 그래서 Pod 을 직접 만들지 않고 Deployment 같은 컨트롤러에 맡기고, 접근은 Service 를 통한다."
+  },
+  {
+    "note": "04-service-ingress",
+    "q": "Headless Service(clusterIP: None)는 무엇이고 어디에 쓰나?",
+    "a": "가상 IP 없이 DNS 가 Pod IP 들을 직접 돌려주는 Service 다. StatefulSet 이 redis-0.redis 처럼 Pod 별로 안정적인 DNS 이름을 갖기 위해 쓴다."
+  },
+  {
+    "note": "05-configmap-secret",
+    "q": "ConfigMap 을 파일로 마운트하면 변경이 자동 반영되는데, 반영되지 않는 경우는?",
+    "a": "subPath 로 마운트하면 갱신되지 않는다. 또 파일이 갱신돼도 앱이 다시 읽지 않으면 소용이 없어서, 설정을 시작 시 한 번만 읽는 Redis 는 재시작이 필요하다."
+  },
+  {
+    "note": "05-configmap-secret",
+    "q": "Kubernetes Secret 이 base64 로 저장된다는 것의 보안적 의미와 git 에 올리는 올바른 방법은?",
+    "a": "base64 는 암호화가 아니라 get secret 권한만 있으면 다 보이고, etcd 에도 평문이라 encryption at rest 를 켜야 한다. git 에는 Sealed Secrets, SOPS, External Secrets Operator 중 하나로 암호화하거나 참조만 둔다."
+  },
+  {
+    "note": "06-storage-statefulset",
+    "q": "PV, PVC, StorageClass 의 역할은?",
+    "a": "PV 는 실제 스토리지 조각(클러스터 자원), PVC 는 '이만큼 필요하다' 는 네임스페이스 단위 요청으로 Pod 은 PVC 만 안다. StorageClass 는 PVC 가 오면 PV 를 자동으로 만드는 방법(프로비저너)과 정책이다."
+  },
+  {
+    "note": "06-storage-statefulset",
+    "q": "DB 같은 앱에 Deployment 대신 StatefulSet 을 쓰는 이유 세 가지는?",
+    "a": "복제본마다 고유한 정체성(이름·네트워크 ID)이 유지돼야 하고, 복제본마다 자기 디스크가 붙어야 하며, primary 먼저처럼 순서대로 뜨고 내려가야 하기 때문이다. volumeClaimTemplates 가 Pod 마다 PVC 를 만든다."
+  },
+  {
+    "note": "07-deploy-resources",
+    "q": "Kustomize 와 Helm 은 각각 언제 쓰나?",
+    "a": "남이 만든 복잡한 소프트웨어(DB, 모니터링 스택)는 차트로 설치·업그레이드하는 Helm, 우리 앱의 환경별 차이는 템플릿 없이 base 에 overlay 패치를 하는 Kustomize 가 맞다. Helm 렌더 결과를 Kustomize 로 패치하는 조합도 쓴다."
+  },
+  {
+    "note": "07-deploy-resources",
+    "q": "QoS 클래스 Guaranteed·Burstable·BestEffort 의 조건과 메모리 부족 시 순서는?",
+    "a": "Guaranteed 는 모든 컨테이너의 requests == limits, Burstable 은 requests < limits, BestEffort 는 둘 다 없음이다. 노드 메모리가 부족하면 BestEffort 가 가장 먼저, Guaranteed 가 가장 늦게 쫓겨난다."
+  },
+  {
+    "note": "08-ops-debugging",
+    "q": "Pod 이 Running 인데 READY 가 0/1 이면 무엇을 의심하나?",
+    "a": "readinessProbe 실패다. probe 경로·포트가 맞는지, 앱 시작이 느린지 확인하고, 느린 앱이면 startupProbe 를 둔다. Ready 가 아니면 Service 엔드포인트에서 빠져 트래픽을 받지 못한다."
+  },
+  {
+    "note": "08-ops-debugging",
+    "q": "이미지 태그 latest 와 imagePullPolicy: IfNotPresent 를 함께 쓰면 생기는 문제는?",
+    "a": "노드마다 처음 pull 한 시점의 latest 를 캐시해 쓰므로 노드마다 서로 다른 버전이 돈다. 태그를 고정(버전·다이제스트)해야 어느 Pod 이 무엇을 돌리는지 확정된다."
+  },
+  {
+    "note": "09-minikube-addons",
+    "q": "kind 와 minikube 를 함께 두는 이유는?",
+    "a": "kind 는 Docker 컨테이너 노드라 수십 초면 뜨고 CI·빠른 반복에 좋지만 애드온을 직접 설치해야 한다. minikube 는 addons enable 한 줄로 ingress·metrics-server·dashboard 를 켜고 minikube tunnel 로 LoadBalancer 도 지원해 애드온 실습에 편하다."
+  },
+  {
+    "note": "09-minikube-addons",
+    "q": "HPA 가 부하 후 복제본을 1 에서 5 로 한 번에 늘린 계산과, 부하가 끝나도 바로 줄지 않는 이유는?",
+    "a": "목표 사용률 50% 에 현재 250% 면 ceil(1 × 250/50) = 5 로 계산한다. 축소는 기본 5분 안정화 창(behavior.scaleDown.stabilizationWindowSeconds) 뒤에 일어나 흔들림(flapping)을 막는다."
+  },
+  {
+    "note": "09-minikube-addons",
+    "q": "CPU 가 아니라 큐 길이나 Kafka LAG 으로 오토스케일하려면?",
+    "a": "Prometheus Adapter 로 custom.metrics.k8s.io 를 제공하거나 KEDA 를 쓴다. KEDA 는 Kafka LAG·Redis 리스트 길이·cron 등 이벤트 기반 스케일러가 많고 0 으로 스케일도 가능하다."
+  },
+  {
+    "note": "10-monitoring-stack",
+    "q": "kube-prometheus-stack 에서 kube-state-metrics 와 node-exporter, cAdvisor 는 각각 무엇을 재나?",
+    "a": "kube-state-metrics 는 API 서버 오브젝트 상태(복제본 수, Pod 상태, 재시작 횟수)를, node-exporter 는 노드 OS 지표(CPU·메모리·디스크)를, kubelet 에 내장된 cAdvisor 는 컨테이너별 CPU·메모리(container_*)를 메트릭으로 낸다."
+  },
+  {
+    "note": "10-monitoring-stack",
+    "q": "Prometheus Operator 방식에서 새 수집 대상을 추가하는 방법은?",
+    "a": "prometheus.yml 을 고치는 대신 앱 네임스페이스에 ServiceMonitor(또는 PodMonitor) CRD 를 둔다. Operator 가 이를 보고 스크레이프 설정을 생성·재로드하므로 앱 팀이 자기 저장소에 커밋하면 된다."
+  },
+  {
+    "note": "10-monitoring-stack",
+    "q": "requests 대비 CPU 사용률은 어떤 PromQL 로 구하나?",
+    "a": "cAdvisor 의 rate(container_cpu_usage_seconds_total[5m]) 를 Pod 별로 합한 값을 kube-state-metrics 의 kube_pod_container_resource_requests{resource=\"cpu\"} 로 나눈다. HPA 가 보는 것과 같은 원천이다."
+  },
+  {
+    "note": "12-network-policy-mesh",
+    "q": "kube-proxy 의 iptables 모드와 IPVS·eBPF 모드는 어떻게 다른가?",
+    "a": "iptables 모드는 DNAT 규칙 체인을 확률로 분산해 Service 가 수천 개면 규칙 평가가 느려진다. IPVS 는 커널 L4 로드밸런서와 해시 테이블로 대규모에 유리하고, Cilium 의 eBPF 는 kube-proxy 없이 소켓 레벨에서 처리해 가장 빠르다."
+  },
+  {
+    "note": "13-gitops-progressive-delivery",
+    "q": "GitOps 에서 CI 가 하는 일과 배포가 일어나는 방식은?",
+    "a": "CI 는 kubectl apply 를 push 하지 않고 매니페스트 저장소의 이미지 태그를 바꾸는 커밋(또는 PR)만 한다. 클러스터 안의 ArgoCD·Flux 가 git 을 당겨 적용하므로 CI 에 클러스터 자격 증명이 필요 없다."
+  }
 ]

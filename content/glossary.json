@@ -3040,5 +3040,119 @@
     "subject": "data-engineering",
     "def": "변경을 새 파일로 추가해 두고 읽을 때 키별 최신 버전만 남기고 삭제 표시를 빼는 방식. 쓰기는 싸고 읽기가 무겁다. 반대는 쓸 때 파일을 다시 쓰는 copy-on-write.",
     "link": "/data-engineering/notes/07-tiny-lakehouse-design"
+  },
+  {
+    "term": "내부 개발자 플랫폼 (IDP)",
+    "subject": "platform-engineering",
+    "def": "개발자가 인지 부하를 덜고 스스로 일하도록 돕는 셀프서비스 API·도구·문서·지원의 묶음. 포털·카탈로그·CI/CD·인프라 프로비저닝·관측·보안 기본값으로 이뤄진다.",
+    "link": "/platform-engineering/notes/01-platform-as-product"
+  },
+  {
+    "term": "인지 부하 (cognitive load)",
+    "subject": "platform-engineering",
+    "def": "개발자가 기능을 만드는 것 말고도 머릿속에 들고 있어야 하는 것의 양. 내재적·외재적·본유적으로 나뉘고, 플랫폼의 주 대상은 환경 때문에 생기는 외재적 부하다.",
+    "link": "/platform-engineering/notes/01-platform-as-product"
+  },
+  {
+    "term": "팀 토폴로지",
+    "subject": "platform-engineering",
+    "def": "스트림 정렬·플랫폼·지원(enabling)·복잡한 하위 시스템의 네 팀 유형과 협업·X-as-a-Service·촉진의 세 상호작용으로 조직을 설계하는 틀.",
+    "link": "/platform-engineering/notes/01-platform-as-product"
+  },
+  {
+    "term": "X-as-a-Service",
+    "subject": "platform-engineering",
+    "def": "한 팀이 다른 팀의 서비스를 묻지 않고 문서와 API 만으로 쓰는 상호작용 방식. 플랫폼이 도달해야 할 목표 상태다.",
+    "link": "/platform-engineering/notes/01-platform-as-product"
+  },
+  {
+    "term": "Backstage",
+    "subject": "platform-engineering",
+    "def": "Spotify 가 만들어 CNCF 에 기증한 개발자 포털 프레임워크. 서비스 카탈로그, 소프트웨어 템플릿(Scaffolder), TechDocs, 플러그인으로 구성된다.",
+    "link": "/platform-engineering/notes/02-service-catalog-backstage"
+  },
+  {
+    "term": "catalog-info.yaml",
+    "subject": "platform-engineering",
+    "def": "저장소 루트에 두는 Backstage 엔티티 정의 파일. kind, metadata(name·annotations·links), spec(type·lifecycle·owner·system·dependsOn·providesApis)를 적는다.",
+    "link": "/platform-engineering/notes/02-service-catalog-backstage"
+  },
+  {
+    "term": "서비스 카탈로그",
+    "subject": "platform-engineering",
+    "def": "서비스·API·리소스의 소유자, 의존 관계, 문서·런북·대시보드 위치를 기계가 읽을 수 있게 한곳에 모은 목록. 장애 대응과 영향 분석의 출발점이다.",
+    "link": "/platform-engineering/notes/02-service-catalog-backstage"
+  },
+  {
+    "term": "스코어카드 (Tech Insights)",
+    "subject": "platform-engineering",
+    "def": "카탈로그 엔티티마다 owner·런북·SLO·취약점 같은 규칙을 평가해 점수를 매기는 기능. 처벌이 아니라 비교와 대화, 그리고 플랫폼 기본값 개선의 재료다.",
+    "link": "/platform-engineering/notes/02-service-catalog-backstage"
+  },
+  {
+    "term": "골든 패스 (paved road)",
+    "subject": "platform-engineering",
+    "def": "조직이 권장하고 지원하는 한 가지 길. 강제가 아니라 가장 쉬워서 따르게 만들고, 이탈률을 길이 불편하다는 피드백으로 쓴다.",
+    "link": "/platform-engineering/notes/03-golden-paths-templates"
+  },
+  {
+    "term": "소프트웨어 템플릿 (스캐폴더)",
+    "subject": "platform-engineering",
+    "def": "입력 스키마·스켈레톤·후처리 단계로 새 서비스나 리소스를 생성하는 도구(Backstage Scaffolder, cookiecutter). 스켈레톤엔 바뀌지 않을 것만 두고 바뀔 것은 공유 부품을 참조한다.",
+    "link": "/platform-engineering/notes/03-golden-paths-templates"
+  },
+  {
+    "term": "탈출구 (escape hatch)",
+    "subject": "platform-engineering",
+    "def": "골든 패스가 지원하지 않는 요구를 위한 확장점·단계 교체·원본 노출. 없으면 사람들은 골든 패스 전체를 버린다.",
+    "link": "/platform-engineering/notes/03-golden-paths-templates"
+  },
+  {
+    "term": "셀프서비스 인프라",
+    "subject": "platform-engineering",
+    "def": "개발자가 사람의 개입 없이 인프라를 얻고, 그 결과가 보안·비용·태그·관측 표준을 자동으로 만족하는 상태. 인터페이스와 가드레일 두 축으로 판단한다.",
+    "link": "/platform-engineering/notes/04-self-service-infrastructure"
+  },
+  {
+    "term": "DORA 지표",
+    "subject": "platform-engineering",
+    "def": "배포 빈도·변경 리드타임(속도)과 변경 실패율·복구 시간(안정성)의 네 지표. 상위 조직은 속도와 안정성이 둘 다 좋다는 것이 핵심 발견이다.",
+    "link": "/platform-engineering/notes/05-dora-devex-metrics"
+  },
+  {
+    "term": "변경 리드타임 (lead time for changes)",
+    "subject": "platform-engineering",
+    "def": "변경이 커밋된 뒤 프로덕션에 도달하기까지의 시간. 시작점·끝점의 정의에 따라 크게 달라지므로 분포(중앙값·p90)와 정의를 함께 적는다.",
+    "link": "/platform-engineering/notes/05-dora-devex-metrics"
+  },
+  {
+    "term": "변경 실패율 (change failure rate)",
+    "subject": "platform-engineering",
+    "def": "프로덕션에 나간 배포 중 장애·롤백·핫픽스가 필요했던 비율. 프로덕션 전에 잡은 CI 실패는 여기에 들어가지 않는다.",
+    "link": "/platform-engineering/notes/05-dora-devex-metrics"
+  },
+  {
+    "term": "SPACE 프레임워크",
+    "subject": "platform-engineering",
+    "def": "만족도·성과·활동·소통과 협업·효율과 흐름의 다섯 차원으로 개발자 생산성을 보는 틀. 활동 지표를 단독으로 쓰지 말고 설문과 시스템 지표를 함께 본다.",
+    "link": "/platform-engineering/notes/05-dora-devex-metrics"
+  },
+  {
+    "term": "굿하트의 법칙",
+    "subject": "platform-engineering",
+    "def": "지표가 목표가 되면 좋은 지표가 아니게 된다는 법칙. DORA 를 팀 비교나 개인 평가에 쓰면 숫자를 지키려는 행동이 생긴다.",
+    "link": "/platform-engineering/notes/05-dora-devex-metrics"
+  },
+  {
+    "term": "플랫폼 SLO",
+    "subject": "platform-engineering",
+    "def": "플랫폼의 사용자 여정(CI 결과 수신, 배포 반영, 프로비저닝, 포털 응답)마다 정의한 SLO. 사용자 원인 실패와 플랫폼 원인 실패를 분류해야 셀 수 있다.",
+    "link": "/platform-engineering/notes/06-platform-observability-slo"
+  },
+  {
+    "term": "audit → enforce 전환",
+    "subject": "platform-engineering",
+    "def": "새 정책을 먼저 경고 모드로 운영해 위반을 해소한 뒤 강제 모드로 바꾸는 방법. 정책을 바로 강제하면 모든 팀의 배포를 동시에 막을 수 있다.",
+    "link": "/platform-engineering/notes/06-platform-observability-slo"
   }
 ]

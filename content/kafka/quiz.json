@@ -93,5 +93,40 @@
     "note": "08-cdc-outbox-debezium",
     "q": "Debezium 이 at-least-once 라면 소비자는 어떻게 해야 하나?",
     "a": "멱등하게. outbox.id(헤더 id) 를 처리 테이블에 기록해 중복 이벤트를 건너뛴다."
+  },
+  {
+    "note": "01-kafka-overview",
+    "q": "Kafka 가 디스크에 쓰는데도 빠른 이유 세 가지는?",
+    "a": "디스크에 순차 쓰기만 해서 랜덤 I/O 가 없고, OS 페이지 캐시와 sendfile 기반 zero-copy 전송을 활용하며, 프로듀서·컨슈머가 linger.ms·batch.size·fetch.min.bytes 로 배치 단위로 주고받기 때문이다."
+  },
+  {
+    "note": "01-kafka-overview",
+    "q": "ZooKeeper 대신 KRaft 모드를 쓰면 무엇이 달라지나?",
+    "a": "메타데이터(브로커 목록, 파티션 리더)를 ZooKeeper 에 두지 않고 브로커 중 일부가 컨트롤러가 되어 Raft 로 합의한다. 운영 컴포넌트가 하나 줄고 메타데이터 처리가 빨라진다."
+  },
+  {
+    "note": "02-topics-partitions",
+    "q": "파티션 수를 처음부터 여유 있게 잡아야 하는 이유는?",
+    "a": "파티션은 늘릴 수는 있어도 줄일 수 없고, 늘리면 murmur2(key) % partitions 매핑이 바뀌어 같은 키의 순서 보장이 잠시 깨진다. 그래서 소비자 수의 2~3배 정도로 시작한다."
+  },
+  {
+    "note": "03-consumer-groups",
+    "q": "컨슈머 재시작 때마다 리밸런스가 일어나는 것을 static membership 이 어떻게 막나?",
+    "a": "group.instance.id 를 지정하면 컨슈머가 session.timeout.ms 안에 같은 ID 로 돌아올 경우 그룹이 탈퇴로 보지 않아 파티션 재할당이 일어나지 않는다."
+  },
+  {
+    "note": "04-delivery-guarantees",
+    "q": "외부 DB 에 쓰는 컨슈머에서 Kafka 의 exactly-once 를 기대하면 안 되는 이유와 대안은?",
+    "a": "Kafka 의 exactly-once 는 트랜잭션으로 오프셋과 출력을 묶는 Kafka → Kafka 파이프라인에 한정된다. 외부 DB 소비자는 at-least-once 로 받고 upsert·처리 ID 기록 같은 멱등 처리로 중복을 흡수한다."
+  },
+  {
+    "note": "06-streams-connect-schema",
+    "q": "Kafka Streams 의 상태 저장소는 인스턴스가 죽으면 어떻게 복구되나?",
+    "a": "상태는 로컬 RocksDB 에 있지만 모든 변경이 changelog 토픽에 기록된다. 인스턴스가 죽으면 파티션을 넘겨받은 다른 인스턴스가 changelog 를 재생해 상태를 재구성한다."
+  },
+  {
+    "note": "07-operations-tuning",
+    "q": "목표 처리량 100MB/s, 파티션당 생산 10MB/s, 소비자당 20MB/s 일 때 파티션 수는?",
+    "a": "생산 기준 100/10 = 10, 소비 기준 100/20 = 5 중 큰 값 10 을 고르고, 여유를 2배 두어 20 개로 잡는다."
   }
 ]
