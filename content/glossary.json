@@ -3982,5 +3982,233 @@
     "subject": "java",
     "def": "빌드 시 프로그램 전체를 AOT 컴파일해 JVM 없이 바로 실행되는 바이너리를 만드는 기술. 시작 0.1초 수준·메모리 감소, 대신 빌드가 무겁고 리플렉션 설정이 필요하다.",
     "link": "/java/notes/24-operations-observability"
+  },
+  {
+    "term": "경합 조건 (race condition)",
+    "subject": "concurrency",
+    "def": "결과가 실행 순서(타이밍)에 따라 달라지는 상황. count++ 처럼 읽기-수정-쓰기가 끼어들리면 갱신이 사라진다.",
+    "link": "/concurrency/notes/02-race-conditions-critical-sections"
+  },
+  {
+    "term": "임계 구역 (critical section)",
+    "subject": "concurrency",
+    "def": "공유 상태를 다루어 한 번에 한 실행 단위만 들어가야 하는 코드 구간.",
+    "link": "/concurrency/notes/02-race-conditions-critical-sections"
+  },
+  {
+    "term": "암달의 법칙 (Amdahl's law)",
+    "subject": "concurrency",
+    "def": "순차 부분의 비율이 병렬화로 얻을 수 있는 최대 속도 향상을 제한한다는 법칙. 순차 5% 면 코어 64개로도 약 15배.",
+    "link": "/concurrency/notes/01-concurrency-vs-parallelism"
+  },
+  {
+    "term": "뮤텍스 / 스핀락",
+    "subject": "concurrency",
+    "def": "한 번에 한 스레드만 잡는 락. 스핀락은 루프를 돌며 기다리고(CPU 사용), 블로킹 뮤텍스는 커널에 잠들어 CPU 를 반납한다.",
+    "link": "/concurrency/notes/03-locks-semaphores-monitors"
+  },
+  {
+    "term": "futex",
+    "subject": "concurrency",
+    "def": "리눅스 뮤텍스의 바닥. 경합이 없으면 사용자 공간 CAS 한 번으로 끝나고, 경합할 때만 futex_wait/wake 로 커널에 간다. JS 의 Atomics.wait/notify 에 해당.",
+    "link": "/concurrency/notes/03-locks-semaphores-monitors"
+  },
+  {
+    "term": "세마포어 (semaphore)",
+    "subject": "concurrency",
+    "def": "정수 카운터와 대기열로 동시에 N 개까지만 들어가게 하는 동기화 도구. 커넥션 풀, 동시 호출 제한, 벌크헤드에 쓴다.",
+    "link": "/concurrency/notes/03-locks-semaphores-monitors"
+  },
+  {
+    "term": "가짜 깨어남 (spurious wakeup)",
+    "subject": "concurrency",
+    "def": "조건 변수에서 신호 없이 또는 조건이 거짓인데 깨어나는 일. 그래서 대기는 if 가 아니라 while 로 조건을 다시 확인한다.",
+    "link": "/concurrency/notes/03-locks-semaphores-monitors"
+  },
+  {
+    "term": "lock-free / wait-free",
+    "subject": "concurrency",
+    "def": "lock-free 는 시스템 전체에서 누군가 반드시 진행함을, wait-free 는 모든 스레드가 유한 단계 안에 끝남을 보장한다.",
+    "link": "/concurrency/notes/04-atomics-cas-lock-free"
+  },
+  {
+    "term": "ABA 문제",
+    "subject": "concurrency",
+    "def": "값이 A→B→A 로 바뀌었다 돌아오면 CAS 가 변화를 알아채지 못하는 문제. 버전 태그·해저드 포인터로 막는다.",
+    "link": "/concurrency/notes/04-atomics-cas-lock-free"
+  },
+  {
+    "term": "거짓 공유 (false sharing)",
+    "subject": "concurrency",
+    "def": "서로 다른 변수가 같은 캐시 라인에 있어 각자 쓰기만 해도 코어 사이에서 라인을 빼앗는 현상. 패딩이나 셀 분산으로 피한다.",
+    "link": "/concurrency/notes/04-atomics-cas-lock-free"
+  },
+  {
+    "term": "acquire / release",
+    "subject": "concurrency",
+    "def": "원자 연산의 메모리 순서 의미. release 쓰기 이전의 접근은 뒤로 가지 않고, acquire 읽기 이후의 접근은 앞으로 오지 않는다. 둘이 짝지어지면 동기화가 생긴다.",
+    "link": "/concurrency/notes/05-memory-model-visibility"
+  },
+  {
+    "term": "DRF-SC",
+    "subject": "concurrency",
+    "def": "데이터 경합이 없는(data-race-free) 프로그램은 순차 일관성처럼 동작한다는 메모리 모델의 핵심 정리.",
+    "link": "/concurrency/notes/05-memory-model-visibility"
+  },
+  {
+    "term": "코프먼 조건 (Coffman conditions)",
+    "subject": "concurrency",
+    "def": "데드락의 네 필요조건: 상호 배제, 점유 대기, 비선점, 순환 대기. 하나만 깨도 데드락은 없다.",
+    "link": "/concurrency/notes/06-deadlock-livelock-starvation"
+  },
+  {
+    "term": "라이브락 (livelock)",
+    "subject": "concurrency",
+    "def": "스레드들이 멈추지 않고 서로 양보만 반복해 진전이 없는 상태. 무작위 지연으로 대칭을 깬다.",
+    "link": "/concurrency/notes/06-deadlock-livelock-starvation"
+  },
+  {
+    "term": "기아 (starvation)",
+    "subject": "concurrency",
+    "def": "시스템은 진행하지만 특정 스레드가 계속 기회를 얻지 못하는 상태. 공정 락·에이징으로 완화한다.",
+    "link": "/concurrency/notes/06-deadlock-livelock-starvation"
+  },
+  {
+    "term": "우선순위 역전 (priority inversion)",
+    "subject": "concurrency",
+    "def": "낮은 우선순위 작업이 쥔 락 때문에 높은 우선순위 작업이 중간 우선순위 작업에 밀리는 현상. 우선순위 상속으로 해결한다.",
+    "link": "/concurrency/notes/06-deadlock-livelock-starvation"
+  },
+  {
+    "term": "액터 모델 (actor model)",
+    "subject": "concurrency",
+    "def": "상태와 우편함을 가진 액터가 메시지를 하나씩 처리하며 메시지로만 소통하는 모델. 자기 상태에 경합이 없다.",
+    "link": "/concurrency/notes/07-actors-csp-structured-concurrency"
+  },
+  {
+    "term": "CSP (Communicating Sequential Processes)",
+    "subject": "concurrency",
+    "def": "독립 프로세스가 채널로 값을 주고받는 동시성 모델. Go 의 고루틴·채널이 대표적이다.",
+    "link": "/concurrency/notes/07-actors-csp-structured-concurrency"
+  },
+  {
+    "term": "가용 영역 (AZ)",
+    "subject": "aws",
+    "def": "리전 안의 물리적으로 분리된 데이터센터 묶음. 멀티 AZ 는 고가용성, 멀티 리전은 재해 복구를 위한 것이다.",
+    "link": "/aws/notes/01-cloud-fundamentals"
+  },
+  {
+    "term": "VPC",
+    "subject": "aws",
+    "def": "리전 안의 계정 전용 가상 네트워크. AZ 별 퍼블릭·프라이빗·데이터 서브넷으로 나눈다.",
+    "link": "/aws/notes/01-cloud-fundamentals"
+  },
+  {
+    "term": "보안 그룹 / NACL",
+    "subject": "aws",
+    "def": "보안 그룹은 ENI 단위의 상태 저장 방화벽(허용만), NACL 은 서브넷 단위의 무상태 규칙(거부 가능)이다.",
+    "link": "/aws/notes/01-cloud-fundamentals"
+  },
+  {
+    "term": "NAT 게이트웨이",
+    "subject": "aws",
+    "def": "프라이빗 서브넷이 인터넷으로 나가게 하는 관리형 장치. 데이터 처리 요금이 커서 AZ 별 배치와 VPC 엔드포인트 활용이 중요하다.",
+    "link": "/aws/notes/01-cloud-fundamentals"
+  },
+  {
+    "term": "VPC 엔드포인트",
+    "subject": "aws",
+    "def": "S3·DynamoDB 등 AWS 서비스로 인터넷·NAT 없이 AWS 망 안에서 가게 하는 경로. 게이트웨이형은 무료다.",
+    "link": "/aws/notes/01-cloud-fundamentals"
+  },
+  {
+    "term": "책임 공유 모델 (shared responsibility)",
+    "subject": "aws",
+    "def": "AWS 는 클라우드 자체를, 사용자는 클라우드 안의 데이터·권한·네트워크 설정을 책임진다는 구분.",
+    "link": "/aws/notes/01-cloud-fundamentals"
+  },
+  {
+    "term": "SCP (서비스 제어 정책)",
+    "subject": "aws",
+    "def": "AWS Organizations 에서 계정 전체 권한의 상한을 정하는 천장 정책. 그 자체로는 아무것도 허용하지 않는다.",
+    "link": "/aws/notes/02-iam"
+  },
+  {
+    "term": "권한 경계 (permission boundary)",
+    "subject": "aws",
+    "def": "IAM 사용자·역할이 가질 수 있는 최대 권한을 제한하는 정책. 신원 정책과의 교집합이 실제 권한이다.",
+    "link": "/aws/notes/02-iam"
+  },
+  {
+    "term": "AssumeRole",
+    "subject": "aws",
+    "def": "다른 역할의 임시 자격 증명을 받아 그 권한으로 행동하는 STS 호출. 장기 키 대신 쓰는 권한 위임의 기본.",
+    "link": "/aws/notes/02-iam"
+  },
+  {
+    "term": "IRSA / EKS Pod Identity",
+    "subject": "aws",
+    "def": "쿠버네티스 서비스 계정에 IAM 역할을 연결해 Pod 단위로 AWS 권한을 주는 방식. 노드 역할 공유를 피한다.",
+    "link": "/aws/notes/02-iam"
+  },
+  {
+    "term": "Fargate",
+    "subject": "aws",
+    "def": "노드 없이 ECS 태스크·EKS Pod 만 실행하는 서버리스 컴퓨트. 커널 접근·특권 컨테이너·데몬셋은 불가하다.",
+    "link": "/aws/notes/03-compute-containers"
+  },
+  {
+    "term": "Aurora",
+    "subject": "aws",
+    "def": "스토리지를 분리해 WAL 만 공유 스토리지로 보내고 6개 사본 중 4개 쿼럼으로 쓰기를 확인하는 관계형 DB.",
+    "link": "/aws/notes/04-data-stores"
+  },
+  {
+    "term": "단일 테이블 설계 (single-table design)",
+    "subject": "aws",
+    "def": "DynamoDB 에서 접근 패턴을 먼저 정하고 여러 엔터티를 PK/SK·GSI 로 한 테이블에 담는 설계.",
+    "link": "/aws/notes/04-data-stores"
+  },
+  {
+    "term": "핫 파티션 (쓰기 샤딩)",
+    "subject": "aws",
+    "def": "한 파티션 키에 트래픽이 몰리는 현상. STATUS#x#0..3 처럼 키에 접미사를 붙여 쓰기를 분산하고 읽을 때 합친다.",
+    "link": "/aws/notes/04-data-stores"
+  },
+  {
+    "term": "가시성 타임아웃 (visibility timeout)",
+    "subject": "aws",
+    "def": "SQS 에서 받은 메시지가 삭제 전까지 숨겨지는 시간. 만료되면 다시 보이고 수신 횟수가 1 늘어난다.",
+    "link": "/aws/notes/05-messaging-streaming"
+  },
+  {
+    "term": "DLQ redrive",
+    "subject": "aws",
+    "def": "수신 횟수가 maxReceiveCount 를 넘어 DLQ 로 간 메시지를, 원인을 고친 뒤 원래 큐로 되돌리는 작업(start-message-move-task).",
+    "link": "/aws/notes/05-messaging-streaming"
+  },
+  {
+    "term": "CloudTrail",
+    "subject": "aws",
+    "def": "누가 어떤 AWS API 를 언제 호출했는지 남기는 감사 기록 서비스.",
+    "link": "/aws/notes/06-observability-cost"
+  },
+  {
+    "term": "정적 안정성 (static stability)",
+    "subject": "aws",
+    "def": "장애 시 새 자원 생성이나 제어 평면 호출 없이 버티도록 미리 용량을 깔아 두는 설계.",
+    "link": "/aws/notes/07-multi-az-dr-well-architected"
+  },
+  {
+    "term": "셀 아키텍처 (cell-based architecture)",
+    "subject": "aws",
+    "def": "고객을 독립된 셀로 나눠 한 셀의 장애·나쁜 배포가 전체로 번지지 않게 폭발 반경을 줄이는 설계.",
+    "link": "/aws/notes/07-multi-az-dr-well-architected"
+  },
+  {
+    "term": "LocalStack",
+    "subject": "aws",
+    "def": "AWS API 를 로컬 컨테이너로 흉내 내는 에뮬레이터. 기본 설정에서는 IAM 을 강제하지 않아 권한 검증용으로는 쓸 수 없다.",
+    "link": "/aws/notes/07-multi-az-dr-well-architected"
   }
 ]

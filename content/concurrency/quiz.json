@@ -1,1 +1,177 @@
-[]
+[
+  {
+    "note": "01-concurrency-vs-parallelism",
+    "q": "동시성과 병렬성의 차이는?",
+    "a": "동시성은 여러 작업을 겹친 시간에 다루는 구조, 병렬성은 실제로 같은 순간에 여러 코어에서 실행하는 것이다. 단일 코어에서도 동시성은 가능하지만 병렬성은 불가능하다."
+  },
+  {
+    "note": "01-concurrency-vs-parallelism",
+    "q": "암달의 법칙에서 순차 부분이 5% 면 코어 64개로 얻는 속도 향상은 대략?",
+    "a": "약 15배다. 1 / (0.05 + 0.95/64) 로 계산하며, 순차 부분이 상한을 정한다."
+  },
+  {
+    "note": "01-concurrency-vs-parallelism",
+    "q": "순차 부분은 보통 어디에 숨어 있나?",
+    "a": "락이 보호하는 임계 구역, 공유 카운터, 결과 합치기, 메모리 대역폭, 그리고 스레드 생성·작업 분배 같은 조정 자체다."
+  },
+  {
+    "note": "01-concurrency-vs-parallelism",
+    "q": "공유 메모리와 메시지 전달 방식의 장단점은?",
+    "a": "공유 메모리는 빠르지만 락·원자 연산이 필요하고 버그가 숨는다. 메시지 전달은 복사·이전 비용이 있지만 받는 쪽만 데이터를 만져 추론이 쉽다."
+  },
+  {
+    "note": "01-concurrency-vs-parallelism",
+    "q": "구스타프슨의 법칙은 암달의 법칙과 어떤 관점이 다른가?",
+    "a": "문제 크기를 고정하지 않고 코어가 늘면 문제도 키운다고 본다. 그러면 병렬 부분의 비중이 커져 확장성이 훨씬 좋아 보인다."
+  },
+  {
+    "note": "02-race-conditions-critical-sections",
+    "q": "count++ 가 여러 스레드에서 갱신을 잃는 이유는?",
+    "a": "읽기·더하기·쓰기 세 단계로 나뉘어 있어서다. 두 스레드가 같은 값을 읽고 각자 더해 쓰면 하나의 증가가 사라진다."
+  },
+  {
+    "note": "02-race-conditions-critical-sections",
+    "q": "경합 실험에서 Atomics.load 와 store 를 따로 쓴 버전도 틀린 이유는?",
+    "a": "각 연산은 원자적이지만 둘 사이에 다른 워커가 끼어들 수 있다. 읽기-수정-쓰기 전체가 하나여야 하므로 Atomics.add 를 써야 한다."
+  },
+  {
+    "note": "02-race-conditions-critical-sections",
+    "q": "check-then-act 패턴의 예와 해법은?",
+    "a": "재고 확인 후 차감, 파일 존재 확인 후 생성 같은 것이다. 확인과 행동을 같은 임계 구역에 넣거나 조건부 원자 연산(UPDATE … WHERE stock > 0, SET NX)으로 바꾼다."
+  },
+  {
+    "note": "02-race-conditions-critical-sections",
+    "q": "데이터 경합과 경합 조건은 같은 것인가?",
+    "a": "아니다. 데이터 경합은 동기화 없는 동시 접근(하나 이상 쓰기)이라는 메모리 수준 정의다. 경합 조건은 타이밍에 따라 결과가 틀리는 논리 버그로, 모든 접근을 동기화해도 생길 수 있다."
+  },
+  {
+    "note": "02-race-conditions-critical-sections",
+    "q": "단일 스레드인 Node 에서도 경합 조건이 생기나?",
+    "a": "생긴다. await 지점마다 다른 작업이 끼어들 수 있어서 읽고 await 한 뒤 쓰는 코드는 check-then-act 경합을 일으킨다."
+  },
+  {
+    "note": "03-locks-semaphores-monitors",
+    "q": "스핀락이 블로킹 뮤텍스보다 나쁜 상황은?",
+    "a": "스레드가 코어보다 많거나 락 주인이 선점될 때다. 기다리는 스레드가 CPU 를 계속 태워 CPU 시간 ÷ 벽시계 시간이 커진다."
+  },
+  {
+    "note": "03-locks-semaphores-monitors",
+    "q": "futex 뮤텍스가 경합이 없을 때 빠른 이유는?",
+    "a": "락 상태가 사용자 공간의 정수 하나라서 CAS 한 번으로 잡고 풀기 때문이다. 경합이 있을 때만 futex_wait·wake 시스템 콜로 커널에 간다."
+  },
+  {
+    "note": "03-locks-semaphores-monitors",
+    "q": "Drepper 의 3단계 futex 에서 상태 2 가 필요한 이유는?",
+    "a": "대기자가 있다는 표시다. 없으면 풀 때마다 깨울 대상이 있는지 몰라 매번 notify 시스템 콜을 해야 한다."
+  },
+  {
+    "note": "03-locks-semaphores-monitors",
+    "q": "조건 변수를 기다릴 때 if 가 아니라 while 을 써야 하는 이유는?",
+    "a": "깨어났다고 조건이 참이라는 보장이 없어서다. 다른 스레드가 먼저 가져갔거나 가짜 깨어남(spurious wakeup)일 수 있으므로 다시 확인한다."
+  },
+  {
+    "note": "03-locks-semaphores-monitors",
+    "q": "세마포어는 뮤텍스와 무엇이 다른가?",
+    "a": "뮤텍스는 한 명만, 세마포어는 N 명까지 들어가게 한다. 커넥션 풀 크기, 외부 API 동시 호출 제한, 벌크헤드가 세마포어의 쓰임이다."
+  },
+  {
+    "note": "04-atomics-cas-lock-free",
+    "q": "CAS 재시도 루프의 기본 패턴은?",
+    "a": "현재 값을 읽고 새 값을 계산한 뒤, 그 사이 아무도 안 바꿨으면 쓴다. 실패하면 반환된 현재 값으로 다시 계산한다."
+  },
+  {
+    "note": "04-atomics-cas-lock-free",
+    "q": "lock-free 와 wait-free 의 차이는?",
+    "a": "lock-free 는 시스템 전체에서 누군가는 반드시 진행하지만 개별 스레드는 굶을 수 있다. wait-free 는 모든 스레드가 유한 단계 안에 끝난다."
+  },
+  {
+    "note": "04-atomics-cas-lock-free",
+    "q": "ABA 문제란 무엇이고 어떻게 막나?",
+    "a": "값이 A→B→A 로 바뀌었다 돌아오면 CAS 가 변화를 알아채지 못하는 문제다. 버전 태그를 함께 비교하거나 해저드 포인터·에포크 기반 회수로 재사용을 막는다."
+  },
+  {
+    "note": "04-atomics-cas-lock-free",
+    "q": "거짓 공유(false sharing)란?",
+    "a": "서로 다른 변수가 같은 캐시 라인(보통 64바이트)에 있어서 각자 자기 변수만 써도 라인을 빼앗는 현상이다. 간격(패딩)을 두거나 LongAdder 처럼 셀을 나눈다."
+  },
+  {
+    "note": "04-atomics-cas-lock-free",
+    "q": "CAS 와 같은 아이디어가 DB·Redis·HTTP 에서는 어떻게 쓰이나?",
+    "a": "SQL 은 WHERE version = $2, Redis 는 WATCH 후 MULTI/EXEC, HTTP 는 If-Match ETag 다. 모두 내가 본 것이 그대로일 때만 바꾸는 낙관적 동시성이다."
+  },
+  {
+    "note": "05-memory-model-visibility",
+    "q": "동기화 없이 data=42; ready=1 을 쓰면 다른 스레드가 42 를 못 볼 수 있는 이유는?",
+    "a": "컴파일러·JIT 의 재배치, CPU 저장 버퍼, 약한 메모리 순서 때문에 다른 코어에서 순서가 다르게 보일 수 있어서다. ready 를 원자 변수로 만들어야 한다."
+  },
+  {
+    "note": "05-memory-model-visibility",
+    "q": "happens-before 관계가 보장하는 것은?",
+    "a": "a 가 b 보다 먼저 일어났다(happens-before)면 a 의 쓰기가 b 에서 반드시 보인다. 락 해제와 다음 획득, 원자 쓰기와 그 값을 읽은 원자 읽기가 이 관계를 만든다."
+  },
+  {
+    "note": "05-memory-model-visibility",
+    "q": "release 쓰기와 acquire 읽기는 각각 무엇을 막나?",
+    "a": "release 는 그 이전의 읽기·쓰기가 뒤로 가지 못하게 하고, acquire 는 그 이후의 읽기·쓰기가 앞으로 오지 못하게 한다. JavaScript Atomics 는 항상 seq_cst 다."
+  },
+  {
+    "note": "05-memory-model-visibility",
+    "q": "DRF-SC 정리란?",
+    "a": "데이터 경합이 없는 프로그램은 순차 일관성처럼 동작한다는 것이다. 모든 충돌 접근을 동기화하면 재정렬을 생각하지 않아도 된다."
+  },
+  {
+    "note": "05-memory-model-visibility",
+    "q": "x86 에서 잘 돌던 코드가 ARM 서버에서 깨지는 이유는?",
+    "a": "x86 은 TSO 라 쓰기→이후 읽기만 바뀌지만, ARM 은 약한 순서라 거의 모든 순서가 바뀔 수 있다. 하드웨어가 아니라 언어 메모리 모델로 추론해야 한다."
+  },
+  {
+    "note": "06-deadlock-livelock-starvation",
+    "q": "데드락의 네 가지 코프먼 조건은?",
+    "a": "상호 배제, 점유 대기, 비선점, 순환 대기다. 넷 중 하나만 깨도 데드락은 생기지 않는다."
+  },
+  {
+    "note": "06-deadlock-livelock-starvation",
+    "q": "전역 락 순서가 데드락을 막는 원리는?",
+    "a": "모두 같은 순서로 락을 잡으면 순환 대기가 생길 수 없다. 기다리는 쪽은 아직 다음 락을 쥐지 않았기 때문이다."
+  },
+  {
+    "note": "06-deadlock-livelock-starvation",
+    "q": "라이브락은 데드락과 어떻게 다른가?",
+    "a": "스레드들이 멈추지 않고 계속 움직이지만 서로 양보만 반복해 진전이 없는 상태다. 무작위 지연(지터)으로 대칭을 깬다."
+  },
+  {
+    "note": "06-deadlock-livelock-starvation",
+    "q": "우선순위 역전과 그 해법은?",
+    "a": "낮은 우선순위 작업이 쥔 락 때문에 높은 우선순위 작업이 중간 우선순위 작업에 밀리는 현상이다. 우선순위 상속으로 락 주인이 대기자의 우선순위를 잠시 물려받게 한다."
+  },
+  {
+    "note": "06-deadlock-livelock-starvation",
+    "q": "PostgreSQL 은 데드락을 어떻게 처리하나?",
+    "a": "대기 그래프에서 순환을 감지하면 한 트랜잭션을 중단시켜 풀어 준다. 애플리케이션은 그 오류를 받아 재시도해야 한다."
+  },
+  {
+    "note": "07-actors-csp-structured-concurrency",
+    "q": "액터는 왜 자기 상태에 대해 경합이 없나?",
+    "a": "우편함의 메시지를 한 번에 하나씩 처리하고 상태를 공유하지 않기 때문이다. 다른 액터와는 메시지로만 소통한다."
+  },
+  {
+    "note": "07-actors-csp-structured-concurrency",
+    "q": "무제한 큐(우편함)의 위험은?",
+    "a": "백프레셔가 없어서 느린 소비자 앞에 메시지가 쌓여 메모리가 터진다. 유한 채널·bounded mailbox 나 pull 모델로 생산자를 늦춘다."
+  },
+  {
+    "note": "07-actors-csp-structured-concurrency",
+    "q": "CSP 채널 실험에서 용량 1, 16, 1024 를 비교하면 무엇을 볼 수 있나?",
+    "a": "용량이 작으면 생산자가 자주 막혀 기다리는 백프레셔가 강하게 걸리고 처리량이 떨어진다. 용량이 크면 대기가 줄지만 메모리와 지연이 늘어난다."
+  },
+  {
+    "note": "07-actors-csp-structured-concurrency",
+    "q": "구조적 동시성이란?",
+    "a": "동시 작업을 블록 안에서만 시작하고, 블록을 나갈 때 모든 작업이 끝나 있게 하는 규칙이다. 고아 작업이 없고 오류와 취소가 부모로 전파된다."
+  },
+  {
+    "note": "07-actors-csp-structured-concurrency",
+    "q": "Promise.all 의 취소 관련 함정은?",
+    "a": "하나가 실패하면 즉시 거부되지만 나머지 작업은 계속 돈다. AbortController 같은 취소 신호를 함께 전달해야 구조적 동시성에 가까워진다."
+  }
+]

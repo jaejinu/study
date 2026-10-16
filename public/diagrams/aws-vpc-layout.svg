@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="470" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">VPC 한 개, AZ 세 개 — 계층마다 서브넷을 나누고 AZ 마다 반복한다</text>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <rect x="20" y="50" width="920" height="400" rx="12" fill="none" stroke="#30363d" stroke-dasharray="6 4"/>
+  <text x="34" y="72" fill="#8b949e">VPC 10.0.0.0/16 · ap-northeast-2</text>
+  <rect x="400" y="58" width="160" height="30" rx="6" fill="#161b22" stroke="#3b82f6"/>
+  <text x="480" y="78" text-anchor="middle" fill="#3b82f6">인터넷 게이트웨이</text>
+  <g>
+    <rect x="40" y="100" width="280" height="330" rx="10" fill="#161b22" stroke="#30363d"/>
+    <text x="180" y="122" text-anchor="middle" fill="#e6edf3" font-weight="600">AZ a</text>
+    <rect x="335" y="100" width="280" height="330" rx="10" fill="#161b22" stroke="#30363d"/>
+    <text x="475" y="122" text-anchor="middle" fill="#e6edf3" font-weight="600">AZ b</text>
+    <rect x="630" y="100" width="290" height="330" rx="10" fill="#161b22" stroke="#30363d"/>
+    <text x="775" y="122" text-anchor="middle" fill="#e6edf3" font-weight="600">AZ c</text>
+  </g>
+  <g font-size="12">
+    <rect x="55" y="135" width="250" height="80" rx="8" fill="#0d1117" stroke="#22c55e"/>
+    <text x="65" y="155" fill="#22c55e" font-weight="600">퍼블릭 10.0.0.0/24</text>
+    <text x="65" y="176" fill="#e6edf3">ALB 노드 · NAT 게이트웨이</text>
+    <text x="65" y="196" fill="#8b949e">라우트 0.0.0.0/0 → IGW</text>
+    <rect x="55" y="225" width="250" height="90" rx="8" fill="#0d1117" stroke="#f59e0b"/>
+    <text x="65" y="245" fill="#f59e0b" font-weight="600">프라이빗 10.0.10.0/24</text>
+    <text x="65" y="266" fill="#e6edf3">ECS 태스크 · EKS 노드 (앱)</text>
+    <text x="65" y="286" fill="#8b949e">라우트 0.0.0.0/0 → 같은 AZ 의 NAT</text>
+    <text x="65" y="304" fill="#8b949e">S3·DynamoDB → 게이트웨이 엔드포인트</text>
+    <rect x="55" y="325" width="250" height="90" rx="8" fill="#0d1117" stroke="#8b5cf6"/>
+    <text x="65" y="345" fill="#8b5cf6" font-weight="600">데이터 10.0.20.0/24</text>
+    <text x="65" y="366" fill="#e6edf3">RDS 기본 · ElastiCache 기본</text>
+    <text x="65" y="386" fill="#8b949e">SG: 앱 SG 에서 오는 5432·6379 만</text>
+    <text x="65" y="404" fill="#8b949e">인터넷 경로 없음</text>
+  </g>
+  <g font-size="12">
+    <rect x="350" y="135" width="250" height="80" rx="8" fill="#0d1117" stroke="#22c55e"/>
+    <text x="360" y="155" fill="#22c55e" font-weight="600">퍼블릭 10.0.1.0/24</text>
+    <text x="360" y="176" fill="#e6edf3">ALB 노드 · NAT 게이트웨이</text>
+    <rect x="350" y="225" width="250" height="90" rx="8" fill="#0d1117" stroke="#f59e0b"/>
+    <text x="360" y="245" fill="#f59e0b" font-weight="600">프라이빗 10.0.11.0/24</text>
+    <text x="360" y="266" fill="#e6edf3">ECS 태스크 · EKS 노드 (앱)</text>
+    <rect x="350" y="325" width="250" height="90" rx="8" fill="#0d1117" stroke="#8b5cf6"/>
+    <text x="360" y="345" fill="#8b5cf6" font-weight="600">데이터 10.0.21.0/24</text>
+    <text x="360" y="366" fill="#e6edf3">RDS 대기(Multi-AZ, 동기 복제)</text>
+    <text x="360" y="386" fill="#e6edf3">ElastiCache 복제본</text>
+  </g>
+  <g font-size="12">
+    <rect x="645" y="135" width="260" height="80" rx="8" fill="#0d1117" stroke="#22c55e"/>
+    <text x="655" y="155" fill="#22c55e" font-weight="600">퍼블릭 10.0.2.0/24</text>
+    <text x="655" y="176" fill="#e6edf3">ALB 노드 · NAT 게이트웨이</text>
+    <rect x="645" y="225" width="260" height="90" rx="8" fill="#0d1117" stroke="#f59e0b"/>
+    <text x="655" y="245" fill="#f59e0b" font-weight="600">프라이빗 10.0.12.0/24</text>
+    <text x="655" y="266" fill="#e6edf3">ECS 태스크 · EKS 노드 (앱)</text>
+    <rect x="645" y="325" width="260" height="90" rx="8" fill="#0d1117" stroke="#8b5cf6"/>
+    <text x="655" y="345" fill="#8b5cf6" font-weight="600">데이터 10.0.22.0/24</text>
+    <text x="655" y="366" fill="#e6edf3">(Aurora 리더 · 캐시 복제본)</text>
+    <text x="655" y="386" fill="#8b949e">AZ 하나가 죽어도 나머지 둘로 정적 안정</text>
+  </g>
+  <line x1="480" y1="88" x2="180" y2="133" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="480" y1="88" x2="475" y2="133" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="480" y1="88" x2="775" y2="133" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="180" y1="225" x2="180" y2="217" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+</svg>

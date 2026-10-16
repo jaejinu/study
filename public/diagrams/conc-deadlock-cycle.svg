@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="360" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">대기 그래프에 원이 생기면 데드락 — 락 순서를 통일하면 원이 생길 수 없다</text>
+  <defs><marker id="r" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#ef4444"/></marker><marker id="g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#22c55e"/></marker><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="240" y="65" text-anchor="middle" fill="#ef4444" font-weight="600">반대 순서 — 워커 1: A→B, 워커 2: B→A</text>
+  <rect x="60" y="90" width="140" height="50" rx="10" fill="#161b22" stroke="#3b82f6"/><text x="130" y="120" text-anchor="middle" fill="#e6edf3">워커 1</text>
+  <rect x="280" y="90" width="140" height="50" rx="10" fill="#161b22" stroke="#f59e0b"/><text x="350" y="120" text-anchor="middle" fill="#e6edf3">워커 2</text>
+  <rect x="60" y="230" width="140" height="50" rx="25" fill="#0d1117" stroke="#8b949e"/><text x="130" y="260" text-anchor="middle" fill="#e6edf3">락 A</text>
+  <rect x="280" y="230" width="140" height="50" rx="25" fill="#0d1117" stroke="#8b949e"/><text x="350" y="260" text-anchor="middle" fill="#e6edf3">락 B</text>
+  <line x1="130" y1="228" x2="130" y2="142" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/><text x="60" y="190" fill="#8b949e" font-size="11">A 보유</text>
+  <line x1="350" y1="228" x2="350" y2="142" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/><text x="360" y="190" fill="#8b949e" font-size="11">B 보유</text>
+  <line x1="200" y1="130" x2="290" y2="232" stroke="#ef4444" stroke-width="2" marker-end="url(#r)"/><text x="180" y="170" fill="#ef4444" font-size="11">B 기다림</text>
+  <line x1="280" y1="130" x2="190" y2="232" stroke="#ef4444" stroke-width="2" marker-end="url(#r)"/><text x="262" y="170" fill="#ef4444" font-size="11">A 기다림</text>
+  <text x="240" y="315" text-anchor="middle" fill="#ef4444" font-size="12">워커1 → B → 워커2 → A → 워커1 : 순환 = 영원히 대기</text>
+  <line x1="480" y1="60" x2="480" y2="330" stroke="#30363d"/>
+  <text x="720" y="65" text-anchor="middle" fill="#22c55e" font-weight="600">전역 락 순서 — 둘 다 A→B</text>
+  <rect x="540" y="90" width="140" height="50" rx="10" fill="#161b22" stroke="#3b82f6"/><text x="610" y="120" text-anchor="middle" fill="#e6edf3">워커 1</text>
+  <rect x="760" y="90" width="140" height="50" rx="10" fill="#161b22" stroke="#f59e0b"/><text x="830" y="120" text-anchor="middle" fill="#e6edf3">워커 2</text>
+  <rect x="540" y="230" width="140" height="50" rx="25" fill="#0d1117" stroke="#8b949e"/><text x="610" y="260" text-anchor="middle" fill="#e6edf3">락 A</text>
+  <rect x="760" y="230" width="140" height="50" rx="25" fill="#0d1117" stroke="#8b949e"/><text x="830" y="260" text-anchor="middle" fill="#e6edf3">락 B</text>
+  <line x1="610" y1="228" x2="610" y2="142" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/><text x="540" y="190" fill="#8b949e" font-size="11">A 보유 → B</text>
+  <line x1="760" y1="120" x2="682" y2="245" stroke="#22c55e" stroke-width="2" marker-end="url(#g)"/><text x="720" y="170" fill="#22c55e" font-size="11">A 를 기다림 (B 는 안 잡음)</text>
+  <text x="720" y="315" text-anchor="middle" fill="#22c55e" font-size="12">기다리는 쪽은 아무것도 쥐지 않았다 → 원이 없다 → 순서대로 끝난다</text>
+</svg>

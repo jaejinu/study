@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="400" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">S3 알림 → SQS → 처리 실패 → 재전달 → DLQ → redrive</text>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker><marker id="r" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#ef4444"/></marker></defs>
+  <rect x="30" y="80" width="160" height="90" rx="10" fill="#161b22" stroke="#22c55e"/>
+  <text x="110" y="105" text-anchor="middle" fill="#22c55e" font-weight="600">S3 버킷</text>
+  <text x="110" y="128" text-anchor="middle" fill="#e6edf3">put-object</text>
+  <text x="110" y="148" text-anchor="middle" fill="#8b949e" font-size="11">연결 직후 s3:TestEvent 1회</text>
+  <rect x="270" y="70" width="230" height="110" rx="10" fill="#161b22" stroke="#3b82f6"/>
+  <text x="385" y="95" text-anchor="middle" fill="#3b82f6" font-weight="600">SQS lab-events</text>
+  <text x="385" y="118" text-anchor="middle" fill="#e6edf3">VisibilityTimeout 2s</text>
+  <text x="385" y="138" text-anchor="middle" fill="#e6edf3">RedrivePolicy maxReceiveCount 2</text>
+  <text x="385" y="160" text-anchor="middle" fill="#8b949e" font-size="11">받아도 삭제 전까지 숨길 뿐</text>
+  <rect x="590" y="70" width="190" height="110" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="685" y="95" text-anchor="middle" fill="#e6edf3" font-weight="600">소비자</text>
+  <text x="685" y="118" text-anchor="middle" fill="#e6edf3">ReceiveMessage</text>
+  <text x="685" y="138" text-anchor="middle" fill="#ef4444">처리 실패 → 삭제 안 함</text>
+  <text x="685" y="160" text-anchor="middle" fill="#22c55e">성공 → DeleteMessage</text>
+  <line x1="190" y1="125" x2="268" y2="125" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="229" y="115" text-anchor="middle" fill="#8b949e" font-size="11">ObjectCreated</text>
+  <line x1="500" y1="110" x2="588" y2="110" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="544" y="100" text-anchor="middle" fill="#8b949e" font-size="11">받기 (count+1)</text>
+  <path d="M 685 182 C 685 230, 385 230, 385 182" fill="none" stroke="#ef4444" stroke-width="2" marker-end="url(#r)"/>
+  <text x="535" y="236" text-anchor="middle" fill="#ef4444" font-size="12">가시성 타임아웃 만료 → 다시 보임 (재전달)</text>
+  <rect x="270" y="270" width="230" height="90" rx="10" fill="#161b22" stroke="#ef4444"/>
+  <text x="385" y="295" text-anchor="middle" fill="#ef4444" font-weight="600">SQS lab-dlq</text>
+  <text x="385" y="318" text-anchor="middle" fill="#e6edf3">수신 횟수 > 2 인 메시지</text>
+  <text x="385" y="340" text-anchor="middle" fill="#8b949e" font-size="11">보존 14일 · 깊이 > 0 이면 알람</text>
+  <line x1="385" y1="182" x2="385" y2="268" stroke="#ef4444" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#r)"/>
+  <text x="300" y="248" fill="#ef4444" font-size="11">세 번째 받기 대신 이동</text>
+  <path d="M 500 315 C 560 315, 560 160, 502 150" fill="none" stroke="#22c55e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="600" y="300" fill="#22c55e" font-size="12">원인을 고친 뒤 redrive</text>
+  <text x="600" y="318" fill="#8b949e" font-size="11">start-message-move-task</text>
+  <rect x="790" y="250" width="150" height="120" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="865" y="275" text-anchor="middle" fill="#f59e0b" font-weight="600">소비자 규칙</text>
+  <text x="800" y="298" fill="#e6edf3" font-size="11">· 멱등하게 (중복이 온다)</text>
+  <text x="800" y="318" fill="#e6edf3" font-size="11">· TestEvent 무시</text>
+  <text x="800" y="338" fill="#e6edf3" font-size="11">· 타임아웃 > 처리 시간</text>
+  <text x="800" y="358" fill="#e6edf3" font-size="11">· 롱 폴링 20초</text>
+</svg>
