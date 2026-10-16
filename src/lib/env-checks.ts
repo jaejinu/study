@@ -342,8 +342,27 @@ export async function checkPlatformEngineering(): Promise<EnvStatus> {
   return checkSimple("DORA 계산 데이터", [{ label: "gh CLI 인증 (이 저장소의 커밋·CI 기록)", ok: gh.ok }], gh.ok ? undefined : "gh auth login", [{ label: "DORA", href: "https://dora.dev" }, { label: "Backstage", href: "https://backstage.io" }]);
 }
 
+export async function checkNodejs(): Promise<EnvStatus> {
+  return checkSimple(`Node ${process.versions.node} · V8 ${process.versions.v8}`, [{ label: "Node.js (이 서버가 도는 런타임)", ok: true, detail: process.version }, { label: "libuv", ok: true, detail: process.versions.uv }], undefined, [{ label: "Node.js 문서", href: "https://nodejs.org/docs/latest-v22.x/api/" }]);
+}
+export async function checkJava(): Promise<EnvStatus> {
+  const [local, img] = await Promise.all([run("java", ["-version"]), run("docker", ["image", "inspect", "eclipse-temurin:21-jdk", "--format", "{{.Id}}"])]);
+  return checkSimple(local.ok || img.ok ? "JDK 준비됨" : "JDK 가 없습니다 (실험이 처음 실행할 때 Docker 이미지를 받습니다)", [{ label: "로컬 java", ok: local.ok }, { label: "Docker eclipse-temurin:21-jdk", ok: img.ok }], local.ok || img.ok ? undefined : "docker pull eclipse-temurin:21-jdk   # 또는 brew install openjdk@21", [{ label: "Java 21 문서", href: "https://docs.oracle.com/en/java/javase/21/" }]);
+}
+export async function checkAws(): Promise<EnvStatus> {
+  const ls = await fetchText("http://127.0.0.1:14566/_localstack/health");
+  return checkSimple(ls.ok ? "LocalStack 실행 중 (14566)" : "LocalStack 이 꺼져 있습니다 (실험이 직접 띄웁니다)", [{ label: "LocalStack(14566)", ok: ls.ok }], undefined, [{ label: "LocalStack", href: "https://docs.localstack.cloud" }]);
+}
+export async function checkConcurrency(): Promise<EnvStatus> {
+  return checkSimple("동시성 실험 준비됨", [{ label: "Node worker_threads · SharedArrayBuffer · Atomics", ok: typeof SharedArrayBuffer !== "undefined" }, { label: "CPU 코어", ok: true, detail: String((await import("node:os")).cpus().length) }]);
+}
+
 export async function checkEnv(subject: string): Promise<EnvStatus> {
   switch (subject) {
+    case "nodejs": return checkNodejs();
+    case "java": return checkJava();
+    case "aws": return checkAws();
+    case "concurrency": return checkConcurrency();
     case "service-mesh": return checkServiceMesh();
     case "event-sourcing": return checkEventSourcing();
     case "network-protocols": return checkNetworkProtocols();

@@ -1,4 +1,4 @@
-export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network" | "ai-systems" | "architecture" | "chaos" | "security" | "iac" | "distributed-systems" | "performance" | "sre" | "ebpf" | "opensearch" | "db-internals" | "api-design" | "messaging" | "mlops" | "testing" | "finops" | "os-internals" | "ai-agents" | "clickhouse" | "data-engineering" | "service-mesh" | "event-sourcing" | "network-protocols" | "system-design" | "platform-engineering";
+export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network" | "ai-systems" | "architecture" | "chaos" | "security" | "iac" | "distributed-systems" | "performance" | "sre" | "ebpf" | "opensearch" | "db-internals" | "api-design" | "messaging" | "mlops" | "testing" | "finops" | "os-internals" | "ai-agents" | "clickhouse" | "data-engineering" | "service-mesh" | "event-sourcing" | "network-protocols" | "system-design" | "platform-engineering" | "nodejs" | "java" | "aws" | "concurrency";
 
 export interface NavItem {
   href: string;
@@ -7,13 +7,14 @@ export interface NavItem {
   desc: string;
 }
 
-export type TrackId = "infra" | "data" | "ops" | "design" | "security";
+export type TrackId = "infra" | "data" | "ops" | "design" | "runtime" | "security";
 
 export const tracks: { id: TrackId; name: string; desc: string }[] = [
   { id: "infra", name: "기반 인프라", desc: "컨테이너 · 오케스트레이션 · 네트워크 · 코드로 선언하는 인프라" },
   { id: "data", name: "데이터 · 메시징", desc: "저장소와 브로커의 동작 원리, 그리고 그 내부" },
   { id: "ops", name: "관측 · 운영 · 복원력", desc: "메트릭·로그·트레이스로 보고, SLO 로 결정하고, 장애로 검증한다" },
   { id: "design", name: "설계 · 이론", desc: "아키텍처 패턴, 분산 시스템 원리, API, AI 시스템" },
+  { id: "runtime", name: "언어 · 런타임", desc: "Node.js·Java(JVM)의 내부 동작과 동시성 — 코드가 실제로 어떻게 실행되는가" },
   { id: "security", name: "보안", desc: "TLS·인증·시크릿·컨테이너·Kubernetes·런타임 탐지" },
 ];
 
@@ -685,6 +686,82 @@ export const subjects: Subject[] = [
       { label: "도구", cmd: "pnpm · OpenTofu" },
     ],
   },
+  {
+    id: "nodejs",
+    track: "runtime",
+    name: "Node.js",
+    tagline: "이벤트 루프 · V8 · 비동기 · 성능",
+    description: "Node.js 의 구조(V8·libuv·바인딩), 이벤트 루프 단계와 마이크로태스크, 비동기 패턴과 에러 처리, 스트림·버퍼·백프레셔, 모듈 시스템(CJS·ESM), 워커 스레드와 클러스터, V8 의 JIT·히든 클래스·GC, 메모리 누수 추적, 프로파일링과 진단, 보안·운영. 이 사이트 자체가 Node 라 실험 재료가 이미 있습니다.",
+    mark: "JS",
+    color: "bg-[#3c873a]",
+    nav: [
+      { href: "/nodejs", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/nodejs/notes", label: "학습 노트", icon: "✎", desc: "챕터별로 읽는 정리 노트" },
+      { href: "/nodejs/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/nodejs/lab", label: "실험실", icon: "⚗", desc: "이벤트 루프 · GC · 스트림 · 누수 추적" },
+    ],
+    setup: [
+      { label: "런타임", cmd: "node 22 (설치됨)" },
+      { label: "진단", cmd: "node --inspect · --cpu-prof · heap snapshot" },
+    ],
+  },
+  {
+    id: "java",
+    track: "runtime",
+    name: "Java · JVM",
+    tagline: "언어 · 컬렉션 · 동시성 · JVM · GC · Spring",
+    description: "현대 자바 언어(레코드·sealed·패턴 매칭·제네릭·람다·스트림), 컬렉션 내부, 예외·불변성, 동시성(스레드·락·java.util.concurrent·가상 스레드), JVM 구조(클래스 로딩·바이트코드·JIT), 메모리 모델과 GC(G1·ZGC), 성능 진단(JFR·jcmd·힙 덤프), 빌드(Gradle·Maven), Spring Boot 와 운영. 실험은 Docker 의 JDK 로 돌립니다.",
+    mark: "J",
+    color: "bg-[#e76f00]",
+    nav: [
+      { href: "/java", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/java/notes", label: "학습 노트", icon: "✎", desc: "챕터별로 읽는 정리 노트" },
+      { href: "/java/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/java/lab", label: "실험실", icon: "⚗", desc: "JIT · GC · 가상 스레드 · JFR" },
+    ],
+    setup: [
+      { label: "JDK", cmd: "docker eclipse-temurin:21-jdk (자동 pull)" },
+      { label: "선택", cmd: "brew install openjdk@21" },
+    ],
+  },
+  {
+    id: "aws",
+    track: "infra",
+    name: "클라우드 매핑 · AWS",
+    tagline: "로컬 실험 ↔ 매니지드 서비스",
+    description: "이 사이트에서 직접 돌린 Redis·Kafka·PostgreSQL·Kubernetes·S3·관측을 AWS 매니지드 서비스(ElastiCache·MSK·RDS/Aurora·EKS·S3·CloudWatch)에 대응시켜 무엇이 같고 무엇이 다른지, 비용·한도·운영 책임 분담을 정리합니다. VPC·IAM·멀티 AZ 설계와 LocalStack 으로 하는 로컬 실습 포함.",
+    mark: "AWS",
+    color: "bg-[#ff9900]",
+    nav: [
+      { href: "/aws", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/aws/notes", label: "학습 노트", icon: "✎", desc: "챕터별로 읽는 정리 노트" },
+      { href: "/aws/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/aws/lab", label: "실험실", icon: "⚗", desc: "LocalStack S3·SQS·DynamoDB · IAM 정책" },
+    ],
+    setup: [
+      { label: "에뮬레이터", cmd: "docker localstack/localstack (자동 pull)" },
+      { label: "CLI", cmd: "awslocal / aws --endpoint-url" },
+    ],
+  },
+  {
+    id: "concurrency",
+    track: "runtime",
+    name: "동시성 프로그래밍",
+    tagline: "락 · 원자 연산 · 메모리 모델 · 액터·CSP",
+    description: "동시성과 병렬성, 경합 조건과 임계 구역, 락·세마포어·조건 변수, 원자 연산과 CAS·lock-free, 메모리 모델과 가시성(happens-before), 데드락·라이브락·기아, 액터와 CSP(채널), async/await 와 구조적 동시성, 분산으로 넘어가는 경계. Node(worker_threads·Atomics)와 Java 로 직접 재현합니다.",
+    mark: "CC",
+    color: "bg-[#0f766e]",
+    nav: [
+      { href: "/concurrency", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/concurrency/notes", label: "학습 노트", icon: "✎", desc: "챕터별로 읽는 정리 노트" },
+      { href: "/concurrency/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/concurrency/lab", label: "실험실", icon: "⚗", desc: "경합 재현 · Atomics · 데드락 · 채널" },
+    ],
+    setup: [
+      { label: "런타임", cmd: "node 22 (worker_threads)" },
+      { label: "선택", cmd: "docker eclipse-temurin:21-jdk" },
+    ],
+  },
 ];
 
 /** 먼저 보면 좋은 주제. 순환이 없도록 학습 경로 순서와 맞춘다 (CI 가 검사) */
@@ -716,15 +793,20 @@ const PREREQ: Partial<Record<SubjectId, SubjectId[]>> = {
   mlops: ["ai-systems"],
   security: ["linux-network", "docker"],
   observability: ["docker"],
+  nodejs: ["os-internals"],
+  java: ["concurrency"],
+  concurrency: ["os-internals"],
+  aws: ["kubernetes", "iac"],
 };
 for (const s of subjects) s.prereq = PREREQ[s.id] ?? [];
 
 /** 트랙별 추천 학습 순서 (/path). 모든 주제가 정확히 한 번 나온다 (CI 가 검사) */
 export const learningPaths: { track: TrackId; steps: SubjectId[] }[] = [
-  { track: "infra", steps: ["linux-network", "os-internals", "docker", "nginx", "kubernetes", "iac", "network-protocols", "service-mesh"] },
+  { track: "infra", steps: ["linux-network", "os-internals", "docker", "nginx", "kubernetes", "iac", "network-protocols", "service-mesh", "aws"] },
   { track: "data", steps: ["redis", "postgres", "kafka", "messaging", "db-internals", "opensearch", "clickhouse", "data-engineering"] },
   { track: "ops", steps: ["observability", "github-actions", "testing", "sre", "chaos", "performance", "ebpf", "finops", "platform-engineering"] },
   { track: "design", steps: ["architecture", "api-design", "distributed-systems", "event-sourcing", "system-design", "ai-systems", "ai-agents", "mlops"] },
+  { track: "runtime", steps: ["concurrency", "nodejs", "java"] },
   { track: "security", steps: ["security"] },
 ];
 

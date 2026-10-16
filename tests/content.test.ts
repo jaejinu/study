@@ -93,6 +93,7 @@ describe("노트 frontmatter", () => {
       if (d.tags !== undefined && !Array.isArray(d.tags)) bad.push(`${n.file}: tags 가 배열이 아님`);
       if (d.experiments !== undefined && !Array.isArray(d.experiments)) bad.push(`${n.file}: experiments 가 배열이 아님`);
       for (const p of (d.prereq as string[] | undefined) ?? []) if (!noteKey.has(p)) bad.push(`${n.file}: prereq '${p}' 노트 없음`);
+      if (d.chapter !== undefined && (typeof d.chapter !== "string" || !d.chapter.trim())) bad.push(`${n.file}: chapter 는 비어 있지 않은 문자열`);
     }
     expect(bad).toEqual([]);
   });

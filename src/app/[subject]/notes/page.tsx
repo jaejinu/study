@@ -21,11 +21,23 @@ export default async function NotesPage({ params }: Props) {
   const subject = getSubject(id);
   if (!subject) notFound();
   const [notes, progress] = await Promise.all([listNotes(subject.id), getProgress(subject.id)]);
-  const groups = [
-    { level: "기초", desc: "개념과 기본 사용법" },
-    { level: "중급", desc: "실전에서 자주 쓰는 패턴" },
-    { level: "심화", desc: "운영·최적화·내부 동작" },
-  ] as const;
+  const levelGroups = [
+    { key: "기초", title: "기초", desc: "개념과 기본 사용법", match: (n: (typeof notes)[number]) => n.level === "기초" },
+    { key: "중급", title: "중급", desc: "실전에서 자주 쓰는 패턴", match: (n: (typeof notes)[number]) => n.level === "중급" },
+    { key: "심화", title: "심화", desc: "운영·최적화·내부 동작", match: (n: (typeof notes)[number]) => n.level === "심화" },
+  ];
+  // 노트에 chapter 가 있으면 레벨 대신 챕터(부)로 묶는다 — 노트 순서상 처음 나온 순서대로
+  const chapters = [...new Set(notes.map((n) => n.chapter).filter((c): c is string => !!c))];
+  const groups = chapters.length
+    ? [
+        ...chapters.map((c) => {
+          const list = notes.filter((n) => n.chapter === c);
+          const done = list.filter((n) => progress.read.includes(n.slug)).length;
+          return { key: c, title: c, desc: `${list.length}편 · 읽음 ${done}`, match: (n: (typeof notes)[number]) => n.chapter === c };
+        }),
+        { key: "_etc", title: "기타", desc: "", match: (n: (typeof notes)[number]) => !n.chapter },
+      ]
+    : levelGroups;
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader title={`${subject.name} 학습 노트 목차`} subtitle="위에서 아래로 순서대로 읽도록 구성했습니다. 각 노트에는 목차와 실습·실험 링크가 있습니다." />
@@ -53,12 +65,12 @@ export default async function NotesPage({ params }: Props) {
         </div>
       )}
       {groups.map((g) => {
-        const list = notes.filter((n) => n.level === g.level);
+        const list = notes.filter(g.match);
         if (list.length === 0) return null;
         return (
-          <section key={g.level} className="mb-8">
+          <section key={g.key} className="mb-8">
             <div className="mb-2 flex items-center gap-2">
-              <LevelBadge level={g.level} />
+              {chapters.length ? <h2 className="text-base font-semibold">{g.title}</h2> : <LevelBadge level={g.title} />}
               <span className="text-sm text-muted">{g.desc}</span>
             </div>
             <ol className="divide-y divide-border rounded-lg border border-border bg-surface">
@@ -71,7 +83,10 @@ export default async function NotesPage({ params }: Props) {
                         {progress.read.includes(n.slug) ? "✓" : String(globalIdx).padStart(2, "0")}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block font-medium">{n.title}</span>
+                        <span className="flex items-center gap-2 font-medium">
+                          {n.title}
+                          {chapters.length > 0 && <LevelBadge level={n.level} />}
+                        </span>
                         <span className="mt-0.5 block text-sm text-muted">{n.summary}</span>
                         <span className="mt-1.5 flex flex-wrap gap-1.5">
                           {n.tags.map((t) => (

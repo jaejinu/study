@@ -13,6 +13,8 @@ export interface NoteMeta {
   level: "기초" | "중급" | "심화";
   /** 먼저 읽을 노트 ("subject/slug") — frontmatter prereq */
   prereq: string[];
+  /** 챕터(부) 이름 — 노트가 많은 주제에서 목차를 묶는다. 예: "1부 · 언어 기초" */
+  chapter?: string;
 }
 
 export interface Note extends NoteMeta {
@@ -72,6 +74,7 @@ function toMeta(slug: string, data: Record<string, unknown>): NoteMeta {
     experiments: Array.isArray(data.experiments) ? data.experiments.map(String) : [],
     level: (data.level as NoteMeta["level"]) ?? "기초",
     prereq: Array.isArray(data.prereq) ? data.prereq.map(String) : [],
+    chapter: typeof data.chapter === "string" && data.chapter.trim() ? data.chapter.trim() : undefined,
   };
 }
 
