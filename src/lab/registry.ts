@@ -12,7 +12,7 @@ export interface LabItem {
   notes: string[];
 }
 
-const SHELL = new Set(["docker", "kubernetes", "linux-network", "observability"]);
+const SHELL = new Set(["docker", "kubernetes", "linux-network", "observability", "security", "iac", "performance"]);
 const CODE = new Set(["kafka", "postgres", "ai-systems", "chaos", "observability"]);
 
 export function hasLab(subject: string): boolean {

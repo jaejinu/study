@@ -205,8 +205,68 @@ export async function checkChaos(): Promise<EnvStatus> {
   return { ok, title: ok ? "장애 주입 대상 준비됨" : "장애 주입 대상이 없습니다", lines, hint: ok ? undefined : "pnpm redis:docker   # 최소 Redis 는 Docker 로", links: [{ label: "관측성 대시보드 (최근 알림)", href: "/observability" }, { label: "Grafana", href: "http://localhost:13000/d/study-redis" }] };
 }
 
+async function version(bin: string, args: string[] = ["--version"]): Promise<string | null> {
+  const r = await run(bin, args);
+  return r.ok ? r.out.split("\n")[0].trim() : null;
+}
+
+export async function checkSecurity(): Promise<EnvStatus> {
+  const [trivy, openssl, docker, kubectl] = await Promise.all([version("trivy"), version("openssl", ["version"]), version("docker", ["--version"]), run("kubectl", ["auth", "whoami", "--request-timeout=4s"])]);
+  return {
+    ok: !!openssl && !!docker,
+    title: trivy ? "보안 도구 준비됨 (trivy · openssl · docker)" : "trivy 가 없습니다 (이미지 스캔 실험에 필요)",
+    lines: [`trivy: ${trivy ?? "없음"}`, `openssl: ${openssl ?? "없음"} · docker: ${docker ?? "없음"}`, `kubectl 인증: ${kubectl.ok ? "클러스터 연결됨 (RBAC 실험 가능)" : "클러스터 없음"}`],
+    hint: trivy ? undefined : "brew install trivy",
+    links: [{ label: "OWASP Top 10", href: "https://owasp.org/www-project-top-ten/" }, { label: "Trivy 문서", href: "https://trivy.dev" }],
+  };
+}
+
+export async function checkIac(): Promise<EnvStatus> {
+  const [tofu, tf, docker] = await Promise.all([version("tofu"), version("terraform"), version("docker", ["--version"])]);
+  const bin = tofu ? "tofu" : tf ? "terraform" : null;
+  return {
+    ok: !!bin,
+    title: bin ? `${bin} 준비됨` : "terraform/opentofu 가 없습니다",
+    lines: [`opentofu: ${tofu ?? "없음"} · terraform: ${tf ?? "없음"}`, `docker: ${docker ?? "없음"} (Docker 프로바이더 실험 대상)`],
+    hint: bin ? undefined : "brew install opentofu   # 또는 brew tap hashicorp/tap && brew install hashicorp/tap/terraform",
+    links: [{ label: "OpenTofu 문서", href: "https://opentofu.org/docs/" }, { label: "Terraform 레지스트리", href: "https://registry.terraform.io" }],
+  };
+}
+
+export async function checkDistributed(): Promise<EnvStatus> {
+  return {
+    ok: true,
+    title: "이론 주제는 별도 환경이 필요 없습니다",
+    lines: ["원리의 증거는 다른 주제 실험실에서:", "Redis Sentinel 페일오버·클러스터 슬롯, Kafka ISR·acks, PostgreSQL 격리 수준·분산 락, Kubernetes etcd/리더 선출"],
+    links: [
+      { label: "Redis 실험실", href: "/redis/lab" },
+      { label: "Kafka 실험실", href: "/kafka/lab" },
+      { label: "PostgreSQL 실험실", href: "/postgres/lab" },
+    ],
+  };
+}
+
+export async function checkPerformance(): Promise<EnvStatus> {
+  const [k6, app, prom] = await Promise.all([version("k6", ["version"]), fetchText("http://127.0.0.1:3000/api/metrics"), fetchText("http://127.0.0.1:19090/-/ready")]);
+  return {
+    ok: !!k6 && app.ok,
+    title: k6 ? (app.ok ? "k6 + 대상 앱 준비됨" : "k6 는 있지만 앱(3000)이 응답하지 않습니다") : "k6 가 없습니다",
+    lines: [`k6: ${k6 ?? "없음"}`, `대상 앱 /api/metrics: ${app.ok ? "응답" : "없음"} · Prometheus: ${prom.ok ? "실행 중 (RED 패널로 부하 관찰 가능)" : "꺼짐"}`],
+    hint: k6 ? undefined : "brew install k6",
+    links: [{ label: "k6 문서", href: "https://grafana.com/docs/k6/latest/" }, { label: "Grafana RED 패널", href: "http://localhost:13000/d/study-redis" }],
+  };
+}
+
 export async function checkEnv(subject: string): Promise<EnvStatus> {
   switch (subject) {
+    case "security":
+      return checkSecurity();
+    case "iac":
+      return checkIac();
+    case "distributed-systems":
+      return checkDistributed();
+    case "performance":
+      return checkPerformance();
     case "chaos":
       return checkChaos();
     case "ai-systems":

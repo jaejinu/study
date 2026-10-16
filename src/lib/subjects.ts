@@ -1,4 +1,4 @@
-export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network" | "ai-systems" | "architecture" | "chaos";
+export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network" | "ai-systems" | "architecture" | "chaos" | "security" | "iac" | "distributed-systems" | "performance";
 
 export interface NavItem {
   href: string;
@@ -238,6 +238,77 @@ export const subjects: Subject[] = [
     setup: [
       { label: "대상", cmd: "pnpm redis:docker · kafka:up · pg:up · k8s:up" },
       { label: "관측", cmd: "pnpm obs:up (알림·로그로 확인)" },
+    ],
+  },
+  {
+    id: "security",
+    name: "보안",
+    tagline: "인프라·애플리케이션·공급망 보안",
+    description: "TLS 와 인증서, 인증·인가(OAuth2/OIDC/JWT), 시크릿 관리, 컨테이너·Kubernetes 보안(이미지 스캔, 최소 권한, NetworkPolicy, RBAC), 공급망(SBOM·서명), 웹 취약점(OWASP)과 Redis·PostgreSQL·Kafka 하드닝. 실제 명령으로 점검합니다.",
+    mark: "🔒",
+    color: "bg-[#dc2626]",
+    nav: [
+      { href: "/security", label: "대시보드", icon: "◉", desc: "도구 점검 · 학습 현황" },
+      { href: "/security/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/security/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/security/lab", label: "실험실", icon: "⚗", desc: "TLS·스캔·권한 실험" },
+    ],
+    setup: [
+      { label: "스캐너", cmd: "brew install trivy" },
+      { label: "대상", cmd: "pnpm redis:docker · k8s:up" },
+    ],
+  },
+  {
+    id: "iac",
+    name: "IaC · Terraform",
+    tagline: "코드로 선언하는 인프라",
+    description: "Terraform/OpenTofu 의 상태(state)·플랜·적용 모델, 프로바이더와 모듈, 변수·출력·워크스페이스, 원격 상태와 잠금, 드리프트 감지, 테스트와 CI 파이프라인, Kubernetes·Docker 프로바이더로 이 프로젝트 인프라를 코드화. Helm·Kustomize·Pulumi 와의 비교.",
+    mark: "Tf",
+    color: "bg-[#7c3aed]",
+    nav: [
+      { href: "/iac", label: "대시보드", icon: "◉", desc: "도구 점검 · 학습 현황" },
+      { href: "/iac/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/iac/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/iac/lab", label: "실험실", icon: "⚗", desc: "plan/apply/drift 실험" },
+    ],
+    setup: [
+      { label: "설치", cmd: "brew install opentofu  (또는 terraform)" },
+      { label: "대상", cmd: "Docker · kind 클러스터" },
+    ],
+  },
+  {
+    id: "distributed-systems",
+    name: "분산 시스템 이론",
+    tagline: "시간·합의·일관성의 원리",
+    description: "분산 시스템의 8가지 오류, 시간과 순서(Lamport·벡터 시계), 장애 모델, FLP·CAP·PACELC, 합의(Paxos·Raft), 복제와 일관성 모델(선형화·인과·최종), 분산 트랜잭션(2PC·Saga), 리더 선출·펜싱 토큰, 멱등성과 정확히 한 번. Redis·Kafka·PostgreSQL·etcd 가 이 원리를 어떻게 구현했는지 연결합니다.",
+    mark: "∑",
+    color: "bg-[#0369a1]",
+    nav: [
+      { href: "/distributed-systems", label: "대시보드", icon: "◉", desc: "학습 현황" },
+      { href: "/distributed-systems/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/distributed-systems/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+    ],
+    setup: [
+      { label: "증거", cmd: "Redis(Sentinel·Cluster) · Kafka(ISR) · PG(격리) 실험실" },
+      { label: "읽을거리", cmd: "DDIA · Raft 논문" },
+    ],
+  },
+  {
+    id: "performance",
+    name: "성능 공학",
+    tagline: "측정 · 부하 테스트 · 병목 분석",
+    description: "지연 분포(p50/p99)와 처리량, 리틀의 법칙과 큐잉, USE·RED 방법론, k6 로 하는 부하·스트레스·soak 테스트와 SLO 기반 임계값, 프로파일링(Node CPU/힙, flame graph), 병목 찾기(N+1, 락, GC, 커넥션 풀), 캐시·배치·커넥션 튜닝, 용량 계획. 이 앱을 대상으로 직접 재어 봅니다.",
+    mark: "⏱",
+    color: "bg-[#ca8a04]",
+    nav: [
+      { href: "/performance", label: "대시보드", icon: "◉", desc: "도구 점검 · 학습 현황" },
+      { href: "/performance/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/performance/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/performance/lab", label: "실험실", icon: "⚗", desc: "k6 부하 테스트 · 프로파일" },
+    ],
+    setup: [
+      { label: "부하 도구", cmd: "brew install k6" },
+      { label: "대상", cmd: "pnpm dev (3000) · pnpm obs:up" },
     ],
   },
 ];
