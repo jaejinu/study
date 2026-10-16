@@ -146,6 +146,115 @@ options ndots:5
 - CoreDNS 메트릭(`coredns_dns_requests_total`, `coredns_dns_responses_total{rcode="NXDOMAIN"}`, 지연 히스토그램)을 대시보드로. NXDOMAIN 비율이 높으면 ndots 문제다.
 - 앱 쪽에서 DNS 해석 시간을 트레이스 span 으로 남기면(OTel HTTP 계측이 일부 제공) "느린 요청의 원인이 DNS" 를 바로 볼 수 있다 — [분산 트레이싱](/observability/notes/06-tracing-otel).
 
+## 심화 — TTL 은 "장애 조치 시간" 과 "질의량" 의 교환이다
+
+DNS 로 트래픽을 옮기는 모든 기법(가중치·지역·장애 조치 라우팅, 블루/그린 전환)은 결국 TTL 에 묶인다.
+
+| TTL | 장애 조치까지 최악 | 권한 서버 부하(리졸버 1만 곳 기준, 레코드 1개) | 쓰임 |
+|---|---|---|---|
+| 30초 | ~30초 + 앱·풀 캐시 | 약 330 qps | 장애 조치 대상 엔드포인트 |
+| 300초 | ~5분 | 약 33 qps | 일반 서비스 |
+| 3600초 | ~1시간 | 약 3 qps | 잘 안 바뀌는 레코드 |
+| 172800초(2일) | ~2일 | 무시할 수준 | TLD 의 NS 위임 |
+
+(부하 = 리졸버 수 ÷ TTL 의 단순 근사. 실제로는 리졸버마다 질의가 몰리는 시간이 다르다.)
+
+TTL 을 낮추면 **캐시 미스가 늘어 사용자 지연도 늘어난다** — 미스 한 번이 수십~수백 ms. 그래서 평소엔 길게, 이전 직전에만 짧게 쓴다.
+
+```
+이전 작업 순서 (기존 TTL 3600 이라고 가정)
+T-2h   TTL 3600 → 60 으로 변경          # 옛 TTL(1시간) 이상 기다려야 모든 캐시가 새 TTL 을 받는다
+T-0    A 레코드를 새 IP 로 변경
+T-0~   옛 서버도 계속 살려 둔다           # 앱 내부 캐시·커넥션 풀·TTL 을 무시하는 리졸버 대비
+T+1d   옛 서버 로그에 요청이 0 인지 확인 → 종료
+T+1d   TTL 다시 3600
+```
+
+"DNS 전파에 48시간 걸린다" 는 말은 대부분 **NS 위임 변경**(TLD 의 NS TTL 이 2일) 이야기다. A 레코드 변경은 **기존 TTL** 만큼이면 된다.
+
+## 심화 — CoreDNS 설정 한 장 읽기
+
+```
+.:53 {
+    errors                                   # 업스트림 오류를 로그로
+    health { lameduck 5s }                   # 종료 시 5초간 계속 응답 (롤링 재시작 중 실패 방지)
+    ready
+    kubernetes cluster.local in-addr.arpa ip6.arpa {
+        pods insecure
+        fallthrough in-addr.arpa ip6.arpa
+        ttl 30                               # 클러스터 레코드 TTL
+    }
+    autopath @kubernetes                     # search 반복을 서버가 대신 풀어 1번 왕복으로 (pods verified 필요)
+    prometheus :9153                         # 메트릭
+    forward . /etc/resolv.conf { max_concurrent 1000 }   # 외부 이름은 노드 리졸버로
+    cache 30                                 # 긍정·부정 응답 캐시 30초
+    loop
+    reload
+    loadbalance                              # A 레코드 순서 섞기
+}
+```
+
+질의가 많은 클러스터는 **NodeLocal DNSCache**(노드마다 `169.254.20.10` 에서 도는 캐시 데몬)를 둔다. Pod → 같은 노드의 캐시로 가서 conntrack·네트워크 홉을 줄이고, CoreDNS 로는 TCP 로 묶어 보내 UDP 유실 문제도 줄어든다.
+
+## 관측 — DNS 장애는 메트릭과 로그에서 이렇게 보인다
+
+```promql
+# 실패율 — SERVFAIL 이 오르면 업스트림(권한 서버·forward 대상) 문제
+sum(rate(coredns_dns_responses_total{rcode="SERVFAIL"}[5m])) / sum(rate(coredns_dns_responses_total[5m]))
+
+# NXDOMAIN 비율 — 30~70% 면 ndots search 반복을 의심
+sum(rate(coredns_dns_responses_total{rcode="NXDOMAIN"}[5m])) / sum(rate(coredns_dns_responses_total[5m]))
+
+# p99 지연
+histogram_quantile(0.99, sum by (le) (rate(coredns_dns_request_duration_seconds_bucket[5m])))
+
+# 캐시 적중률
+sum(rate(coredns_cache_hits_total[5m])) / (sum(rate(coredns_cache_hits_total[5m])) + sum(rate(coredns_cache_misses_total[5m])))
+
+# conntrack 포화 — UDP DNS 질의가 테이블을 채우면 패킷이 조용히 버려진다
+node_nf_conntrack_entries / node_nf_conntrack_entries_limit
+```
+
+CoreDNS `log` 플러그인을 켜면 질의 한 줄이 이렇게 남는다:
+
+```
+[INFO] 10.244.0.5:51234 - 4567 "A IN api.github.com.default.svc.cluster.local. udp 58 false 512" NXDOMAIN qr,aa,rd 151 0.000123s
+```
+
+같은 Pod IP 에서 search 도메인이 붙은 NXDOMAIN 이 줄줄이 나오면 ndots 문제가 확정이다. 질의마다 로그를 남기면 양이 많으니 평소엔 끄고 조사할 때만 켠다.
+
+앱 쪽에서는 요청 하나의 DNS 시간을 직접 잴 수 있다:
+
+```bash
+curl -s -o /dev/null -w 'dns=%{time_namelookup}s connect=%{time_connect}s total=%{time_total}s\n' https://example.com
+```
+
+| 장애 모습 | 가장 유력한 원인 |
+|---|---|
+| p99 지연이 정확히 5초·10초 계단 | UDP 유실 후 glibc 재시도(timeout:5) |
+| 모든 서비스에서 동시에 `EAI_AGAIN` 급증 | 공통 의존성(CoreDNS·업스트림 리졸버) 장애 |
+| 특정 노드의 Pod 만 실패 | 그 노드의 conntrack 포화·NodeLocal 캐시 이상 |
+| 배포 직후 일부 클라이언트만 옛 서버로 | 앱 내부 캐시·장수 커넥션 |
+| 새로 만든 레코드가 "없다" 고 나옴 | 생성 전 조회로 생긴 부정 캐시 |
+
+로그는 에러 메시지 문자열 대신 `err.code`(`ENOTFOUND`/`EAI_AGAIN`)와 `hostname` 을 구조화 필드로 남겨야 "어떤 이름이, 어떤 종류로" 실패하는지 집계된다 — [로그와 Loki](/observability/notes/05-logging-loki).
+
+## 흔한 실수와 오해
+
+- **`nslookup`·`dig` 결과 = 앱이 보는 결과라고 믿기.** 둘은 DNS 에 직접 묻고 `/etc/hosts`·nsswitch 를 거치지 않는다. 앱과 같은 경로는 Linux `getent hosts 이름`, macOS `dscacheutil -q host -a name 이름`.
+- **DNS 는 UDP 만 쓴다.** 응답이 크면(DNSSEC, 레코드 많은 TXT) TCP 53 으로 재질의한다. 방화벽에서 TCP 53 을 막으면 "큰 레코드만 안 풀리는" 이상한 장애가 된다.
+- **DNS 라운드로빈 = 로드밸런서.** 헬스체크가 없으므로 죽은 IP 도 계속 돌려준다. 클라이언트가 첫 IP 만 쓰는 경우도 많다.
+- **zone apex 에 CNAME.** `example.com` 자체엔 CNAME 을 못 둔다(SOA·NS 와 공존 불가). 공급자별 ALIAS/ANAME, CNAME flattening 을 쓴다.
+- **TTL 을 0 으로 하면 즉시 반영.** 일부 리졸버는 최소 TTL 을 강제하고, 앱·브라우저도 자체 캐시를 얹는다. "즉시" 는 없다.
+
+## 스스로 점검
+
+1. A 레코드를 바꿨는데 일부 사용자만 1시간 넘게 옛 서버로 간다. 가능한 원인 세 가지는? — 이전 TTL 이 길었음, JVM 등 앱 내부 캐시, 커넥션 풀의 장수 연결(이름 해석은 연결할 때만).
+2. `EAI_AGAIN` 과 `ENOTFOUND` 를 재시도 정책에서 다르게 다뤄야 하는 이유는? — 전자는 SERVFAIL·타임아웃 같은 일시 장애라 백오프 재시도 가치가 있고, 후자는 NXDOMAIN 이라 재시도해도 같은 답(설정 오류)이다.
+3. CoreDNS NXDOMAIN 비율이 60% 다. 무엇을 먼저 확인하나? — 외부 이름 질의에 search 도메인이 붙는지(ndots:5). FQDN 끝 점, `ndots:2`, `autopath` 로 줄인다.
+4. 장애 조치용 레코드의 TTL 을 30초로 두는 대가는? — 권한 서버 질의량 증가(비용), 캐시 미스 증가로 사용자 지연 증가.
+5. egress default-deny NetworkPolicy 를 건 뒤 "연결 실패" 가 났다. 왜 DNS 부터 의심하나? — 이름 해석이 kube-dns 53/UDP·TCP 로의 egress 이므로 같이 막히고, 앱에는 연결 실패처럼 보인다.
+
 ## 실습 체크리스트
 
 - [ ] `dig example.com` 의 TTL 을 보고 몇 초 뒤 다시 질의해 TTL 이 줄어드는지 (리졸버 캐시) 확인

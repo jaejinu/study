@@ -118,5 +118,35 @@
     "note": "06-kernel-stack-ebpf-performance",
     "q": "/proc/net/softnet_stat 의 time_squeeze 가 늘면?",
     "a": "softirq 가 한 번에 처리할 패킷 예산을 다 써서 미룬 것이다. 패킷 처리 CPU 가 부족하다는 신호다."
+  },
+  {
+    "note": "03-dns",
+    "q": "A 레코드를 바꾸기 전에 TTL 을 낮출 때, 낮춘 뒤 얼마나 기다려야 하나?",
+    "a": "기존(옛) TTL 이상. 그래야 모든 리졸버 캐시가 새 짧은 TTL 을 받은 상태가 된다. 전환 후에도 옛 서버를 한동안 살려 둔다."
+  },
+  {
+    "note": "03-dns",
+    "q": "dig·nslookup 결과와 앱의 이름 해석 결과가 다를 수 있는 이유와, 앱과 같은 경로로 확인하는 명령은?",
+    "a": "dig·nslookup 은 DNS 에 직접 묻고 /etc/hosts·nsswitch 를 거치지 않는다. Linux 는 getent hosts, macOS 는 dscacheutil -q host 로 확인한다."
+  },
+  {
+    "note": "03-dns",
+    "q": "p99 지연이 정확히 5초·10초 계단으로 튀고 모든 서비스에서 EAI_AGAIN 이 동시에 늘었다. 무엇을 의심하나?",
+    "a": "UDP DNS 유실 후 glibc 의 timeout:5 재시도, 그리고 CoreDNS·업스트림 리졸버 같은 공통 의존성 장애. conntrack 포화도 함께 본다."
+  },
+  {
+    "note": "04-http-tls",
+    "q": "curl -w 의 time_connect, time_appconnect, time_starttransfer 로 TLS 비용과 서버 처리 시간을 어떻게 구하나?",
+    "a": "TLS = appconnect − connect, 서버 처리(TTFB) = starttransfer − appconnect. 값이 누적 시각이라 빼서 읽는다."
+  },
+  {
+    "note": "04-http-tls",
+    "q": "LB 뒤 Node 서비스에서 낮은 비율의 502 가 꾸준히 나는 대표 원인과 해결은?",
+    "a": "Node keepAliveTimeout(기본 5초)이 LB 유휴 타임아웃보다 짧아 LB 가 이미 닫힌 연결을 재사용한다. 업스트림 keepAliveTimeout 을 LB 보다 길게(예: 65초), headersTimeout 은 그보다 크게."
+  },
+  {
+    "note": "04-http-tls",
+    "q": "중간 인증서 누락이 브라우저 확인만으로는 잘 안 드러나는 이유는?",
+    "a": "브라우저는 캐시된 중간 인증서나 AIA 로 체인을 스스로 채운다. curl·Java·일부 모바일은 실패하므로 openssl s_client -showcerts 로 서버가 보내는 체인을 확인한다."
   }
 ]

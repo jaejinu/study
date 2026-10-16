@@ -138,6 +138,119 @@ insert into events (stream_id, version, type, data) values ('acc-1', 1, 'MoneyWi
 
 같은 원리가 이 저장소의 다른 곳에도 있다. Redis 의 `WATCH`/`MULTI` 낙관적 잠금([Redis 노트 05](/redis/notes/05-transactions-lua)), 그리고 멱등 키 실험 [api-idempotency-key](/api-design/lab/api-idempotency-key) 는 "먼저 자리를 차지한 쪽이 이긴다" 는 같은 모양의 동시성 제어다.
 
+## 심화 — 스토어를 운영 수준으로
+
+### append 를 한 번의 왕복으로
+
+명령마다 `begin → insert × N → commit` 왕복이 여러 번이면 경합 창(w)이 넓어진다. 서버 함수로 묶으면 왕복이 1번이 된다.
+
+```sql
+create or replace function append_events(p_stream text, p_expected int, p_events jsonb)
+returns bigint language plpgsql as $$
+declare
+  cur int;
+  e jsonb;
+  pos bigint;
+begin
+  select coalesce(max(version), 0) into cur from events where stream_id = p_stream;
+  if p_expected >= 0 and cur <> p_expected then
+    raise exception 'wrong expected version: % (actual %)', p_expected, cur using errcode = 'P0001';
+  end if;
+  for e in select * from jsonb_array_elements(p_events) loop
+    cur := cur + 1;
+    insert into events (stream_id, version, type, schema, data, metadata)
+    values (p_stream, cur, e->>'type', (e->>'schema')::int, e->'data', e->'metadata')
+    returning global_position into pos;
+  end loop;
+  return pos;   -- 마지막 global_position: '방금 쓴 것 읽기' 대기에 쓴다
+end $$;
+```
+
+먼저 `max(version)` 을 확인하는 것은 빠른 실패용이고, 동시에 두 개가 통과해도 **최종 방어는 여전히 유일 제약**이다. `p_expected` 의 관례(EventStoreDB 와 비슷하게):
+
+| 값 | 의미 |
+|---|---|
+| `0` | 스트림이 없어야 한다 (새 집합 생성 — 같은 주문 ID 로 두 번 생성 방지) |
+| `n > 0` | 마지막 버전이 정확히 n 이어야 한다 |
+| `-1` | 검사 안 함 (감사 로그처럼 순서만 중요한 스트림) |
+
+### 재시도 — 한도와 지터
+
+```ts
+async function handle(cmd, maxAttempts = 5) {
+  for (let i = 1; ; i++) {
+    const { state, version } = await load(cmd.stream);
+    const events = decide(state, cmd);                 // 순수 함수: 같은 입력 → 같은 결정
+    try { return await append(cmd.stream, version, events); }
+    catch (e) {
+      if (!(e instanceof ConcurrencyError) || i >= maxAttempts) throw e;
+      metrics.conflicts.inc({ aggregate: cmd.aggregate });
+      await sleep(Math.random() * 2 ** i * 5);         // 0~10ms, 0~20ms, … 전체 지터
+    }
+  }
+}
+```
+
+재시도 소진은 HTTP 409 로 돌려준다. 500 이 아니다 — 서버 고장이 아니라 "다른 변경이 먼저 왔다" 는 정상 신호다.
+
+### "빈 번호" 를 안전하게 — 트랜잭션 ID 로 읽기
+
+```sql
+alter table events add column tx_id xid8 not null default pg_current_xact_id();
+create index on events (tx_id, global_position);
+
+-- 체크포인트를 (tx_id, global_position) 쌍으로 저장하고, 아직 진행 중일 수 있는 트랜잭션은 제외
+select * from events
+where (tx_id, global_position) > ($1::xid8, $2::bigint)
+  and tx_id < pg_snapshot_xmin(pg_current_snapshot())
+order by tx_id, global_position
+limit 500;
+```
+
+`global_position` 하나로 정렬하면 "작은 번호를 늦게 커밋" 한 이벤트를 놓칠 수 있다. **트랜잭션 ID 순서**로 읽고 "모든 진행 중 트랜잭션보다 앞선 것" 만 처리하면 빈 번호를 건너뛰지 않는다. 대가: 긴 트랜잭션 하나가 xmin 을 붙잡으면 **모든 구독이 그 지점에서 멈춘다**.
+
+### 알림으로 깨우기
+
+```sql
+create function notify_event() returns trigger language plpgsql as $$
+begin perform pg_notify('events', new.global_position::text); return null; end $$;
+create trigger events_notify after insert on events for each statement execute function notify_event();
+```
+
+`for each statement` 로 배치 insert 에 알림 한 번. 알림은 "깨우기" 용이고 데이터는 위 질의로 읽는다.
+
+## 모니터링 — 스토어에서 볼 것
+
+| 신호 | 수집 | 장애 때 모습 |
+|---|---|---|
+| append 지연 p99 | 앱 히스토그램 | 디스크·락 문제면 전 스트림에서 함께 오른다 |
+| 충돌률 (23505 / append) | 앱 카운터, 집합 종류별 | 특정 집합만 오르면 뜨거운 스트림 → 경계 재검토 |
+| 재시도 소진(409) 수 | 앱 카운터 | 사용자 체감 오류. SLO 대상 |
+| 가장 오래된 트랜잭션 나이 | `pg_stat_activity` | tx_id 방식 구독 전체 정지의 원인 |
+| 이벤트 테이블 증가량 | `pg_stat_user_tables.n_tup_ins`, `pg_total_relation_size` | 파티셔닝·아카이브 계획 |
+
+```sql
+-- 구독을 멈추게 하는 긴 트랜잭션 찾기
+select pid, now() - xact_start as age, state, left(query, 80)
+from pg_stat_activity where xact_start is not null order by xact_start limit 5;
+```
+
+로그 수준도 정하자. 충돌은 정상 흐름이므로 매번 WARN 을 찍으면 로그가 폭주하고 진짜 경고가 묻힌다. 충돌은 **메트릭 + DEBUG**, 재시도 소진만 WARN, `stream_id`·`expected`·`actual` 버전을 필드로 남긴다. PostgreSQL 쪽 운영 지표는 [PostgreSQL 노트 05](/postgres/notes/05-operations).
+
+## 흔한 실수와 오해
+
+- **버전을 `max(version)+1` 로 계산하고 유일 제약은 없음**: 동시에 두 명령이 같은 번호를 계산한다. 계산은 해도 되지만 제약이 없으면 무의미하다.
+- **이벤트 저장 후 Kafka 에 따로 발행(이중 쓰기)**: 둘 중 하나만 성공하는 순간이 생긴다. 이벤트 테이블 자체를 아웃박스로 보고 CDC·폴링으로 발행한다([Kafka 노트 08](/kafka/notes/08-cdc-outbox-debezium)).
+- **global_position 은 빈틈없이 연속이다**: 롤백된 트랜잭션이 받은 시퀀스 번호는 돌아오지 않는다. 빈 번호는 영원히 빌 수 있다 — "다음 번호가 올 때까지 기다림" 은 무한 대기가 된다.
+- **충돌을 500 으로 응답**: 클라이언트가 무작정 재시도하고 오류율 SLO 가 망가진다.
+
+## 스스로 점검
+
+1. 유일 제약 `(stream_id, version)` 하나로 낙관적 동시성이 되는 원리는? — 다음 버전 "자리" 를 먼저 차지한 쪽만 insert 에 성공하고, 늦은 쪽은 23505 를 받아 다시 읽는다.
+2. 새 주문 생성 시 expected_version 을 0 으로 주는 이유는? — 같은 ID 로 스트림이 이미 있으면 실패시켜 중복 생성을 막는다.
+3. tx_id 기반 구독에서 프로젝션이 갑자기 전부 멈췄다. 가장 먼저 볼 것은? — `pg_stat_activity` 의 오래된 트랜잭션(유휴 상태의 열린 트랜잭션 포함).
+4. 이벤트 스토어로 PostgreSQL 대신 Kafka 를 쓰자는 제안에 무엇을 묻나? — 스트림별 expected_version 검사, 집합 하나 로딩(키로 조회) 방법.
+
 ## 실습 체크리스트
 
 - [ ] 위 psql 예시로 같은 버전을 두 번 넣어 23505 를 직접 받아 보기

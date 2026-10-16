@@ -107,6 +107,83 @@ PG 승인 요청이 타임아웃 나면 **승인됐는지 모른다**. 실패로
 3. 블랙프라이데이 3,000/s 에서 재고 하나(인기 상품)에 주문이 몰리면?
 4. 멱등 키는 얼마나 오래 보관해야 하나? (클라이언트 재시도 창 + 여유)
 
+## 심화 — 한 트랜잭션 안에 무엇을 묶나
+
+결제 확정 순간에 바뀌어야 하는 것은 셋이다: 주문 상태, 원장 분개, 다른 시스템에 알릴 이벤트. 이 셋이 따로 커밋되면 "돈은 받았는데 배송이 모름" 같은 틈이 생긴다. **같은 DB 트랜잭션**에 넣고, 바깥 세계(Kafka)로는 Outbox 로 내보낸다.
+
+```sql
+begin;
+-- 1) 조건부 상태 전이: 이미 누가 바꿨으면 0행 → 롤백하고 현재 상태를 돌려준다
+update orders set state = 'PAID', paid_at = now()
+ where id = 'o-881' and state in ('PAYMENT_PENDING', 'PAYMENT_UNKNOWN');
+
+-- 2) 이중 기입: 한 거래(txn_id)의 차변 합 = 대변 합
+insert into ledger_entries (txn_id, account, direction, amount) values
+  ('t-5521', 'pg_receivable', 'debit',  89000),
+  ('t-5521', 'sales_pending', 'credit', 89000);
+
+-- 3) 이벤트는 outbox 행으로 (CDC 가 Kafka 로 보낸다)
+insert into outbox (aggregate_id, type, payload) values ('o-881', 'OrderPaid', '{"amount":89000}');
+commit;
+```
+
+```sql
+-- 원장 불변식 검사 (배치·알림용): 결과가 한 행이라도 나오면 사고다
+select txn_id, sum(case direction when 'debit' then amount else -amount end) as diff
+  from ledger_entries group by txn_id having sum(case direction when 'debit' then amount else -amount end) <> 0;
+```
+
+금액은 **정수(원·센트 단위)** 로 저장한다. 부동소수점 `0.1 + 0.2` 오차가 원장에 들어가면 대사에서 영원히 1원이 안 맞는다. 통화가 여럿이면 `(amount, currency)` 를 함께 두고 환산은 별도 분개로 기록한다.
+
+### 웹훅 서명 검증
+
+```ts
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function verifyWebhook(rawBody: Buffer, sigHeader: string, ts: string, secret: string) {
+  if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) return false;           // 5분 넘은 것은 재전송 공격으로 본다
+  const expected = createHmac("sha256", secret).update(`${ts}.${rawBody}`).digest("hex");
+  const a = Buffer.from(expected), b = Buffer.from(sigHeader);
+  return a.length === b.length && timingSafeEqual(a, b);                        // 상수 시간 비교
+}
+```
+
+- 서명은 **파싱 전 원본 바이트**로 계산한다. JSON 을 파싱했다 다시 직렬화하면 공백·키 순서가 바뀌어 서명이 안 맞는다.
+- 서명이 맞아도 금액·주문 ID 를 우리 DB 와 대조한다. 웹훅 처리 자체도 `event_id` 유일 제약으로 멱등하게.
+
+### 타임아웃 값은 분포로 정한다
+
+PG 승인 지연이 p50 400ms, p99 1.8s, p99.9 6s 라면 타임아웃 2초는 요청의 약 1% 를 UNKNOWN 으로 만든다. 피크 3,000/s 에서 **초당 30건**이 조회 경로로 간다. 타임아웃 8초로 늘리면 UNKNOWN 은 줄지만 사용자가 오래 기다리고 스레드·연결이 그만큼 묶인다(리틀의 법칙 — [노트 01](/system-design/notes/01-design-method)). 그래서 보통 "사용자에겐 3초 후 '처리 중' 화면, 백엔드는 조회·웹훅으로 마저 확정" 으로 둘을 분리한다.
+
+## 모니터링·로그 — 돈 시스템의 핵심 지표
+
+| 지표 | 정상 | 알림 기준 예 |
+|---|---|---|
+| 승인 성공률 (PG·카드사별) | 평소 기준선 | 특정 PG 만 5%p 하락 → PG 장애, 라우팅 전환 검토 |
+| `PAYMENT_UNKNOWN` 체류 건수·최대 체류 시간 | 0 에 수렴 | 10분 넘게 남은 건 존재 → 조회 워커 정지 |
+| 멱등 키 재생 비율 | 낮고 안정 | 급증 → 클라이언트 재시도 폭증(네트워크·앱 버그) |
+| 웹훅 서명 실패 수 | 0 | 1건이라도 → 비밀 키 교체 누락 또는 위조 시도 |
+| 원장 불균형 거래 수 | **항상 0** | 0 이 아니면 즉시 호출 |
+| 대사 불일치 건수·금액 | 작은 상수 | 금액 합계 기준으로 알림 |
+| Outbox 미발행 행 수·가장 오래된 행 나이 | 수 초 | 증가 → CDC 정지, 배송·알림 시스템이 모름 |
+
+결제 로그에는 카드 번호·CVC 를 절대 남기지 않는다(PCI DSS). `order_id`, `idempotency_key`, `pg_tid`, 상태 전이(`from → to`), PG 응답 코드, 지연을 남기면 고객 문의 "돈은 빠졌는데 주문이 없어요" 를 주문 ID 하나로 끝까지 추적할 수 있다. 감사 로그는 append-only 저장소에 별도 보관 — [보안 노트 07](/security/notes/07-datastore-hardening).
+
+## 흔한 실수와 오해
+
+- **타임아웃을 실패로 처리** → 사용자가 다시 결제 → 이중 청구. 타임아웃은 "모름" 이다.
+- **멱등 키를 서버가 요청마다 새로 생성** → 재시도마다 키가 달라 멱등이 무의미. 키는 클라이언트(또는 주문 ID)에서 와야 한다.
+- **잔액 열 `update`** → 누가 언제 왜 바꿨는지 사라지고, 동시 갱신 경합. 원장은 append-only, 잔액은 파생값.
+- **상태 전이를 `select` 후 `update`** → 두 워커가 같은 주문을 확정. 조건부 `update ... where state = …` 의 영향 행으로 판정.
+- **환불을 원 거래 삭제로** → 감사 불가. 반대 분개를 새로 쓴다.
+
+## 스스로 점검
+
+1. **주문 상태·원장·이벤트를 왜 한 트랜잭션에 묶고, Kafka 발행은 왜 Outbox 로 하나?** — 셋이 따로 커밋되면 틈이 생긴다. DB 와 Kafka 를 한 트랜잭션으로 묶을 수 없으니 outbox 행을 같은 트랜잭션에 쓰고 CDC 가 내보낸다.
+2. **PG p99 가 1.8s 인데 타임아웃을 2초로 두면 피크 3,000/s 에서 무슨 일이?** — 약 1%, 초당 30건이 UNKNOWN 이 되어 조회 경로로 간다.
+3. **웹훅 서명을 파싱된 JSON 으로 검증하면 왜 실패하나?** — 재직렬화로 바이트가 바뀐다. 원본 바이트로 계산해야 한다.
+4. **원장에서 "항상 0" 이어야 하는 지표는?** — 거래별 차변 합 − 대변 합. 0 이 아닌 거래가 하나라도 있으면 사고다.
+
 ## 예시로 보기 — 이 프로젝트에서
 
 ```bash

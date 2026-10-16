@@ -114,6 +114,97 @@ experiments: [es-optimistic-concurrency]
 
 여기서 집합은 "실험 실행 한 번" 이다. 3과 5 사이에 프로세스가 죽으면 `FaultReverted` 가 없는 스트림이 남는다 — 그것을 찾아 경고하는 정책이 바로 [SRE 노트 05](/sre/notes/05-incident-postmortem)의 사고를 막는 장치였을 것이다. 실제로는 [`src/lib/deadman.ts`](/chaos/notes/04-gameday-and-automation) 가 별도 프로세스로 원복한다.
 
+## 심화 — 집합 경계를 숫자로 검증하기
+
+워크숍에서 그은 경계가 맞는지는 **경합**과 **수명**이라는 두 숫자로 확인할 수 있다.
+
+### 경합 — 한 스트림에 얼마나 몰리나
+
+한 스트림에 초당 λ 개 명령이 오고, 명령 하나가 "읽기 → 결정 → 쓰기" 에 w 초를 쓴다면, 내가 결정하는 동안 누군가 끼어들 확률은 대략 `1 − e^(−λ·w)` 다(도착이 무작위라는 단순 가정).
+
+| 스트림 부하 λ | 처리 창 w | 충돌 확률(근사) | 판단 |
+|---|---|---|---|
+| 1/초 (개인 계좌) | 10ms | 약 1% | 문제없음 |
+| 50/초 (인기 상품 재고) | 10ms | 약 39% | 재시도가 일상, 지연 꼬리가 길어짐 |
+| 2,000/초 (한정판 오픈) | 10ms | 거의 100% | 경계를 다시 나눠야 함 |
+
+목표는 `λ·w ≪ 0.1`. λ 를 줄이려면 집합을 쪼개고, w 를 줄이려면 로딩을 빠르게 한다([노트 05](/event-sourcing/notes/05-snapshots-performance)의 스냅샷·스트림 마감).
+
+### 뜨거운 재고를 쪼개는 예
+
+```
+stock-BK102            (모든 주문이 한 스트림)          λ = 2,000/초
+   ↓ 슬롯 8개로 분할
+stock-BK102-slot-0 … stock-BK102-slot-7                  λ ≈ 250/초씩
+   슬롯 선택 = hash(orderId) % 8,  초기 재고 800 → 슬롯당 100
+```
+
+대가도 분명하다. 슬롯 3 은 0 인데 슬롯 5 에 40 개가 남는 **조각화**가 생긴다. "슬롯이 비면 다른 슬롯을 한 번 더 시도" 또는 주기적인 `StockRebalanced` 이벤트로 옮긴다. 정확한 전체 재고는 이제 프로젝션(슬롯 합)으로만 보인다 — 일관성 경계를 좁힌 대가로 **전역 불변식 일부를 결과적 일관성으로** 바꾼 것이다.
+
+### 수명 — 스트림이 얼마나 길어지나
+
+| 집합 | 수명 동안 이벤트 수(예) | 판단 |
+|---|---|---|
+| 주문 | 5~30 | 이상적 |
+| 장바구니 | 10~200 | 괜찮음 |
+| 계좌(10년) | 수만 | 기간 마감 고려 |
+| "가게" 전체 | 끝없음 | 경계 오류 |
+
+## 이벤트 계약을 코드로 고정하기
+
+이벤트 목록은 타입으로 닫아 두면 리듀서가 빠뜨린 경우를 컴파일러가 잡는다.
+
+```ts
+type OrderEvent =
+  | { type: "OrderPlaced"; schema: 1; data: { orderId: string; customerId: string; lines: { sku: string; qty: number; unitPrice: number }[] } }
+  | { type: "OrderItemRemoved"; schema: 2; data: { sku: string; qty: number; reason: "out_of_stock" | "customer_request" } }
+  | { type: "OrderCancelled"; schema: 1; data: { reason: string; by: "customer" | "system" } };
+
+function apply(s: OrderState, e: OrderEvent): OrderState {
+  switch (e.type) {
+    case "OrderPlaced": return { ...s, status: "placed", lines: e.data.lines };
+    case "OrderItemRemoved": return { ...s, lines: s.lines.filter((l) => l.sku !== e.data.sku) };
+    case "OrderCancelled": return { ...s, status: "cancelled" };
+    default: { const _never: never = e; return s; }   // 새 이벤트를 추가하고 처리 안 하면 컴파일 에러
+  }
+}
+```
+
+`reason` 처럼 **업무상 이유**를 열거형으로 담아 두면 나중에 "품절 때문에 빠진 품목 비율" 같은 분석을 이벤트만으로 할 수 있다. 이유를 문자열 자유 입력으로 두면 그 분석은 불가능해진다.
+
+## 모델링을 관측과 연결하기
+
+좋은 이벤트 이름은 그대로 **메트릭 레이블과 로그 필드**가 된다.
+
+| 신호 | 예 | 무엇을 알려 주나 |
+|---|---|---|
+| 카운터 | `es_events_appended_total{aggregate="order", type="OrderCancelled"}` | 취소율 급증 = 결제·재고 장애의 첫 증상인 경우가 많다 |
+| 카운터 | `es_append_conflicts_total{aggregate="stock"}` | 경계가 너무 큰 집합 |
+| 히스토그램 | `es_stream_length{aggregate}` | 수명이 끝나지 않는 집합 |
+| 로그 필드 | `correlation_id`, `causation_id`, `stream_id`, `type` | 한 주문의 모든 일을 한 번에 조회 |
+
+```
+# Loki — 주문 하나로 시작된 흐름 전체를 시간순으로
+{app=~"orders|payments|stock"} | json | correlation_id="req-88f"
+```
+
+`StatusChanged{status:3}` 같은 이름이었다면 대시보드에서 "3" 이 무엇인지 매번 해석해야 한다. 이벤트 이름이 곧 관측의 어휘다. 로그·트레이스 연결은 [관측성 노트 05](/observability/notes/05-logging-loki), [노트 06](/observability/notes/06-tracing-otel).
+
+## 흔한 실수와 오해
+
+- **"테이블 하나 = 집합 하나"**: 집합은 저장 구조가 아니라 **불변식**으로 정한다. 주문과 줄 항목은 테이블 두 개여도 집합 하나다.
+- **CDC 이벤트 = 도메인 이벤트**: `orders 행 UPDATE` 는 기술 이벤트다. 왜 바뀌었는지(의도)가 없다.
+- **거절도 전부 이벤트로 남긴다**: 거절된 명령은 일어나지 않은 일이다. 다만 "출금 거절" 이 업무상 감사 대상이면 `WithdrawalRejected` 를 **별도 감사 스트림**에 남긴다(집합 상태는 바꾸지 않는다).
+- **이벤트에 계산 결과(잔액)를 넣는다**: 편하지만 리듀서와 어긋날 수 있다. 넣는다면 "참고용" 이고 재생은 리듀서로 한다.
+- **내부 이벤트를 그대로 외부에 발행**: 내부 이름을 바꾸는 순간 소비자가 깨진다([노트 06](/event-sourcing/notes/06-schema-evolution)의 통합 이벤트).
+
+## 스스로 점검
+
+1. 인기 상품 재고 스트림에 초당 수천 건 명령이 몰린다. 경계를 어떻게 바꾸고, 무엇을 잃나? — 슬롯·창고별로 쪼개 경합을 나누고, 전체 재고 불변식은 결과적 일관성(프로젝션 합·재분배)으로 바뀐다.
+2. 주문과 고객을 한 트랜잭션에서 바꿔야 한다는 요구가 나왔다. 무엇을 의심하나? — 경계 오류이거나 사가로 풀 업무. 집합 간 참조는 ID 로만.
+3. `ContactInfoUpdated` 하나와 `PhoneChanged`·`EmailChanged` 셋 중 무엇을 고르나? — 사용자 의도 단위. 화면 저장 한 번이 의도라면 하나, 전화번호만 따로 인증하는 업무라면 따로.
+4. correlation_id 없이 장애를 추적하면 무엇이 어려운가? — 서비스 경계를 넘는 연쇄(주문 → 재고 → 결제)를 시간·ID 추측으로 이어 붙여야 한다.
+
 ## 실습 체크리스트
 
 - [ ] 좋아하는 서비스(배달·예약) 하나로 이벤트 스토밍: 주황 이벤트 15개를 시간순으로 적기

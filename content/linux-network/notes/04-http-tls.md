@@ -140,6 +140,118 @@ curl -sN -X POST localhost:3000/api/ask -H 'Content-Type: application/json' -d '
 - 프록시 로그에 `$ssl_protocol`, `$ssl_cipher`, `$request_time`, `$upstream_response_time` 을 남기면 TLS 버전 분포와 "프록시 vs 업스트림" 지연을 분리할 수 있다(이 프로젝트 `nginx-tls.conf` 의 `log_format tls`).
 - 인증서 만료는 반드시 알림으로 — 만료 30일·7일 전. 실험 `sec-tls-inspect` 가 남은 일수를 계산한다.
 
+## 심화 — 요청 하나를 단계별 시간으로 쪼개기
+
+느린 요청을 볼 때 "서버가 느리다" 고 단정하기 전에 어느 구간인지부터 나눈다.
+
+```bash
+cat > curl-fmt.txt <<'FMT'
+   dns  %{time_namelookup}
+   tcp  %{time_connect}
+   tls  %{time_appconnect}
+  ttfb  %{time_starttransfer}
+ total  %{time_total}
+  http  %{http_version} %{response_code}  size=%{size_download}
+FMT
+curl -s -o /dev/null -w @curl-fmt.txt https://example.com
+```
+
+값은 **요청 시작부터의 누적 시각**이라 빼서 읽는다(아래 숫자는 읽는 법을 보이기 위한 예시):
+
+| 구간 | 계산 | 예시 | 크면 의심할 것 |
+|---|---|---|---|
+| DNS | `dns` | 0.012 | 리졸버·ndots·캐시 미스 — [DNS 노트](/linux-network/notes/03-dns) |
+| TCP 핸드셰이크 | `tcp − dns` | 0.031 | 네트워크 RTT, SYN 재전송(1초·3초 계단) |
+| TLS | `tls − tcp` | 0.064 | TLS 1.2(2 RTT), 긴 체인, OCSP, RSA 연산 |
+| 서버 처리(TTFB) | `ttfb − tls` | 0.210 | 앱·DB·업스트림 |
+| 본문 전송 | `total − ttfb` | 0.004 | 대역폭, 압축 미사용, 큰 응답 |
+
+`tcp − dns` 가 대략 1 RTT, TLS 1.3 이면 `tls − tcp` 도 대략 1 RTT 여야 한다. TLS 구간이 RTT 의 2배 이상이면 TLS 1.2 협상이나 핸드셰이크 지연을 의심한다. Prometheus 의 blackbox_exporter 는 같은 분해를 `probe_http_duration_seconds{phase="resolve|connect|tls|processing|transfer"}` 로 계속 수집한다.
+
+## 심화 — keep-alive 타임아웃 불일치가 만드는 간헐적 502
+
+가장 흔한 "가끔 502" 의 원인이다.
+
+```
+LB(유휴 60초) ──연결 재사용──▶ Node 서버(keepAliveTimeout 기본 5초)
+t=0     요청 처리 후 연결 유휴
+t=5s    Node 가 유휴 연결을 닫음 (FIN)
+t=5.0x  LB 는 아직 모르고 그 연결로 다음 요청 전송 → RST → LB 가 502
+```
+
+규칙은 하나다: **안쪽(업스트림)의 유휴 타임아웃이 바깥(프록시·LB)보다 길어야 한다.** 연결을 닫는 쪽이 항상 바깥이어야 경쟁이 안 생긴다.
+
+```js
+// Node — LB 유휴 60초보다 길게
+server.keepAliveTimeout = 65_000;
+server.headersTimeout = 66_000;   // keepAliveTimeout 보다 커야 한다
+```
+
+```nginx
+upstream app {
+    server 127.0.0.1:3000;
+    keepalive 32;                 # 워커당 유휴 연결 풀
+    keepalive_timeout 60s;        # 업스트림(65초)보다 짧게
+}
+location / {
+    proxy_http_version 1.1;       # 업스트림 keep-alive 는 1.1 필요
+    proxy_set_header Connection "";
+    proxy_pass http://app;
+}
+```
+
+로그에서는 이렇게 보인다:
+
+```
+[error] upstream prematurely closed connection while reading response header from upstream
+[error] recv() failed (104: Connection reset by peer) while reading response header from upstream
+```
+
+| 상태 | 프록시가 말하는 것 | 먼저 볼 것 |
+|---|---|---|
+| 502 | 업스트림 응답이 깨짐·연결 끊김·거부 | keep-alive 불일치, 업스트림 크래시, 포트 |
+| 503 | 보낼 업스트림이 없음·과부하 거절 | 헬스체크, 레이트리밋, 서킷브레이커 |
+| 504 | 업스트림이 시간 안에 답하지 않음 | `proxy_read_timeout`, 느린 DB 질의 |
+
+502 비율이 트래픽과 무관하게 낮은 수준(0.01~0.1%)으로 꾸준하면 타임아웃 불일치, 배포 시점에만 튀면 graceful shutdown 부재다 — [리버스 프록시와 로드밸런싱](/nginx/notes/02-reverse-proxy-lb).
+
+## 관측 — TLS 장애는 이렇게 드러난다
+
+```promql
+# 14일 안에 만료되는 인증서 (blackbox_exporter)
+(probe_ssl_earliest_cert_expiry - time()) / 86400 < 14
+
+# TLS 구간 p95 — 인증서 교체·체인 변경 후 튀는지
+histogram_quantile(0.95, sum by (le) (rate(probe_http_duration_seconds_bucket{phase="tls"}[10m])))
+```
+
+| 증상(클라이언트 메시지) | 원인 | 특징 |
+|---|---|---|
+| `certificate has expired` | 인증서 만료 | 모든 클라이언트가 **동시에** 실패 |
+| `unable to get local issuer certificate` | 중간 인증서 누락 | 브라우저는 되고 curl·Java·일부 모바일만 실패 |
+| `certificate is not yet valid` | 클라이언트·서버 시계 오차 | 특정 기기·컨테이너만 |
+| `Hostname/IP does not match certificate's altnames` | SAN 불일치, SNI 미전송 클라이언트가 기본 인증서를 받음 | 특정 도메인·구형 클라이언트 |
+| Nginx `SSL_do_handshake() failed ... no shared cipher` | 프로토콜·cipher 교집합 없음 | TLS 1.0 끈 직후 구형 클라이언트 |
+
+중간 인증서 누락은 **브라우저가 캐시나 AIA 로 스스로 채우기 때문에** 사람이 브라우저로 확인하면 정상으로 보이는 것이 함정이다. 검증은 항상 `openssl s_client -showcerts` 로 서버가 실제로 보내는 체인을 본다.
+
+## 흔한 실수와 오해
+
+- **"HTTPS 라 아무것도 안 보인다."** 경로·헤더·본문은 암호화되지만 목적지 IP, SNI 호스트명(ECH 전), DNS 질의(DoH 전), 패킷 크기·타이밍은 보인다.
+- **`no-cache` = 캐시 금지.** 금지는 `no-store` 다. 위 표 참고.
+- **HSTS 를 처음부터 `max-age=31536000; includeSubDomains; preload`.** 하위 도메인 하나라도 HTTPS 가 없으면 1년 동안 접속 불가다. 짧은 값(300)으로 시작해 늘린다.
+- **0-RTT 를 모든 요청에 허용.** 0-RTT 데이터는 재전송(replay)될 수 있어 결제 같은 비멱등 요청엔 쓰면 안 된다.
+- **301 로 POST 를 리다이렉트.** 많은 클라이언트가 GET 으로 바꿔 본문을 잃는다. 메서드를 유지하려면 307(임시)·308(영구).
+- **운영에서 `NODE_TLS_REJECT_UNAUTHORIZED=0`.** 검증을 끄면 중간자 공격에 그대로 노출된다. 사설 CA 는 `NODE_EXTRA_CA_CERTS` 로 신뢰시킨다.
+
+## 스스로 점검
+
+1. 같은 서버로의 두 번째 요청이 첫 번째보다 100ms 빠르다. curl 타이밍의 어느 값들이 0 에 가까워졌을지 설명하라. — 연결 재사용으로 TCP·TLS 구간(`tcp − dns`, `tls − tcp`)이 사라지고, DNS 도 캐시 적중.
+2. ALB 뒤 Node 서비스에서 0.05% 의 502 가 꾸준히 난다. 가설과 확인 방법은? — keepAliveTimeout(5초) < LB 유휴 타임아웃. 업스트림 로그의 연결 종료 시각과 502 시각을 맞춰 보고 keepAliveTimeout 을 LB 보다 길게.
+3. HTTP/2 로 바꿨더니 L4 LB 뒤 백엔드 한 대만 CPU 가 높다. 왜인가? — 클라이언트가 연결 하나로 모든 요청을 다중화해 연결 단위 분산이 한쪽으로 쏠린다. L7 분산이나 연결 수명 제한.
+4. 인증서 교체 후 "내 브라우저에선 되는데 파트너 서버 연동이 실패" 한다. 첫 확인은? — `openssl s_client -showcerts` 로 중간 인증서가 체인에 포함됐는지.
+5. TLS 1.3 이 1.2 보다 빠른 이유를 RTT 로 설명하라. — ClientHello 에 key_share 를 미리 실어 1 RTT 에 키 합의를 끝내고, 재개 시 0-RTT 도 가능하다.
+
 ## 실습 체크리스트
 
 - [ ] `curl -v` 로 요청/응답 헤더 읽기, `Connection: keep-alive` 와 `Content-Length` 확인 (실험실)

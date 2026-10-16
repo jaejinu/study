@@ -124,6 +124,109 @@ bronze ──▶ silver 생성 ──▶ [품질 검사: not_null·unique·relat
 | [de-cdc-to-lake](/data-engineering/lab/de-cdc-to-lake) | PG → Debezium → Kafka → S3 Parquet → DuckDB 병합 결과가 원본과 행 수·합계·max(id) 정확히 일치. 병합 없이 세면 283 vs 210 |
 | [de-quality-checks](/data-engineering/lab/de-quality-checks) | 심은 불량 6종을 정확히 그 개수만큼 탐지, 신선도는 warn |
 
+## 심화 — DuckDB 로 실제 한 바퀴 돌리기
+
+설계를 코드로 옮기면 아래 정도가 된다. 하루치를 처리하는 스크립트 하나가 bronze → silver → 검사 → gold 를 모두 한다(경로와 열 이름은 예시).
+
+```sql
+INSTALL httpfs; LOAD httpfs;
+-- 실험이 띄우는 versitygw 와 같은 설정
+CREATE SECRET lake (TYPE s3, KEY_ID 'study', SECRET 'study-secret',
+                    ENDPOINT '127.0.0.1:19102', URL_STYLE 'path', USE_SSL false, REGION 'us-east-1');
+
+-- silver: 노트 조회만 골라 타입 정리
+COPY (
+  SELECT CAST(ts AS TIMESTAMP) AS viewed_at, subject, slug, trace_id
+  FROM read_json_auto('s3://lake/bronze/app_logs/day=2026-10-16/*.jsonl')
+  WHERE msg = 'note.view'
+  ORDER BY viewed_at, subject          -- 행 그룹 건너뛰기를 위한 정렬
+) TO 's3://lake/silver/note_views/day=2026-10-16/part-0.parquet' (FORMAT parquet, COMPRESSION zstd);
+
+-- silver: CDC 병합 — 키별 최신 1건, 삭제 제외
+COPY (
+  SELECT * EXCLUDE (rn) FROM (
+    SELECT *, row_number() OVER (PARTITION BY id ORDER BY _offset DESC) AS rn   -- 실험과 같은 기준: Kafka 오프셋
+    FROM read_parquet('s3://lake/bronze/orders_cdc/**/*.parquet')
+  ) WHERE rn = 1 AND __deleted = 'false'
+) TO 's3://lake/silver/orders_current/part-0.parquet' (FORMAT parquet, COMPRESSION zstd);
+```
+
+병합의 **정렬 기준**이 핵심이다. 이벤트를 "받은 순서" 나 앱 시각(`updated_at`)으로 정렬하면 같은 밀리초에 두 번 바뀐 행이나 시계가 어긋난 서버에서 틀린 버전이 이긴다. 원천 DB 가 정한 순서를 써야 한다. 실험 [de-cdc-to-lake](/data-engineering/lab/de-cdc-to-lake) 는 Kafka 오프셋(`_offset`)으로 정렬하는데, 이것이 맞는 이유는 Debezium 이 같은 키를 같은 파티션에 커밋 순서대로 넣기 때문이다. 토픽 파티션 수를 바꾸거나 여러 토픽을 합치면 이 전제가 깨지니, 그때는 WAL 위치(LSN)를 레코드에 함께 실어 그것으로 정렬한다.
+
+### 작은 파일 병합(compaction)
+
+5분 마이크로배치는 하루 288 파일을 만든다. 하루가 끝나면 합친다.
+
+```sql
+COPY (SELECT * FROM read_parquet('s3://lake/bronze/orders_cdc/day=2026-10-16/batch=*.parquet') ORDER BY _offset)
+TO 's3://lake/bronze/orders_cdc/day=2026-10-16/compacted.parquet' (FORMAT parquet, COMPRESSION zstd);
+-- 그다음 batch=* 파일 삭제
+```
+
+"새 파일 쓰기" 와 "옛 파일 삭제" 사이에 읽는 쪽은 **같은 데이터를 두 번** 본다. 병합 결과가 키별 최신이라 CDC 병합은 이를 견디지만, 단순 합계를 내는 질의는 두 배가 된다. 이 창을 없애고 싶어지는 순간이 위 신호표의 "원자성" 칸이 켜지는 순간이다.
+
+### gold 를 원자적으로 발행하기
+
+품질 게이트가 실패하면 gold 는 어제 버전이어야 한다. 객체 저장소에는 디렉터리 rename 이 없으니 **새 경로에 쓰고 포인터만 바꾼다.**
+
+```
+s3://lake/gold/daily_study/runs/2026-10-16T01-00/part-0.parquet   ← 새로 씀
+s3://lake/gold/daily_study/runs/2026-10-15T01-00/part-0.parquet   ← 어제 것 그대로
+s3://lake/gold/daily_study/_current  = "runs/2026-10-16T01-00"     ← 검사 통과 후에만 갱신 (객체 하나 PUT = 원자적)
+```
+
+읽는 쪽은 `_current` 를 먼저 읽고 그 경로만 본다. 실패하면 포인터를 안 바꾸면 되니 롤백도 공짜다. 이것은 Iceberg 가 메타데이터 파일 포인터를 바꿔 커밋하는 방식의 아주 작은 버전이다.
+
+## 관측 — 이 레이크하우스가 아프면
+
+작은 시스템일수록 관측을 작게, 하지만 **신선도·양·품질** 세 가지는 꼭 둔다.
+
+| 메트릭 (작업이 내보냄) | 경보 조건 예 | 잡는 장애 |
+|---|---|---|
+| `lake_last_success_timestamp_seconds{asset}` | gold 가 26시간 넘게 갱신 안 됨 | cron 멈춤, 게이트 실패 반복 |
+| `lake_partition_rows{asset, day}` | 전주 같은 요일 대비 50% 미만 | 로그 수집 누락, 앱 이벤트 이름 변경 |
+| `lake_quality_failures{test}` | error 심각도 1 이상 | 원천 스키마 변경 |
+| `lake_files_per_partition{asset}` | 하루 300 초과 | 병합 작업 멈춤 |
+
+```yaml
+# Prometheus 규칙 예
+- alert: LakeGoldStale
+  expr: time() - lake_last_success_timestamp_seconds{layer="gold"} > 26 * 3600
+  for: 15m
+  labels: { severity: warning }
+  annotations:
+    summary: "gold {{ $labels.asset }} 가 26시간 넘게 갱신되지 않음"
+```
+
+이 사이트는 이미 Prometheus·Alertmanager 가 있으니 배치 작업은 끝날 때 Pushgateway 로 위 값을 보내면 된다. 26시간인 이유: 하루 한 번 작업이라 24시간 + 실행 여유 2시간. 23시간으로 걸면 매일 아침 오탐이 난다.
+
+### AI 기능의 비용도 같은 레이크로
+
+"AI 에게 묻기" 로그(모델, 입력·출력 토큰, 지연, 주제)를 bronze 에 쌓으면 gold 에 `ask_daily(day, subject, model, calls, tokens_in, tokens_out, p95_latency_ms, est_cost)` 를 만들 수 있다. 실시간 경보는 [LLM 관측](/observability/notes/08-llm-observability) 의 메트릭이 맡고, 레이크는 "어느 주제 질문이 비싼가, 프롬프트를 바꾼 뒤 토큰이 줄었나" 같은 **기간 비교**를 맡는다. 같은 데이터라도 질문의 시간 단위에 따라 저장소가 나뉜다.
+
+## 설계 트레이드오프 — 다른 선택지와 비교
+
+| 선택지 | 장점 | 단점 | 이 사이트에 |
+|---|---|---|---|
+| 운영 PostgreSQL 에 분석 테이블 추가 | 가장 단순, 새 부품 없음 | 분석 질의가 운영과 자원 경쟁, 로그 적재에 부적합 | 아주 초기엔 가능 |
+| ClickHouse 하나에 모두 적재 | 빠른 질의, 대시보드 강함 | 상시 서버 운영, 원본 보존·재처리 경로를 따로 설계 | 로그 분석이 커지면 |
+| **객체 저장소 + Parquet + DuckDB (이 설계)** | 서버 없음, 원본 보존, 엔진 교체 쉬움 | 동시성·원자성은 직접 챙김 | 지금 |
+| 클라우드 웨어하우스 | 운영 거의 없음, 확장 | 비용, 로컬 실습 불가 | 과함 |
+
+## 흔한 실수와 오해
+
+- **bronze 를 "정리된 원본" 으로 만들기** — bronze 에서 필터·변환을 하면 그 실수를 되돌릴 원본이 없다. bronze 는 정말 손대지 않는다.
+- **파티션을 너무 잘게** — `day=/hour=/subject=` 로 쪼개면 파일 하나가 수 KB 가 된다. 파티션은 "백필·삭제 단위" 로만 정하고 나머지는 파일 안 정렬로 해결한다.
+- **CDC 병합을 수신 시각으로 정렬** — 위에서 본 것처럼 오프셋·LSN 같은 원천 순서를 쓴다.
+- **"작으니 품질 검사는 나중에"** — 작은 시스템일수록 아무도 대시보드를 매일 안 보므로 틀린 숫자가 오래 산다. 게이트는 처음부터.
+
+## 스스로 점검
+
+1. gold 발행 중 품질 검사가 실패했다. 사용자가 반쪽 데이터를 보지 않게 하려면? — 새 경로에 쓰고 검사 통과 후 포인터 객체만 교체.
+2. 작은 파일 병합 중 합계 질의가 일시적으로 두 배가 됐다. 원인과 근본 해결은? — 새 파일 쓰기와 옛 파일 삭제 사이의 창. 원자적 커밋(테이블 포맷) 또는 포인터 교체.
+3. 신선도 경보를 24시간이 아니라 26시간으로 거는 이유는? — 하루 주기 작업의 실행 시각 변동 때문에 오탐이 난다.
+4. 이 사이트에서 ClickHouse 를 도입할 신호는? — 여러 사람의 상시 대시보드, 초 단위 로그 분석, DuckDB 변환 시간 급증.
+
 ## 실습 체크리스트
 
 - [ ] 위 질문 표에 우리만의 질문 2개를 추가하고 필요한 원천과 신선도를 적기

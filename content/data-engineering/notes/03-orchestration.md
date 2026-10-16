@@ -155,6 +155,89 @@ export_quiz_stats(day) Redis quiz:stats:*   ─┘                     └─▶
 - `quality_checks` 가 실패하면 `fct_daily_study` 를 발행하지 않는다(서킷 브레이커처럼)
 - 실험 [de-quality-checks](/data-engineering/lab/de-quality-checks) 의 테스트 6종이 그대로 `quality_checks` 작업이 된다
 
+## 심화 — 멱등 쓰기를 엔진별로
+
+"파티션 덮어쓰기" 는 엔진마다 문법과 원자성 보장이 다르다. 같은 생각을 세 곳에서 구현해 보면 차이가 보인다.
+
+```sql
+-- PostgreSQL: 한 트랜잭션 안의 delete + insert. 읽는 쪽은 옛 값 또는 새 값만 본다
+begin;
+delete from fct_daily_sales where day = '2026-10-16';
+insert into fct_daily_sales
+select date_trunc('day', created_at), country, count(*), sum(amount)
+from stg_orders where created_at >= '2026-10-16' and created_at < '2026-10-17'
+group by 1, 2;
+commit;
+```
+
+```sql
+-- ClickHouse: 임시 테이블에 만든 뒤 파티션을 통째로 교체 (교체 자체는 원자적)
+insert into fct_daily_sales_tmp select … where toDate(created_at) = '2026-10-16';
+alter table fct_daily_sales replace partition '2026-10-16' from fct_daily_sales_tmp;
+```
+
+```sql
+-- DuckDB → S3: 객체 저장소에는 원자적 rename 이 없다
+copy (select …) to 's3://lake/gold/daily_sales/day=2026-10-16/part-0.parquet' (format parquet);
+```
+
+마지막 경우가 함정이다. S3 에서 "디렉터리 덮어쓰기" 는 **여러 객체를 지우고 쓰는 일**이라 그 사이에 읽는 쪽이 반쪽 데이터(옛 파일 일부 + 새 파일 일부)를 볼 수 있다. 파일 하나로 덮어쓰면(같은 키 PUT) 객체 단위로는 원자적이라 작은 테이블은 이걸로 충분하다. 파일이 여러 개가 되면 테이블 포맷(Iceberg 의 메타데이터 커밋)이나 "새 경로에 쓰고 포인터만 바꾸기" 가 필요하다 → [07 작은 레이크하우스](/data-engineering/notes/07-tiny-lakehouse-design).
+
+## 심화 — 동시성 손잡이와 백필 계산
+
+| 설정 (Airflow) | 범위 | 막는 것 |
+|---|---|---|
+| `max_active_runs` | DAG 하나의 동시 실행(날짜) 수 | 백필이 한꺼번에 30일치 돌기 |
+| `max_active_tasks` | DAG 하나의 동시 작업 수 | DAG 하나가 워커 독점 |
+| `pool` (슬롯 N개) | 여러 DAG 가 공유하는 자원 | "원천 DB 를 동시에 4개 이하만 때린다" |
+| `priority_weight` | 대기열 순서 | 백필이 매일 작업을 밀어내기 |
+
+백필 시간을 미리 계산해 본다(가정치). 하루 파티션 하나에 4분, 30일 백필, `max_active_runs=4` 면 대략 `30 / 4 × 4분 ≈ 30분`. 하지만 원천 DB 질의가 병렬 4개에서 느려져 작업당 10분이 되면 75분이다. **병렬도를 올리면 총 시간이 줄 것 같지만 공유 자원(원천·웨어하우스) 이 포화되면 오히려 늘어난다.** 그래서 백필은 `pool` 로 원천 접근을 제한하고, 매일 작업보다 낮은 우선순위로 돌린다.
+
+Dagster 에서는 자산에 **검사(asset check)** 를 붙여 "만들어졌다" 와 "믿을 만하다" 를 구분한다.
+
+```python
+@asset_check(asset=fct_daily_sales)
+def has_rows(context) -> AssetCheckResult:
+    n = count_rows("fct_daily_sales", context.partition_key)  # 가상의 헬퍼
+    return AssetCheckResult(passed=n > 0, metadata={"rows": n})
+```
+
+## 모니터링·로그 — 오케스트레이터가 아프면
+
+오케스트레이터 장애는 두 층이다. **작업이 실패**하는 것과, **오케스트레이터 자체가 느려져 작업이 시작조차 안 되는 것**. 후자가 더 조용하고 위험하다.
+
+| 증상 | 볼 메트릭 (Airflow StatsD 이름 예) | 흔한 원인 |
+|---|---|---|
+| 실행이 예정 시각보다 계속 늦게 시작 | `scheduler_heartbeat` 끊김, `dag_processing.total_parse_time` 증가 | DAG 파일 최상단에서 DB·API 호출 → 파싱이 느림 |
+| 작업이 `queued` 에 오래 머묾 | `pool.open_slots.<pool>` = 0, `executor.queued_tasks` | 풀·워커 부족, 센서가 슬롯 점유 |
+| 소요 시간이 매주 조금씩 증가 | `dagrun.duration.success.<dag_id>` 추세 | 데이터 증가, 증분이 사실상 전체 스캔 |
+| 실패 폭증 | `ti_failures` | 원천 스키마 변경, 자격 증명 만료 |
+
+작업 로그는 사람이 읽을 문장보다 **질의할 수 있는 필드**를 남긴다.
+
+```json
+{"msg":"task.done","dag":"daily_sales","task":"build","run_id":"scheduled__2026-10-16T00:00:00+00:00",
+ "interval_start":"2026-10-16T00:00:00Z","rows_out":18342,"duration_ms":41210,"try":1}
+```
+
+`try` 가 2 이상인 작업이 늘면 일시적 장애가 늘고 있다는 신호다. `rows_out` 을 전주 같은 요일과 비교하면 "성공했지만 틀린" 실행을 잡는다. 신선도 경보는 [SLO 번레이트](/sre/notes/03-burn-rate-alerting) 처럼 "몇 번 연속 늦었나" 로 거는 편이 소음이 적다.
+
+## 흔한 실수와 오해
+
+- **`start_date=datetime.now()`** — 매번 파싱할 때 시작일이 바뀌어 스케줄이 영원히 안 돈다. 시작일은 고정값으로.
+- **`catchup` 기본값을 믿고 과거 `start_date` 로 배포** — 버전에 따라 기본값이 다르다(Airflow 2 는 `True`, 3 은 `False`). 켜져 있으면 배포 직후 수백 개 실행이 쏟아진다. 항상 명시한다.
+- **작업 사이 데이터를 XCom 으로 넘김** — XCom 은 메타데이터 DB 에 저장되는 작은 값용이다. 데이터는 객체 저장소에 쓰고 경로만 넘긴다.
+- **재시도 = 안전** — 반쯤 쓰고 실패한 작업을 재시도하면, 덧붙이기 방식에선 앞부분이 두 번 들어간다. 재시도는 멱등 쓰기 위에서만 안전하다.
+- **오케스트레이터에서 무거운 계산** — 오케스트레이터는 지휘자다. 계산은 웨어하우스·DuckDB·Spark 에 맡기고 오케스트레이터는 호출과 상태만.
+
+## 스스로 점검
+
+1. 10월 16일 `@daily` 실행의 `data_interval_end` 와 실제 실행 시각은? — 10-17 00:00, 실행은 그 이후(백필이면 아무 때나).
+2. 같은 작업을 같은 구간으로 두 번 돌렸더니 매출이 두 배가 됐다. 원인과 고치는 방법 두 가지는? — 덧붙이기 쓰기. 같은 트랜잭션 delete+insert, 파티션 교체, merge.
+3. 백필 병렬도를 4 → 16 으로 올렸더니 총 시간이 늘었다. 왜? — 원천·웨어하우스가 포화돼 작업당 시간이 늘었다. 풀로 공유 자원 접근을 제한한다.
+4. 작업은 실패 없이 모두 성공인데 대시보드가 하루 늦다. 무엇을 의심하나? — 스케줄러 지연(파싱 시간, 큐 대기), 센서가 늦게 풀림, 신선도 지표 확인.
+
 ## 실습 체크리스트
 
 - [ ] 지금 쓰는 cron 작업 하나를 골라 "멱등한가?" 를 표의 기준으로 판정하기

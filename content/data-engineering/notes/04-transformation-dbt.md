@@ -196,6 +196,118 @@ where json_extract_string(line, '$.msg') = 'note.view'
 
 `dim_notes` 와 조인하면 "레벨별(기초·중급·심화) 조회 비율" 같은 질문에 답할 수 있다. 테스트는 `relationships(stg_note_views.slug → dim_notes.slug)` — 삭제된 노트를 가리키는 조회가 있는지 잡는다.
 
+## 심화 — 증분 전략을 SQL 로 이해하기
+
+`incremental_strategy` 는 결국 "새 행 묶음을 기존 테이블에 어떻게 넣나" 의 선택이고, dbt 는 이것을 엔진 SQL 로 컴파일한다. 대략 이런 모양이 된다(어댑터마다 세부는 다르다).
+
+| 전략 | 컴파일되는 모양 | 재실행 시 | 주의 |
+|---|---|---|---|
+| `append` | `insert into t select …` | **중복** | 로그처럼 불변·중복 허용일 때만 |
+| `merge` | `merge into t using new on t.k = new.k when matched update … when not matched insert …` | 같음 | `unique_key` 가 정말 유일해야 함 |
+| `delete+insert` | `delete from t where k in (select k from new); insert …` | 같음 | merge 미지원 엔진의 대안 |
+| `insert_overwrite` | 새 행이 속한 **파티션 전체**를 교체 | 같음 | 파티션 안 옛 행이 사라짐 — 파티션 전체를 다시 계산해야 함 |
+| `microbatch` (dbt 1.9+) | 시간 구간별로 쪼개 각각 교체 | 같음 | 모델에 이벤트 시간 열이 필요 |
+
+```sql
+{{ config(
+    materialized='incremental',
+    incremental_strategy='microbatch',
+    event_time='created_at',      -- 이 열로 구간을 나눈다
+    batch_size='day',
+    lookback=3,                   -- 매번 최근 3일치를 다시 계산 (늦게 온 데이터 흡수)
+    begin='2026-01-01'
+) }}
+select order_id, customer_id, amount, created_at from {{ ref('stg_orders') }}
+```
+
+```bash
+# 특정 구간만 다시 (백필)
+dbt run --select fct_orders --event-time-start 2026-09-01 --event-time-end 2026-10-01
+```
+
+microbatch 는 [오케스트레이션 노트](/data-engineering/notes/03-orchestration) 의 "구간 = 파티션, 덮어쓰기로 멱등" 을 dbt 안으로 가져온 것이다. 직접 `is_incremental()` 블록을 쓸 때보다 lookback·백필 실수가 줄어든다.
+
+## 심화 — 실무 설정 몇 가지
+
+```yaml
+# models/sources.yml — 원천 신선도
+sources:
+  - name: app
+    loaded_at_field: _loaded_at
+    freshness:
+      warn_after:  { count: 12, period: hour }
+      error_after: { count: 24, period: hour }
+    tables: [{ name: orders }, { name: customers }]
+```
+
+```yaml
+# models/marts/schema.yml — 심각도와 계약
+models:
+  - name: fct_orders
+    config:
+      contract: { enforced: true }      # 선언한 열·타입과 다르면 빌드 실패
+      on_schema_change: fail            # 기본값 ignore 는 새 열을 조용히 버린다
+    columns:
+      - name: order_id
+        data_type: int
+        tests:
+          - unique
+          - not_null
+      - name: email
+        data_type: varchar
+        tests:
+          - not_null:
+              config: { severity: error, warn_if: ">0", error_if: ">100" }
+```
+
+- `dbt build` 는 run 과 test 를 **DAG 순서로 섞어** 돈다. `stg_orders` 테스트가 실패하면 그 하류 모델은 건너뛴다 — 틀린 데이터가 marts 까지 번지지 않는다. 운영에선 `run` 보다 `build` 가 기본이다.
+- `warn_if`/`error_if` 로 "불량 몇 개까지는 경고" 를 표현한다. 이메일 null 3건에 파이프라인 전체를 세우는 건 과하다.
+- **Slim CI**: PR 에서 바뀐 모델과 그 하류만 돌린다.
+
+```bash
+dbt build --select state:modified+ --defer --state ./prod-artifacts
+```
+
+`--defer` 는 바뀌지 않은 상류를 운영 테이블에서 읽게 해, PR 마다 전체를 다시 만들지 않는다.
+
+## 모니터링 — dbt 실행을 관측하기
+
+dbt 는 실행마다 `target/run_results.json` 과 `target/manifest.json` 을 남긴다. 이것이 관측의 원료다.
+
+```bash
+# 실패·경고만 뽑기
+jq -r '.results[] | select(.status != "success" and .status != "pass")
+       | [.unique_id, .status, .execution_time] | @tsv' target/run_results.json
+
+# 가장 느린 모델 5개
+jq -r '.results | sort_by(-.execution_time) | .[:5][] | [.unique_id, .execution_time] | @tsv' target/run_results.json
+```
+
+| 볼 것 | 어디서 | 의미 |
+|---|---|---|
+| 모델별 실행 시간 추세 | `execution_time` | 증분 모델이 갑자기 느려짐 = lookback 질의가 전체 스캔 |
+| 영향 행 수 | `adapter_response.rows_affected` | 0 이면 원천 문제, 평소의 10배면 중복 |
+| 테스트 실패 수 | `status = fail`, `failures` | 품질 추세 |
+| 원천 신선도 | `dbt source freshness` 결과 | SLA |
+
+이 값들을 실행 뒤 Prometheus Pushgateway 나 로그로 내보내면 [알림 파이프라인](/observability/notes/09-alerting-pipeline) 에 붙는다. "테스트 실패 수가 지난 7일 평균의 3배" 같은 추세 경보가 단일 실패 경보보다 유용하다.
+
+## 흔한 실수와 오해
+
+- **marts 에서 `source()` 를 직접 참조** — staging 을 우회하면 이름·타입 정리가 모델마다 달라진다. 원천은 staging 에서 한 번만 읽는다.
+- **`unique_key` 가 실제로는 유일하지 않음** — merge 가 "여러 행이 매칭" 오류를 내거나(엔진에 따라) 조용히 중복이 남는다. `unique_key` 열에 `unique` 테스트를 반드시 붙인다.
+- **`{{ this }}` 서브쿼리의 비용** — `select max(updated_at) from {{ this }}` 가 큰 테이블에서 전체 스캔이면 증분의 이점이 사라진다. 파티션·정렬 키를 확인한다.
+- **`on_schema_change` 기본값** — 원천에 열이 추가돼도 증분 모델은 모른 척한다. 의도적으로 `append_new_columns` 나 `fail` 을 고른다.
+- **"테스트가 통과했으니 숫자가 맞다"** — 규칙 테스트는 아는 문제만 잡는다. 행 수 급감·분포 변화는 [06 품질](/data-engineering/notes/06-data-quality-lineage-contracts) 의 이상 탐지로.
+- **거대한 테이블에 실수로 `--full-refresh`** — 수 시간짜리 재계산이 돈다. 모델에 `full_refresh: false` 를 걸어 막을 수 있다.
+
+## 스스로 점검
+
+1. `append` 증분 모델을 같은 구간으로 두 번 돌리면? 어떤 전략으로 바꿔야 하나? — 중복. merge, delete+insert, insert_overwrite, microbatch.
+2. `insert_overwrite` 에서 새 행만 SELECT 하면 무슨 일이 생기나? — 그 파티션의 기존 행이 사라진다. 파티션 전체를 다시 계산해야 한다.
+3. `dbt run` 대신 `dbt build` 를 쓰는 이유는? — 테스트 실패 시 하류를 건너뛰어 틀린 데이터의 전파를 막는다.
+4. 증분 모델 실행 시간이 어느 날부터 10배가 됐다. 무엇을 확인하나? — `is_incremental` 필터가 파티션 프루닝되는지, `{{ this }}` 서브쿼리, lookback 창 크기, 원천 데이터 급증.
+
 ## 실습 체크리스트
 
 - [ ] `pip install dbt-duckdb` 로 프로젝트를 만들고 Parquet 파일을 source 로 등록해 staging 모델 하나 만들기

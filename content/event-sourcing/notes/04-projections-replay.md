@@ -110,6 +110,107 @@ pnpm exec tsx scripts/run-code-lab.mts event-sourcing es-projection-rebuild
 # 100000 이벤트 · 20 배치 · 185ms … 증분 1000 이벤트 · 6ms
 ```
 
+## 심화 — 프로젝터를 운영 가능하게
+
+### 체크포인트 테이블과 배치 업서트
+
+```sql
+create table projection_checkpoints (
+  name        text primary key,          -- 'balances', 'balances_v2'
+  position    bigint not null,
+  updated_at  timestamptz not null default now()
+);
+
+-- 배치 하나: 이벤트를 계좌별로 먼저 접은 뒤(앱에서) 한 번에 업서트
+insert into balances (account_id, balance, last_version)
+select * from unnest($1::text[], $2::bigint[], $3::int[])
+on conflict (account_id) do update
+  set balance = balances.balance + excluded.balance,
+      last_version = excluded.last_version
+  where balances.last_version < excluded.last_version;   -- 이미 반영한 버전이면 무시(멱등)
+
+update projection_checkpoints set position = $4, updated_at = now() where name = 'balances';
+```
+
+`where balances.last_version < excluded.last_version` 한 줄이 체크포인트가 어긋났을 때의 두 번째 안전망이다. 같은 배치를 두 번 받아도 잔액이 두 번 더해지지 않는다.
+
+### 한 프로젝션에 프로젝터는 하나만
+
+배포 중 옛 파드와 새 파드가 동시에 같은 프로젝션을 돌리면 같은 배치를 두 번 적용한다. 리더 선출 대신 PostgreSQL 권고 잠금이면 충분하다.
+
+```ts
+const { rows } = await c.query("select pg_try_advisory_lock(hashtext('proj:balances')) as ok");
+if (!rows[0].ok) { log.info({ projection: "balances" }, "다른 인스턴스가 실행 중 — 대기"); return; }
+```
+
+잠금은 연결에 묶이므로, 프로세스가 죽으면 연결이 끊기며 자동으로 풀린다.
+
+### 병렬로 — 스트림 해시 파티션
+
+순서가 필요한 것은 **같은 스트림 안**뿐이다. 스트림을 해시로 나눠 워커 4개가 각자 체크포인트를 가지면 재구축이 대략 그만큼 빨라진다(DB 가 병목이 아닐 때).
+
+```sql
+select … from events
+where global_position > $1 and abs(hashtext(stream_id)) % 4 = $2
+order by global_position limit 5000;
+-- 체크포인트 이름: 'balances#0' … 'balances#3'
+```
+
+대가: 파티션 사이 순서는 보장되지 않는다. "계좌 A → B 이체" 처럼 두 스트림을 함께 보는 읽기 모델은 잠깐 A 만 반영된 상태를 보일 수 있다.
+
+### 독약 이벤트 — 한 건이 전체를 멈출 때
+
+`apply` 가 특정 이벤트에서 계속 예외를 던지면 프로젝터는 그 자리에서 무한 재시도하고 지연이 끝없이 커진다.
+
+| 전략 | 장점 | 단점 |
+|---|---|---|
+| 멈추고 알림 | 읽기 모델이 틀리지 않는다 | 고칠 때까지 지연 증가 |
+| 건너뛰고 `projection_dead_letters` 에 기록 | 나머지는 최신 유지 | 해당 집합의 읽기 모델이 틀린 채 남는다 |
+
+돈·재고처럼 틀리면 안 되는 모델은 **멈춤**, 검색 인덱스처럼 일부 누락이 허용되는 모델은 **건너뛰기**가 보통이다.
+
+## 모니터링 — 지연을 두 가지로 재라
+
+```ts
+const lagSeconds = new Gauge({ name: "projection_lag_seconds", help: "체크포인트 이벤트 이후 경과", labelNames: ["projection"] });
+const lagEvents  = new Gauge({ name: "projection_lag_events",  help: "head − checkpoint",            labelNames: ["projection"] });
+// 주기적으로: head = max(global_position), cp = checkpoint
+lagEvents.set({ projection: "balances" }, head - cp);
+lagSeconds.set({ projection: "balances" }, head === cp ? 0 : (Date.now() - cpEventCreatedAt) / 1000);
+```
+
+`head === cp` 일 때 0 으로 두는 것이 중요하다. 그러지 않으면 밤새 새 이벤트가 없을 때 "지연 8시간" 경보가 울린다.
+
+```
+# PromQL 알림: 5분 이상 5초 넘게 뒤처짐
+max by (projection) (projection_lag_seconds) > 5
+# 진행이 멈췄는지 (지연 이벤트 수가 줄지 않음)
+delta(projection_lag_events[10m]) >= 0 and projection_lag_events > 0
+```
+
+| 그래프 모양 | 의심할 것 |
+|---|---|
+| lag_events 가 직선으로 증가 | 프로젝터 정지 — 독약 이벤트, 잠금 대기, 프로세스 다운 |
+| 배포 직후 큰 봉우리 후 감소 | 재구축 따라잡기 (정상, 미리 공지) |
+| 낮에만 출렁임 | 처리량 부족 → 배치 크기·병렬도 |
+| lag_seconds 만 크고 lag_events 는 작음 | 이벤트가 드문데 하나가 오래 걸림 → 느린 apply |
+
+배치마다 `{projection, from, to, count, ms}` 구조화 로그를 남기면, 지연 경보가 울렸을 때 "어느 위치에서 멈췄는지" 가 로그 한 줄로 나온다. 경보 설계는 [관측성 노트 04](/observability/notes/04-grafana-alerting).
+
+## 흔한 실수와 오해
+
+- **프로젝터 안에서 `now()` 를 쓴다**: 재생할 때마다 결과가 바뀐다. 시간은 이벤트의 `occurred_at` 에서 가져온다.
+- **프로젝터가 다른 읽기 모델을 조회한다**: 그 모델의 진행 위치에 따라 결과가 달라진다. 필요한 값은 이벤트에서 직접 접어 자기 모델에 둔다.
+- **읽기 모델로 쓰기 결정을 내린다**: 프로젝션은 뒤처질 수 있다. "잔액이 충분한가" 는 집합(쓰기 모델)에서 판단한다.
+- **재구축 시간을 모른다**: 장애로 읽기 모델을 날렸을 때 복구 시간(RTO)이 곧 재구축 시간이다. 실험처럼 10만 개 202ms 라면 1억 개는 몇 분 — 숫자로 알고 있어야 한다.
+
+## 스스로 점검
+
+1. 같은 배치가 두 번 적용돼도 결과가 같게 하는 방법 두 가지는? — 체크포인트를 같은 트랜잭션에 저장, 읽기 모델에 `last_version` 을 두고 더 큰 버전만 반영.
+2. 프로젝션 지연 메트릭이 새벽에 계속 올라간다. 정말 장애인가? — 새 이벤트가 없어서 시간 기반 지연이 커지는 착시일 수 있다. head 와 체크포인트가 같으면 0 으로 보고해야 한다.
+3. 프로젝터를 병렬화할 때 무엇을 기준으로 나누나? — 스트림 ID 해시. 스트림 안 순서만 지키면 된다.
+4. 독약 이벤트를 만났을 때 멈출지 건너뛸지는 무엇으로 정하나? — 틀린 읽기 모델의 비용(돈·재고는 멈춤, 검색은 건너뛰고 기록).
+
 ## 실습 체크리스트
 
 - [ ] 실험 es-projection-rebuild 를 돌리고 배치 크기를 500·50,000 으로 바꿨을 때 시간 변화를 예상해 보기
