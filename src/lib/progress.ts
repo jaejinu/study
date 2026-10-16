@@ -37,6 +37,22 @@ export async function getProgress(subject: string): Promise<SubjectProgress> {
   }
 }
 
+/** 첫 화면용: 주제별 읽은 노트 수를 SMEMBERS 한 번으로 (주제마다 getProgress 를 부르면 Redis 왕복이 주제 수 × 3 이 된다) */
+export async function getReadCounts(): Promise<Record<string, number>> {
+  const r = getRedis();
+  try {
+    await ensureConnected(r);
+    const counts: Record<string, number> = {};
+    for (const k of await r.smembers("progress:read")) {
+      const subject = k.slice(0, k.indexOf("/"));
+      counts[subject] = (counts[subject] ?? 0) + 1;
+    }
+    return counts;
+  } catch {
+    return {};
+  }
+}
+
 export async function getNoteChecks(subject: string, slug: string): Promise<number[]> {
   const r = getRedis();
   try {

@@ -3,7 +3,7 @@
 [![CI](https://github.com/jaejinu/study/actions/workflows/ci.yml/badge.svg)](https://github.com/jaejinu/study/actions/workflows/ci.yml)
 
 주제별로 **공부하고 → 정리하고 → 실제로 실험하고 → 웹에서 확인**하는 개인 학습 프로젝트.
-첫 화면(`/`)에서 주제를 고른다. 현재 주제: **Redis**, **Docker**, **Kubernetes**, **Kafka**, **PostgreSQL**, **관측성**, **GitHub Actions**, **Nginx**, **Linux 네트워크**, **AI 시스템 설계**, **시스템 아키텍처**, **장애 실험실(chaos)**.
+첫 화면(`/`)에서 주제를 고른다. 현재 주제: **Redis**, **Docker**, **Kubernetes**, **Kafka**, **PostgreSQL**, **관측성**, **GitHub Actions**, **Nginx**, **Linux 네트워크**, **AI 시스템 설계**, **시스템 아키텍처**, **장애 실험실(chaos)**, **보안**, **IaC · Terraform**, **분산 시스템 이론**, **성능 공학**.
 
 ## 구성
 
@@ -40,6 +40,7 @@ pnpm k8s:up         # k8s/ 매니페스트로 Redis + 앱 배포, pnpm k8s:port 
 pnpm kafka:up       # Kafka KRaft 브로커 (19092)
 pnpm pg:up          # PostgreSQL 16 + pgvector (15432, study/study, wal_level=logical), pnpm pg:cli
 pnpm cdc:up         # Kafka + PostgreSQL + Kafka Connect/Debezium (18083) — CDC/Outbox 실험
+brew install trivy opentofu k6   # 보안(이미지 스캔) · IaC(plan/apply) · 성능(부하 테스트) 실험 도구
 pnpm obs:up         # Prometheus(19090) + redis_exporter + Loki/Alloy(로그) + Tempo(트레이스) + Grafana(13000)
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:14318 pnpm dev   # 앱 트레이스를 Tempo 로
 pnpm k8s:metrics    # kind 에 metrics-server (HPA 실험), pnpm k8s:monitoring 으로 kube-prometheus-stack
@@ -91,7 +92,7 @@ Redis 가 없다면 `brew install redis`. 다른 주소를 쓰려면 `.env.local
 6. 이미지 최적화와 보안
 7. 운영 명령과 디버깅
 
-### Redis (19) · Docker (10) · Kubernetes (14) · Kafka (8) · PostgreSQL (8) · 관측성 (9) · GitHub Actions (4) · Nginx (4) · Linux 네트워크 (6) · AI 시스템 설계 (6) · 시스템 아키텍처 (7) · 장애 실험실 (2)
+### Redis (19) · Docker (10) · Kubernetes (14) · Kafka (8) · PostgreSQL (8) · 관측성 (9) · GitHub Actions (4) · Nginx (4) · Linux 네트워크 (6) · AI 시스템 설계 (6) · 시스템 아키텍처 (7) · 장애 실험실 (2) · 보안 (8) · IaC (8) · 분산 시스템 (8) · 성능 공학 (8)
 
 총 93편. 각 주제는 기초 → 중급 → **심화**(내부 구조·운영·튜닝·보안) 순서이고, 심화 노트는 실제 명령·설정·코드 예시와 다이어그램을 포함한다.
 

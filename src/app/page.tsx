@@ -2,7 +2,7 @@ import Link from "next/link";
 import { experiments } from "@/experiments";
 import { listNotes } from "@/lib/notes";
 import { listLab } from "@/lab/registry";
-import { getProgress } from "@/lib/progress";
+import { getReadCounts } from "@/lib/progress";
 import { subjects } from "@/lib/subjects";
 import { loadQuiz } from "@/lib/quiz";
 import { cardKey, getQuizStats, getWeeklyStudy, summarizeReview } from "@/lib/study";
@@ -11,20 +11,20 @@ import { WeeklyStudyCard } from "@/components/WeeklyStudy";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [counts, weekly] = await Promise.all([
+  const [counts, weekly, readCounts] = await Promise.all([
     Promise.all(
       subjects.map(async (s) => {
-        const [notes, progress, quiz, stats] = await Promise.all([listNotes(s.id), getProgress(s.id), loadQuiz(s.id), getQuizStats(s.id)]);
+        const [notes, quiz, stats] = await Promise.all([listNotes(s.id), loadQuiz(s.id), getQuizStats(s.id)]);
         return {
           id: s.id,
           notes: notes.length,
-          read: progress.read.length,
           experiments: s.id === "redis" ? experiments.length : listLab(s.id).length,
           due: summarizeReview(quiz.map((c) => cardKey(c.note, c.q)), stats).due,
         };
       }),
     ),
     getWeeklyStudy(),
+    getReadCounts(),
   ]);
   const dueBySubject = Object.fromEntries(counts.map((c) => [c.id, c.due]));
   return (
@@ -53,7 +53,7 @@ export default async function Home() {
               <div className="mt-5 flex gap-4 border-t border-border pt-4 text-xs text-muted">
                 <span>
                   노트 <span className="font-mono text-foreground">{c.notes}</span>편
-                  {c.read > 0 && <span className="text-ok"> · {c.read}편 읽음</span>}
+                  {(readCounts[c.id] ?? 0) > 0 && <span className="text-ok"> · {readCounts[c.id]}편 읽음</span>}
                 </span>
                 {c.experiments > 0 && (
                   <span>

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="360" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">복제 토폴로지 세 가지</text>
+  <!-- single leader -->
+  <rect x="20" y="55" width="290" height="280" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="165" y="80" text-anchor="middle" fill="#3b82f6" font-weight="600">단일 리더</text>
+  <circle cx="165" cy="130" r="26" fill="#0d1117" stroke="#3b82f6" stroke-width="2"/>
+  <text x="165" y="135" text-anchor="middle" fill="#e6edf3">리더</text>
+  <circle cx="90" cy="230" r="22" fill="#0d1117" stroke="#30363d"/><text x="90" y="235" text-anchor="middle" fill="#8b949e" font-size="12">팔로워</text>
+  <circle cx="240" cy="230" r="22" fill="#0d1117" stroke="#30363d"/><text x="240" y="235" text-anchor="middle" fill="#8b949e" font-size="12">팔로워</text>
+  <line x1="150" y1="153" x2="100" y2="208" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="180" y1="153" x2="230" y2="208" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="165" y="95" text-anchor="middle" fill="#8b949e" font-size="11">쓰기 → 리더만</text>
+  <text x="165" y="285" text-anchor="middle" fill="#8b949e" font-size="11">읽기: 어디서든(stale 가능)</text>
+  <text x="165" y="305" text-anchor="middle" fill="#8b949e" font-size="11">Redis · PostgreSQL · Kafka 파티션</text>
+  <text x="165" y="322" text-anchor="middle" fill="#f59e0b" font-size="11">문제: 페일오버·복제 지연</text>
+  <!-- multi leader -->
+  <rect x="335" y="55" width="290" height="280" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="480" y="80" text-anchor="middle" fill="#8b5cf6" font-weight="600">다중 리더</text>
+  <circle cx="410" cy="150" r="26" fill="#0d1117" stroke="#8b5cf6" stroke-width="2"/><text x="410" y="155" text-anchor="middle" fill="#e6edf3" font-size="12">리더 DC1</text>
+  <circle cx="550" cy="150" r="26" fill="#0d1117" stroke="#8b5cf6" stroke-width="2"/><text x="550" y="155" text-anchor="middle" fill="#e6edf3" font-size="12">리더 DC2</text>
+  <line x1="438" y1="142" x2="522" y2="142" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="522" y1="158" x2="438" y2="158" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <circle cx="410" cy="240" r="20" fill="#0d1117" stroke="#30363d"/><text x="410" y="244" text-anchor="middle" fill="#8b949e" font-size="11">팔로워</text>
+  <circle cx="550" cy="240" r="20" fill="#0d1117" stroke="#30363d"/><text x="550" y="244" text-anchor="middle" fill="#8b949e" font-size="11">팔로워</text>
+  <line x1="410" y1="176" x2="410" y2="218" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="550" y1="176" x2="550" y2="218" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="480" y="95" text-anchor="middle" fill="#8b949e" font-size="11">리전마다 쓰기, 리더끼리 비동기 교환</text>
+  <text x="480" y="285" text-anchor="middle" fill="#8b949e" font-size="11">멀티 리전 · 오프라인 앱 · 협업 편집</text>
+  <text x="480" y="305" text-anchor="middle" fill="#8b949e" font-size="11">MySQL 그룹 복제 · Redis Active-Active</text>
+  <text x="480" y="322" text-anchor="middle" fill="#f59e0b" font-size="11">문제: 동시 쓰기 충돌 → LWW/CRDT</text>
+  <!-- leaderless -->
+  <rect x="650" y="55" width="290" height="280" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="795" y="80" text-anchor="middle" fill="#22c55e" font-weight="600">무리더 (Dynamo)</text>
+  <rect x="760" y="100" width="70" height="28" rx="6" fill="#0d1117" stroke="#22c55e"/><text x="795" y="119" text-anchor="middle" fill="#e6edf3" font-size="12">클라이언트</text>
+  <circle cx="710" cy="220" r="22" fill="#0d1117" stroke="#30363d"/><text x="710" y="225" text-anchor="middle" fill="#8b949e" font-size="12">N1</text>
+  <circle cx="795" cy="220" r="22" fill="#0d1117" stroke="#30363d"/><text x="795" y="225" text-anchor="middle" fill="#8b949e" font-size="12">N2</text>
+  <circle cx="880" cy="220" r="22" fill="#0d1117" stroke="#30363d"/><text x="880" y="225" text-anchor="middle" fill="#8b949e" font-size="12">N3</text>
+  <line x1="780" y1="130" x2="720" y2="196" stroke="#22c55e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="795" y1="130" x2="795" y2="196" stroke="#22c55e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="810" y1="130" x2="870" y2="196" stroke="#22c55e" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#a)"/>
+  <text x="795" y="160" text-anchor="middle" fill="#8b949e" font-size="11">W=2 확인이면 성공</text>
+  <text x="795" y="270" text-anchor="middle" fill="#8b949e" font-size="11">읽기도 R 개에 동시 질의, 버전 큰 값</text>
+  <text x="795" y="290" text-anchor="middle" fill="#8b949e" font-size="11">W + R &gt; N 이면 최신 값 하나는 포함</text>
+  <text x="795" y="308" text-anchor="middle" fill="#8b949e" font-size="11">Cassandra · Riak · DynamoDB</text>
+  <text x="795" y="325" text-anchor="middle" fill="#f59e0b" font-size="11">문제: 선형화 아님, 읽기 복구·힌트 필요</text>
+</svg>

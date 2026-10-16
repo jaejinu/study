@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="420" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">Raft — 리더 선출(왼쪽)과 로그 복제·커밋(오른쪽)</text>
+  <!-- left: election -->
+  <rect x="20" y="55" width="420" height="340" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="230" y="80" text-anchor="middle" fill="#3b82f6" font-weight="600">텀 t → t+1 선출</text>
+  <rect x="40" y="100" width="110" height="60" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="95" y="124" text-anchor="middle" fill="#e6edf3">Follower</text>
+  <text x="95" y="144" text-anchor="middle" fill="#8b949e" font-size="11">하트비트 기다림</text>
+  <rect x="185" y="100" width="110" height="60" rx="8" fill="#0d1117" stroke="#f59e0b"/>
+  <text x="240" y="124" text-anchor="middle" fill="#f59e0b">Candidate</text>
+  <text x="240" y="144" text-anchor="middle" fill="#8b949e" font-size="11">term++, 자기 투표</text>
+  <rect x="330" y="100" width="100" height="60" rx="8" fill="#0d1117" stroke="#22c55e"/>
+  <text x="380" y="124" text-anchor="middle" fill="#22c55e">Leader</text>
+  <text x="380" y="144" text-anchor="middle" fill="#8b949e" font-size="11">하트비트 송신</text>
+  <line x1="150" y1="130" x2="183" y2="130" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="166" y="120" text-anchor="middle" fill="#8b949e" font-size="10">timeout</text>
+  <line x1="295" y1="130" x2="328" y2="130" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="311" y="120" text-anchor="middle" fill="#8b949e" font-size="10">과반</text>
+  <path d="M380,160 C380,200 95,200 95,160" fill="none" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#a)"/>
+  <text x="240" y="196" text-anchor="middle" fill="#8b949e" font-size="10">더 큰 term 발견 → 즉시 Follower</text>
+  <text x="40" y="235" fill="#e6edf3" font-weight="600" font-size="12">투표 조건 (안전성의 핵심)</text>
+  <text x="40" y="256" fill="#8b949e" font-size="12">1. 요청 term ≥ 내 term</text>
+  <text x="40" y="276" fill="#8b949e" font-size="12">2. 이 term 에 아직 투표 안 함 (votedFor 는 디스크에)</text>
+  <text x="40" y="296" fill="#8b949e" font-size="12">3. 후보 로그가 내 로그 이상으로 최신 (lastTerm, lastIndex)</text>
+  <text x="40" y="326" fill="#f59e0b" font-size="12">→ 커밋된 항목을 가진 노드만 리더가 될 수 있다</text>
+  <text x="40" y="350" fill="#8b949e" font-size="11">election timeout 150~300ms 무작위 → 분할 투표 회피</text>
+  <text x="40" y="370" fill="#8b949e" font-size="11">(FLP 는 결정적 알고리즘에만 적용됨)</text>
+  <!-- right: log replication -->
+  <rect x="465" y="55" width="475" height="340" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="702" y="80" text-anchor="middle" fill="#22c55e" font-weight="600">로그 복제 — 같은 (index, term) 이면 이전도 전부 같다</text>
+  <g font-size="11">
+    <text x="480" y="112" fill="#e6edf3">Leader</text>
+    <text x="480" y="162" fill="#e6edf3">F1</text>
+    <text x="480" y="212" fill="#e6edf3">F2</text>
+    <text x="480" y="262" fill="#e6edf3">F3 (느림)</text>
+  </g>
+  <!-- cells: index 1..7 -->
+  <g>
+    <!-- header -->
+    <g font-size="10" fill="#8b949e">
+      <text x="560" y="95" text-anchor="middle">1</text><text x="610" y="95" text-anchor="middle">2</text><text x="660" y="95" text-anchor="middle">3</text><text x="710" y="95" text-anchor="middle">4</text><text x="760" y="95" text-anchor="middle">5</text><text x="810" y="95" text-anchor="middle">6</text><text x="860" y="95" text-anchor="middle">7</text>
+    </g>
+    <!-- leader row -->
+    <rect x="540" y="100" width="40" height="22" fill="#1f6feb" stroke="#30363d"/><rect x="590" y="100" width="40" height="22" fill="#1f6feb" stroke="#30363d"/><rect x="640" y="100" width="40" height="22" fill="#1f6feb" stroke="#30363d"/><rect x="690" y="100" width="40" height="22" fill="#6e40c9" stroke="#30363d"/><rect x="740" y="100" width="40" height="22" fill="#6e40c9" stroke="#30363d"/><rect x="790" y="100" width="40" height="22" fill="#6e40c9" stroke="#30363d"/><rect x="840" y="100" width="40" height="22" fill="#6e40c9" stroke="#30363d"/>
+    <!-- F1 -->
+    <rect x="540" y="150" width="40" height="22" fill="#1f6feb" stroke="#30363d"/><rect x="590" y="150" width="40" height="22" fill="#1f6feb" stroke="#30363d"/><rect x="640" y="150" width="40" height="22" fill="#1f6feb" stroke="#30363d"/><rect x="690" y="150" width="40" height="22" fill="#6e40c9" stroke="#30363d"/><rect x="740" y="150" width="40" height="22" fill="#6e40c9" stroke="#30363d"/><rect x="790" y="150" width="40" height="22" fill="#6e40c9" stroke="#30363d"/>
+    <!-- F2 -->
+    <rect x="540" y="200" width="40" height="22" fill="#1f6feb" stroke="#30363d"/><rect x="590" y="200" width="40" height="22" fill="#1f6feb" stroke="#30363d"/><rect x="640" y="200" width="40" height="22" fill="#1f6feb" stroke="#30363d"/><rect x="690" y="200" width="40" height="22" fill="#6e40c9" stroke="#30363d"/><rect x="740" y="200" width="40" height="22" fill="#6e40c9" stroke="#30363d"/>
+    <!-- F3 -->
+    <rect x="540" y="250" width="40" height="22" fill="#1f6feb" stroke="#30363d"/><rect x="590" y="250" width="40" height="22" fill="#1f6feb" stroke="#30363d"/>
+    <g font-size="10" fill="#e6edf3">
+      <text x="560" y="115" text-anchor="middle">t1</text><text x="610" y="115" text-anchor="middle">t1</text><text x="660" y="115" text-anchor="middle">t1</text><text x="710" y="115" text-anchor="middle">t2</text><text x="760" y="115" text-anchor="middle">t2</text><text x="810" y="115" text-anchor="middle">t2</text><text x="860" y="115" text-anchor="middle">t2</text>
+    </g>
+    <!-- commit line -->
+    <line x1="785" y1="92" x2="785" y2="280" stroke="#22c55e" stroke-width="2" stroke-dasharray="5 3"/>
+    <text x="785" y="298" text-anchor="middle" fill="#22c55e" font-size="11">commitIndex = 5 (과반 3/4 가 보유)</text>
+  </g>
+  <text x="480" y="330" fill="#8b949e" font-size="12">• AppendEntries(prevIndex, prevTerm): 팔로워는 그 위치가 일치할 때만 수락 → 불일치면 리더가 nextIndex 를 줄여 재전송</text>
+  <text x="480" y="350" fill="#8b949e" font-size="12">• 리더는 자기 로그를 덮어쓰지 않는다. 팔로워를 리더에 맞춘다</text>
+  <text x="480" y="370" fill="#8b949e" font-size="12">• 현재 term 항목이 과반에 복제될 때만 commitIndex 전진 (이전 term 은 간접 커밋, Figure 8)</text>
+  <text x="480" y="388" fill="#f59e0b" font-size="11">etcd · Consul · Kafka KRaft · TiKV · CockroachDB</text>
+</svg>
