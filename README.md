@@ -9,11 +9,13 @@
 
 | 메뉴 | 경로 | 설명 |
 |---|---|---|
-| 주제 선택 | `/` | 주제 카드 (노트·실험 수, 읽은 편수) |
+| 주제 선택 | `/` | 주제 카드 (노트·실험 수, 읽은 편수, 복습 기한 지난 카드), **이번 주 학습** 카드(7일 학습 시간 막대·주제별·복습 대기) |
 | 대시보드 | `/<subject>` | 환경 점검 카드(Redis INFO, Docker, kind 클러스터, Kafka 브로커, PostgreSQL, Prometheus/Grafana, gh run list, Nginx, 내 네트워크), 학습 로드맵·진행률 |
 | 학습 노트 | `/<subject>/notes` | `content/<subject>/notes/*.md` 를 목차 순으로 렌더링. 노트별 TOC |
 | 실험실 | `/<subject>/lab` | Redis 명령 / docker / kubectl / kafkajs / pg / 네트워크 도구 / Redis 벡터 검색을 실제로 실행하고 단계·응답·시간·검증(✓/✗)을 표시 |
-| 검색 · 용어집 · 퀴즈 · 그래프 | `/search`, `/glossary`, `/<subject>/quiz`, `/graph` | 전문 검색, 용어 128개, 플래시카드 150+장, 노트↔실험 링크 그래프 |
+| 검색 · 용어집 · 퀴즈 · 그래프 | `/search`, `/glossary`, `/<subject>/quiz`, `/graph` | 전문 검색, 용어집, 플래시카드(**간격 반복**: 맞고 틀림을 라이트너 상자 1·3·7·14일로 기록, 틀린·기한 지난 카드부터), 노트↔실험 링크 그래프 |
+| AI 도우미 | `/assistant` | 노트 검색·실험 제안·진행률 조회 툴을 가진 Claude 스트리밍 도우미 (ANTHROPIC_API_KEY 필요) |
+| 학습 기록 | 노트 하단 | 탭이 보이고 활동 중일 때 30초마다 학습 시간 기록 (`study:time:*`, `study:day:*`), 노트별·주제별·주간 합계 |
 | 모니터 · 벤치마크 | `/redis/monitor`, `/redis/benchmark` | INFO·SLOWLOG 실시간, redis-benchmark 차트 |
 | 콘솔 | `/redis/console` | 브라우저 redis-cli. 위험 명령(FLUSHALL, CONFIG SET 등)은 차단 |
 | 키 브라우저 | `/redis/keys` | SCAN 으로 키 순회, 타입·인코딩·TTL·메모리, 값 미리보기, 삭제 |
