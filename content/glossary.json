@@ -2008,5 +2008,281 @@
     "subject": "testing",
     "def": "테스트 묶음을 여러 잡으로 나눠 병렬 실행하는 것(--shard=1/4). 지난 실행 시간 기준으로 균등 분배해야 가장 느린 샤드가 병목이 되지 않는다.",
     "link": "/testing/notes/07-mutation-testing-cost"
+  },
+  {
+    "term": "FinOps",
+    "subject": "finops",
+    "def": "클라우드 비용을 엔지니어링·재무·경영이 함께 관리하는 운영 방식. 가시성(누가 얼마), 책임(비용을 만드는 팀이 본다), 단위 경제(요청당 비용)를 원칙으로 Inform·Optimize·Operate 를 반복한다.",
+    "link": "/finops/notes/01-cloud-cost-model"
+  },
+  {
+    "term": "Savings Plan / 약정 할인",
+    "subject": "finops",
+    "def": "1·3년간 시간당 지출액이나 인스턴스 사용을 약속하고 20~60% 할인을 받는 구매 방식. 사용량의 바닥(최소 사용량의 70~80%)만 사다리식으로 약정한다.",
+    "link": "/finops/notes/01-cloud-cost-model"
+  },
+  {
+    "term": "스팟 인스턴스",
+    "subject": "finops",
+    "def": "남는 용량을 60~90% 싸게 쓰되 짧은 예고로 회수되는 인스턴스. 무상태 워커·배치·CI 처럼 언제 죽어도 되는 작업에 쓴다.",
+    "link": "/finops/notes/01-cloud-cost-model"
+  },
+  {
+    "term": "egress 비용",
+    "subject": "finops",
+    "def": "클라우드 밖이나 다른 AZ·리전으로 나가는 데이터 전송 요금. 들어오는 것은 대개 무료라 다중 AZ 복제·NAT 처리량·인터넷 응답이 숨은 비용이 된다.",
+    "link": "/finops/notes/01-cloud-cost-model"
+  },
+  {
+    "term": "단위 비용 (unit cost)",
+    "subject": "finops",
+    "def": "비용 ÷ 비즈니스 단위(요청 1,000건, 활성 사용자, 주문, 해결된 질문). 총액 대신 효율을 판단하는 FinOps 의 기본 화폐.",
+    "link": "/finops/notes/02-unit-economics"
+  },
+  {
+    "term": "쇼백 / 차지백",
+    "subject": "finops",
+    "def": "쇼백은 팀별 비용을 보여 주기만 하는 것, 차지백은 팀 예산에서 실제로 차감하는 것. 배분 기준에 대한 합의가 차지백의 전제다.",
+    "link": "/finops/notes/02-unit-economics"
+  },
+  {
+    "term": "비용 배분 (allocation)",
+    "subject": "finops",
+    "def": "공유 자원 비용을 팀·서비스에 나누는 것. Kubernetes 에선 컨테이너별 max(requests, 실사용) × 단가가 표준(OpenCost)이다.",
+    "link": "/finops/notes/03-kubernetes-cost"
+  },
+  {
+    "term": "유휴 비용 (idle cost)",
+    "subject": "finops",
+    "def": "노드 용량 중 어떤 워크로드에도 배분되지 않은 비용. 빈 패킹·노드 축소·requests 재조정으로 줄인다.",
+    "link": "/finops/notes/03-kubernetes-cost"
+  },
+  {
+    "term": "OpenCost",
+    "subject": "finops",
+    "def": "Prometheus 의 kube-state-metrics·cAdvisor 메트릭에 클라우드(또는 커스텀) 단가를 곱해 네임스페이스·레이블·컨트롤러별 비용을 계산하는 CNCF 프로젝트.",
+    "link": "/finops/notes/03-kubernetes-cost"
+  },
+  {
+    "term": "빈 패킹 (bin packing)",
+    "subject": "finops",
+    "def": "Pod 를 적은 수의 노드에 꽉 채워 배치해 조각난 빈자리와 노드 수를 줄이는 것. 스케줄러 MostAllocated 전략, Karpenter consolidation.",
+    "link": "/finops/notes/03-kubernetes-cost"
+  },
+  {
+    "term": "활성 시계열 (active series)",
+    "subject": "finops",
+    "def": "최근 샘플을 받은 메트릭 이름 + 레이블 조합의 수. Prometheus 메모리와 관리형 메트릭 서비스 요금을 정하며, 트래픽이 아니라 카디널리티에 비례한다.",
+    "link": "/finops/notes/04-data-observability-cost"
+  },
+  {
+    "term": "metric_relabel_configs drop",
+    "subject": "finops",
+    "def": "Prometheus 가 스크레이프한 시계열을 저장 전에 버리는 규칙. 쓰지 않는 메트릭·고카디널리티 레이블을 가장 싸게 줄이는 방법이다.",
+    "link": "/finops/notes/04-data-observability-cost"
+  },
+  {
+    "term": "tail 샘플링",
+    "subject": "finops",
+    "def": "트레이스가 끝난 뒤 collector 가 에러·느린 요청은 전부, 정상 요청은 일부만 남기는 샘플링. head 샘플링보다 조사력이 좋지만 버퍼링 비용이 든다.",
+    "link": "/finops/notes/04-data-observability-cost"
+  },
+  {
+    "term": "모델 라우팅",
+    "subject": "finops",
+    "def": "질문 난이도에 따라 소형·대형 LLM 으로 나눠 보내는 것. 실험 토큰 기준 80/20 라우팅이 전부 대형 대비 요청당 비용을 약 23% 로 줄였다.",
+    "link": "/finops/notes/05-llm-token-cost"
+  },
+  {
+    "term": "캐시된 입력 토큰",
+    "subject": "finops",
+    "def": "같은 프리픽스를 반복해 보낼 때 제공자가 KV 계산을 재사용하고 보통 90% 할인해 청구하는 입력 토큰. 가변값을 프롬프트 맨 뒤에 둬야 적중한다.",
+    "link": "/finops/notes/05-llm-token-cost"
+  },
+  {
+    "term": "비용 이상 탐지",
+    "subject": "finops",
+    "def": "같은 요일·시간대의 기준선 대비 비용이 몇 배 늘었는지로 예산보다 먼저 문제를 잡는 것. 알림 본문에 서비스·리소스별 기여도를 함께 준다.",
+    "link": "/finops/notes/06-governance"
+  },
+  {
+    "term": "태깅 정책",
+    "subject": "finops",
+    "def": "team·service·env·owner 같은 필수 태그를 모든 리소스에 붙이는 규칙. IaC default_tags, plan 정책 검사, 어드미션 컨트롤러로 만드는 경로에서 강제한다.",
+    "link": "/finops/notes/06-governance"
+  },
+  {
+    "term": "약정 커버리지 / 활용률",
+    "subject": "finops",
+    "def": "커버리지는 약정이 덮는 사용량 비율(70~85% 목표), 활용률은 구매한 약정 중 실제로 쓴 비율(95% 이상 목표). 낮은 활용률은 과다 약정 신호다.",
+    "link": "/finops/notes/06-governance"
+  },
+  {
+    "term": "copy-on-write (COW)",
+    "subject": "os-internals",
+    "def": "fork 때 페이지 테이블만 복사하고 페이지는 둘 중 하나가 쓸 때 복사하는 기법. Redis BGSAVE 중 쓰기가 많으면 바뀐 페이지만큼 메모리가 늘어난다.",
+    "link": "/os-internals/notes/01-processes-threads-context-switch"
+  },
+  {
+    "term": "컨텍스트 스위치",
+    "subject": "os-internals",
+    "def": "CPU 가 실행 중인 task 의 레지스터·스택·주소 공간을 저장하고 다른 task 로 바꾸는 일. 직접 비용은 1µs 미만이지만 캐시·TLB 식음과 CPU 간 깨우기가 더 비싸다.",
+    "link": "/os-internals/notes/01-processes-threads-context-switch"
+  },
+  {
+    "term": "voluntary / nonvoluntary 스위치",
+    "subject": "os-internals",
+    "def": "voluntary 는 I/O·epoll·락 대기로 스스로 잠든 횟수, nonvoluntary 는 타임슬라이스 소진·CPU 경쟁으로 빼앗긴 횟수. /proc/<pid>/status 에 있다.",
+    "link": "/os-internals/notes/01-processes-threads-context-switch"
+  },
+  {
+    "term": "페이지 폴트 (minor / major)",
+    "subject": "os-internals",
+    "def": "가상 주소에 매핑이 없어 커널이 개입하는 사건. minor 는 메모리에 있는 페이지를 매핑만 하고, major 는 디스크에서 읽어 와야 한다.",
+    "link": "/os-internals/notes/02-virtual-memory-page-cache"
+  },
+  {
+    "term": "TLB",
+    "subject": "os-internals",
+    "def": "가상→물리 주소 변환 결과를 담는 CPU 캐시. 미스가 나면 다단계 페이지 테이블을 탐색해야 해 큰 메모리 랜덤 접근에서 비용이 커진다. huge page 가 완화한다.",
+    "link": "/os-internals/notes/02-virtual-memory-page-cache"
+  },
+  {
+    "term": "페이지 캐시",
+    "subject": "os-internals",
+    "def": "리눅스가 남는 메모리로 파일 내용을 캐시하는 것. 읽기는 적중 시 복사만 하고, 쓰기는 Dirty 로 쌓였다가 플러셔·fsync 로 디스크에 내려간다.",
+    "link": "/os-internals/notes/02-virtual-memory-page-cache"
+  },
+  {
+    "term": "Dirty 페이지",
+    "subject": "os-internals",
+    "def": "페이지 캐시에 쓰였지만 아직 디스크에 없는 페이지. dirty_expire(30초)·dirty_ratio 에 따라 내려가며, 전원이 나가면 사라진다.",
+    "link": "/os-internals/notes/02-virtual-memory-page-cache"
+  },
+  {
+    "term": "OOM 킬러",
+    "subject": "os-internals",
+    "def": "메모리를 회수할 수 없을 때 oom_score 가 가장 높은 프로세스를 SIGKILL 하는 커널 장치. cgroup 의 memory.max 를 넘으면 그 cgroup 안에서만 돈다(exit 137, OOMKilled).",
+    "link": "/os-internals/notes/02-virtual-memory-page-cache"
+  },
+  {
+    "term": "overcommit",
+    "subject": "os-internals",
+    "def": "실제보다 많은 메모리 할당을 허용하는 커널 정책(vm.overcommit_memory). Redis 는 fork 가 거부되지 않도록 1 을 권한다.",
+    "link": "/os-internals/notes/02-virtual-memory-page-cache"
+  },
+  {
+    "term": "EEVDF / CFS",
+    "subject": "os-internals",
+    "def": "리눅스의 공정 스케줄러. CFS 는 vruntime 이 가장 작은 task 를 고르고, 6.6 부터의 EEVDF 는 자격이 있는 task 중 가상 마감이 가장 이른 것을 골라 지연 민감 task 를 돕는다.",
+    "link": "/os-internals/notes/03-scheduler-cgroups"
+  },
+  {
+    "term": "cgroup v2",
+    "subject": "os-internals",
+    "def": "프로세스 묶음에 CPU·메모리·I/O·PID 수 규칙을 거는 커널의 단일 계층 트리(/sys/fs/cgroup). 컨테이너와 Kubernetes 의 자원 제한은 이 파일들을 쓰는 것이다.",
+    "link": "/os-internals/notes/03-scheduler-cgroups"
+  },
+  {
+    "term": "CFS 대역폭 제어 (CPU 스로틀링)",
+    "subject": "os-internals",
+    "def": "cpu.max 의 쿼터를 주기 안에 다 쓰면 주기 끝까지 멈추는 동작. Kubernetes CPU limits 의 실체이며 평균 사용률이 낮아도 p99 를 튀게 한다.",
+    "link": "/os-internals/notes/03-scheduler-cgroups"
+  },
+  {
+    "term": "PSI (Pressure Stall Information)",
+    "subject": "os-internals",
+    "def": "/proc/pressure/{cpu,memory,io} 에 CPU·메모리·I/O 를 기다리며 막힌 시간 비율을 보여 주는 지표. 코어 수와 무관하게 해석되어 로드 애버리지보다 정확하다.",
+    "link": "/os-internals/notes/03-scheduler-cgroups"
+  },
+  {
+    "term": "inode",
+    "subject": "os-internals",
+    "def": "파일의 실체(크기·권한·소유자·데이터 블록 위치)를 담는 구조. 이름은 디렉터리 항목(dentry)에 있어서, 열린 파일은 rm 후에도 공간을 차지한다.",
+    "link": "/os-internals/notes/04-filesystem-io"
+  },
+  {
+    "term": "O_DIRECT",
+    "subject": "os-internals",
+    "def": "페이지 캐시를 거치지 않고 장치와 직접 읽고 쓰는 플래그. 이중 캐싱을 피하지만 readahead·쓰기 지연이 없어 정렬·버퍼링을 앱이 맡아야 한다. 실험에서 4KiB 읽기가 캐시보다 33배 느렸다.",
+    "link": "/os-internals/notes/04-filesystem-io"
+  },
+  {
+    "term": "readahead",
+    "subject": "os-internals",
+    "def": "순차 읽기를 감지하면 커널이 앞부분을 큰 덩어리(기본 128KiB)로 미리 읽어 두는 기능. 작은 블록 순차 읽기를 빠르게 만든다.",
+    "link": "/os-internals/notes/04-filesystem-io"
+  },
+  {
+    "term": "overlayfs",
+    "subject": "os-internals",
+    "def": "읽기 전용 이미지 레이어 위에 컨테이너 쓰기 레이어를 겹치는 파일시스템. 이미지 파일을 처음 수정하면 파일 전체를 복사(copy-up)한다.",
+    "link": "/os-internals/notes/04-filesystem-io"
+  },
+  {
+    "term": "vDSO",
+    "subject": "os-internals",
+    "def": "커널이 모든 프로세스 주소 공간에 매핑해 두는 작은 코드·데이터. clock_gettime 같은 호출을 모드 전환 없이 수십 ns 에 처리한다.",
+    "link": "/os-internals/notes/05-syscalls-interrupts"
+  },
+  {
+    "term": "softirq / NAPI",
+    "subject": "os-internals",
+    "def": "하드 인터럽트가 미뤄 둔 무거운 일(패킷 처리 등)을 나중에 몰아 하는 커널 메커니즘. NAPI 는 패킷이 쏟아지면 폴링으로 전환해 인터럽트 폭풍을 피한다.",
+    "link": "/os-internals/notes/05-syscalls-interrupts"
+  },
+  {
+    "term": "epoll (레벨·엣지 트리거)",
+    "subject": "os-internals",
+    "def": "관심 fd 를 커널에 한 번 등록하고 준비된 것만 돌려받는 리눅스 I/O 다중화. 엣지 트리거는 EAGAIN 까지 다 읽어야 한다. Redis·Nginx·Node 이벤트 루프의 기반이다.",
+    "link": "/os-internals/notes/05-syscalls-interrupts"
+  },
+  {
+    "term": "io_uring",
+    "subject": "os-internals",
+    "def": "유저와 커널이 공유하는 제출·완료 링으로 시스템 콜 없이 I/O 를 주고받는 인터페이스(5.1+). 성능은 높지만 보안 이력 때문에 많은 환경에서 막혀 있다.",
+    "link": "/os-internals/notes/05-syscalls-interrupts"
+  },
+  {
+    "term": "NUMA",
+    "subject": "os-internals",
+    "def": "멀티 소켓 서버에서 소켓마다 자기 메모리를 가져 원격 메모리 접근이 1.5~2배 느린 구조. numactl 로 프로세스를 노드에 묶는다.",
+    "link": "/os-internals/notes/06-numa-hugepages-tuning"
+  },
+  {
+    "term": "THP (Transparent Huge Pages)",
+    "subject": "os-internals",
+    "def": "커널이 4KiB 페이지를 자동으로 2MiB 로 합치는 기능. JVM 힙엔 이득일 수 있지만 Redis 는 fork 중 메모리 폭증·지연 스파이크 때문에 disable-thp 로 자기만 끈다.",
+    "link": "/os-internals/notes/06-numa-hugepages-tuning"
+  },
+  {
+    "term": "capability",
+    "subject": "os-internals",
+    "def": "root 권한을 약 40개로 쪼갠 리눅스 권한 단위(CAP_NET_ADMIN, CAP_SYS_ADMIN …). 컨테이너 기본은 14개, --privileged 는 41개 전부다.",
+    "link": "/os-internals/notes/07-containers-are-processes"
+  },
+  {
+    "term": "seccomp",
+    "subject": "os-internals",
+    "def": "BPF 필터로 프로세스가 부를 수 있는 시스템 콜을 커널 안에서 거르는 기능. Docker 기본 프로파일은 mount·bpf·kexec 등 40~50개를 막는다.",
+    "link": "/os-internals/notes/07-containers-are-processes"
+  },
+  {
+    "term": "no_new_privs",
+    "subject": "os-internals",
+    "def": "프로세스와 자식이 setuid 바이너리로 권한을 다시 얻지 못하게 하는 플래그. Kubernetes allowPrivilegeEscalation: false 가 켠다.",
+    "link": "/os-internals/notes/07-containers-are-processes"
+  },
+  {
+    "term": "특권 컨테이너 (--privileged)",
+    "subject": "os-internals",
+    "def": "capability 전부, seccomp·AppArmor 해제, 모든 장치 접근을 주는 컨테이너. 사실상 호스트 root 라 운영에선 노드 에이전트 DaemonSet 에만 허용한다.",
+    "link": "/os-internals/notes/07-containers-are-processes"
+  },
+  {
+    "term": "nsenter",
+    "subject": "os-internals",
+    "def": "이미 있는 프로세스의 네임스페이스(네트워크·PID·마운트 등)에 들어가 명령을 실행하는 도구. 셸 없는 컨테이너를 호스트 도구로 디버깅할 때 쓴다.",
+    "link": "/os-internals/notes/07-containers-are-processes"
   }
 ]

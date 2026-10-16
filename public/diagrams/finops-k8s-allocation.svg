@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="430" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">Kubernetes 비용 배분 — 노드 비용을 예약·사용·유휴로 쪼갠다</text>
+
+  <!-- node box -->
+  <text x="40" y="70" fill="#8b949e">노드 1대 = 4 vCPU (청구 단위)</text>
+  <rect x="40" y="80" width="880" height="70" rx="8" fill="#161b22" stroke="#30363d"/>
+  <!-- pod A: request 1.2, usage 0.3 -->
+  <rect x="42" y="82" width="264" height="66" fill="#1f6feb" fill-opacity="0.25" stroke="#58a6ff"/>
+  <rect x="42" y="82" width="66" height="66" fill="#58a6ff" fill-opacity="0.75"/>
+  <text x="174" y="110" text-anchor="middle" fill="#e6edf3" font-weight="600">Pod A  요청 1.2</text>
+  <text x="174" y="130" text-anchor="middle" fill="#c9d1d9" font-size="12">실사용 0.3 (진한 부분)</text>
+  <!-- pod B: request 0.5, usage 0.9 (burst over) -->
+  <rect x="306" y="82" width="110" height="66" fill="#238636" fill-opacity="0.25" stroke="#3fb950"/>
+  <rect x="306" y="82" width="198" height="66" fill="#3fb950" fill-opacity="0.55"/>
+  <text x="405" y="110" text-anchor="middle" fill="#e6edf3" font-weight="600">Pod B  요청 0.5</text>
+  <text x="405" y="130" text-anchor="middle" fill="#c9d1d9" font-size="12">실사용 0.9 (요청 초과)</text>
+  <!-- pod C besteffort: request 0, usage 0.2 -->
+  <rect x="504" y="82" width="44" height="66" fill="#d29922" fill-opacity="0.6"/>
+  <text x="526" y="170" text-anchor="middle" fill="#d29922" font-size="12">Pod C</text>
+  <text x="526" y="186" text-anchor="middle" fill="#d29922" font-size="11">BestEffort</text>
+  <text x="526" y="201" text-anchor="middle" fill="#d29922" font-size="11">요청 0 · 사용 0.2</text>
+  <!-- idle -->
+  <text x="734" y="120" text-anchor="middle" fill="#8b949e">유휴 1.7 vCPU — 아무에게도 배분 안 됨</text>
+
+  <!-- formula -->
+  <rect x="40" y="225" width="560" height="180" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="60" y="252" fill="#e6edf3" font-weight="600">배분 = 컨테이너마다 max(요청, 실사용)  (OpenCost 방식)</text>
+  <text x="60" y="280" fill="#58a6ff">Pod A: max(1.2, 0.3) = 1.2  → 예약했으니 안 써도 내 비용</text>
+  <text x="60" y="304" fill="#3fb950">Pod B: max(0.5, 0.9) = 0.9  → 더 썼으면 그만큼도 내 비용</text>
+  <text x="60" y="328" fill="#d29922">Pod C: max(0, 0.2)   = 0.2  → 보이긴 하지만 스케줄러는 0 으로 본다</text>
+  <text x="60" y="356" fill="#e6edf3">배분 합 2.3 + 유휴 1.7 = 노드 4.0  (요청 합 1.7, 실사용 합 1.4)</text>
+  <text x="60" y="384" fill="#8b949e" font-size="12">효율(A) = 0.3 / 1.2 = 25%   → requests 재조정 후보</text>
+
+  <!-- actions -->
+  <rect x="620" y="225" width="300" height="180" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="640" y="252" fill="#e6edf3" font-weight="600">줄이는 방법</text>
+  <text x="640" y="280" fill="#c9d1d9">• 요청 맞추기: p95 사용 × 1.2~1.5</text>
+  <text x="640" y="304" fill="#c9d1d9">• 빈 패킹: 유휴를 모아 노드 수 감소</text>
+  <text x="640" y="328" fill="#c9d1d9">• BestEffort 금지: 모든 Pod 에 요청</text>
+  <text x="640" y="352" fill="#c9d1d9">• 유휴는 플랫폼 비용으로 따로 표시</text>
+  <text x="640" y="384" fill="#8b949e" font-size="12">실험: finops-k8s-requests-vs-usage</text>
+</svg>

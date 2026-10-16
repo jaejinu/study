@@ -1,1 +1,177 @@
-[]
+[
+  {
+    "note": "01-processes-threads-context-switch",
+    "q": "리눅스 커널에서 프로세스와 스레드의 차이는?",
+    "a": "둘 다 task(task_struct)이고 clone() 플래그로 무엇을 공유하는지가 다르다. 스레드는 주소 공간·fd 표·시그널 핸들러를 공유하고, 스케줄링은 각자 독립이다."
+  },
+  {
+    "note": "01-processes-threads-context-switch",
+    "q": "fork 가 큰 프로세스에서도 빠른 이유와, Redis BGSAVE 중 메모리가 늘어나는 이유는?",
+    "a": "copy-on-write 로 페이지 테이블만 복사하고 페이지는 쓸 때 복사한다. BGSAVE 중 부모가 쓰기를 받으면 바뀐 페이지만큼 복사본이 생겨 메모리가 늘어난다."
+  },
+  {
+    "note": "01-processes-threads-context-switch",
+    "q": "voluntary 와 nonvoluntary 컨텍스트 스위치가 각각 말해 주는 것은?",
+    "a": "voluntary 는 스스로 잠듦(I/O·epoll·락 대기), nonvoluntary 는 빼앗김(타임슬라이스 소진, CPU 경쟁·스로틀). 지연 조사 때 nonvoluntary 증가가 CPU 부족 신호다."
+  },
+  {
+    "note": "01-processes-threads-context-switch",
+    "q": "실험에서 파이프 왕복이 CPU 고정 시 1.4µs, 자유일 때 16.5µs 로 12배 차이 난 이유는?",
+    "a": "다른 CPU 의 task 를 깨우려면 IPI, 유휴 상태 탈출, 캐시 이동 비용이 든다. 순수 스위치 비용보다 CPU 간 깨우기가 훨씬 비싸다."
+  },
+  {
+    "note": "01-processes-threads-context-switch",
+    "q": "컨테이너의 PID 1 이 특별한 두 가지 이유는?",
+    "a": "핸들러를 등록하지 않으면 SIGTERM 을 무시하고(docker stop 이 10초 뒤 SIGKILL), 고아 프로세스를 wait 해 줘야 좀비가 쌓이지 않는다. --init(tini)이나 exec 로 해결한다."
+  },
+  {
+    "note": "02-virtual-memory-page-cache",
+    "q": "minor 페이지 폴트와 major 페이지 폴트의 차이는?",
+    "a": "minor 는 페이지가 메모리에 있지만 이 프로세스 표에 없어 매핑만 하면 되는 경우(µs), major 는 디스크에서 읽어 와야 하는 경우(수십 µs~ms)."
+  },
+  {
+    "note": "02-virtual-memory-page-cache",
+    "q": "free 의 free 가 작아도 걱정하지 않아도 되는 이유는?",
+    "a": "남는 메모리를 페이지 캐시로 쓰기 때문이다. 깨끗한 캐시는 즉시 버릴 수 있어 available 이 실제로 줄 수 있는 양이다."
+  },
+  {
+    "note": "02-virtual-memory-page-cache",
+    "q": "write() 가 성공했는데 전원이 나가면 데이터가 사라질 수 있는 이유는?",
+    "a": "write 는 페이지 캐시에 쓰고 Dirty 로 표시한 뒤 반환한다. 디스크에는 플러셔가 나중에 내리거나 fsync 가 내릴 때까지 없다. 실험에서 256MiB 쓰기 직후 Dirty 가 256MiB 였다."
+  },
+  {
+    "note": "02-virtual-memory-page-cache",
+    "q": "kubectl top 의 메모리(working set)가 실제 힙보다 크게 보이는 이유는?",
+    "a": "working set 은 cgroup 사용량에서 비활성 파일 캐시만 뺀 값이라 활성 페이지 캐시가 섞인다. 파일을 많이 읽는 컨테이너는 실제 힙보다 크게 보인다."
+  },
+  {
+    "note": "02-virtual-memory-page-cache",
+    "q": "Redis 가 vm.overcommit_memory=1 을 권하는 이유는?",
+    "a": "overcommit 0 이면 큰 Redis 가 BGSAVE 로 fork 할 때 커널이 자식도 같은 양을 쓸 수 있다고 보고 fork 를 거부할 수 있다. 실제로는 COW 로 바뀐 페이지만큼만 더 쓴다."
+  },
+  {
+    "note": "03-scheduler-cgroups",
+    "q": "CFS 의 vruntime 이 대화형·I/O 위주 task 의 응답성을 높이는 원리는?",
+    "a": "오래 잠든 task 는 vruntime 이 적게 늘어 실행 대기열에서 가장 작은 쪽이 되므로 깨어나면 곧바로 실행된다."
+  },
+  {
+    "note": "03-scheduler-cgroups",
+    "q": "cpu.weight(requests)와 cpu.max(limits)의 차이는?",
+    "a": "weight 는 경쟁할 때의 몫 비율이라 CPU 가 남으면 제한하지 않고 스로틀하지 않는다. max 는 주기마다 쿼터를 다 쓰면 남아 있어도 주기 끝까지 멈춘다."
+  },
+  {
+    "note": "03-scheduler-cgroups",
+    "q": "평균 CPU 사용률이 낮은데 CPU limit 때문에 p99 가 튀는 이유는?",
+    "a": "순간적으로 쿼터(예: 100ms 중 50ms)를 넘는 요청은 나머지를 다음 주기까지 기다린다. CPU 60ms 짜리 요청이 110ms 에 끝나는 식이다. 멀티스레드 앱은 쿼터를 더 빨리 태운다."
+  },
+  {
+    "note": "03-scheduler-cgroups",
+    "q": "memory.max 와 memory.high 의 차이는?",
+    "a": "max 를 넘으면 회수 후 OOM 킬러가 프로세스를 죽인다(exit 137). high 를 넘으면 죽이지 않고 할당마다 회수를 강제해 느리게 만든다."
+  },
+  {
+    "note": "03-scheduler-cgroups",
+    "q": "실험에서 --cpus=0.5 컨테이너의 cpu.stat 은 어땠나?",
+    "a": "5초 동안 51주기 중 51주기 스로틀, 실제 CPU 사용 2.5초(50%), 스로틀로 기다린 시간 2.6초. cpu.max 는 50000 100000."
+  },
+  {
+    "note": "04-filesystem-io",
+    "q": "rm 했는데 디스크 공간이 줄지 않는 이유와 확인 방법은?",
+    "a": "rm 은 이름(링크)만 지우고, 프로세스가 열고 있으면 inode 와 데이터가 남는다. lsof +L1 이나 /proc/<pid>/fd 의 (deleted) 로 찾고 프로세스가 파일을 닫게 한다."
+  },
+  {
+    "note": "04-filesystem-io",
+    "q": "ext4 의 data=ordered 가 보장하는 것과 보장하지 않는 것은?",
+    "a": "크래시 후 파일시스템 메타데이터가 일관되고 새 메타데이터가 쓰레기 데이터를 가리키지 않는다. 애플리케이션 데이터가 디스크에 있다는 보장은 아니며 그건 fsync 의 일이다."
+  },
+  {
+    "note": "04-filesystem-io",
+    "q": "설정 파일을 원자적으로 교체하는 패턴은?",
+    "a": "임시 파일에 쓰고 fsync → rename 으로 교체 → 디렉터리 fsync. 디렉터리 fsync 를 빠뜨리면 크래시 후 rename 이 사라질 수 있다."
+  },
+  {
+    "note": "04-filesystem-io",
+    "q": "4KiB O_DIRECT 읽기가 버퍼드 첫 읽기보다 20배 이상 느렸던 이유는?",
+    "a": "O_DIRECT 는 캐시도 readahead 도 없어 4KiB 마다 장치까지 왕복(요청당 28µs)한다. 버퍼드 읽기는 readahead 가 128KiB 씩 미리 읽어 둔다."
+  },
+  {
+    "note": "04-filesystem-io",
+    "q": "SSD 에서 iostat 의 %util 100% 가 포화를 뜻하지 않을 수 있는 이유는?",
+    "a": "%util 은 장치가 하나라도 요청을 처리 중인 시간 비율이다. 병렬 큐를 가진 SSD·NVMe 는 100% 여도 더 많은 요청을 동시에 처리할 여유가 있다. await 와 aqu-sz 를 함께 본다."
+  },
+  {
+    "note": "05-syscalls-interrupts",
+    "q": "시스템 콜 한 번은 싼데 왜 줄여야 하나?",
+    "a": "한 번은 수십~수백 ns 지만 초당 수십만 번이면 CPU 의 상당 부분이 된다. 버퍼링, writev, 파이프라인, sendfile, io_uring 으로 횟수를 줄인다."
+  },
+  {
+    "note": "05-syscalls-interrupts",
+    "q": "vDSO 가 하는 일은?",
+    "a": "clock_gettime 같은 자주 쓰는 호출을 커널이 프로세스 주소 공간에 매핑한 코드·데이터로 처리해 모드 전환 없이 수십 ns 에 끝낸다."
+  },
+  {
+    "note": "05-syscalls-interrupts",
+    "q": "select/poll 대비 epoll 이 연결이 많을 때 유리한 이유는?",
+    "a": "관심 목록을 커널에 한 번 등록하고 준비된 fd 만 돌려받아 비용이 준비된 수에 비례한다. select/poll 은 매 호출 전체 fd 를 넘기고 검사한다."
+  },
+  {
+    "note": "05-syscalls-interrupts",
+    "q": "엣지 트리거 epoll 에서 반드시 지켜야 할 규칙은?",
+    "a": "상태가 바뀔 때 한 번만 알리므로 EAGAIN 이 날 때까지 데이터를 다 읽어야 한다. 남기면 다시 알림이 오지 않아 영원히 깨어나지 않는다."
+  },
+  {
+    "note": "05-syscalls-interrupts",
+    "q": "strace 를 운영 서버에 오래 붙이면 안 되는 이유는?",
+    "a": "ptrace 로 매 시스템 콜마다 프로세스를 멈춰 처리량이 수 배~수십 배 떨어진다. eBPF(bpftrace, syscount)는 커널 안에서 집계해 오버헤드가 매우 낮다."
+  },
+  {
+    "note": "06-numa-hugepages-tuning",
+    "q": "NUMA 에서 원격 메모리 접근이 느린 이유와 대처는?",
+    "a": "다른 소켓의 메모리는 소켓 간 링크를 지나야 해 1.5~2배 느리다. 큰 프로세스를 numactl 로 한 노드에 묶거나 노드 수만큼 인스턴스를 나눈다."
+  },
+  {
+    "note": "06-numa-hugepages-tuning",
+    "q": "huge page 가 성능을 높이는 원리는?",
+    "a": "TLB 한 칸이 2MiB(또는 1GiB)를 덮어 TLB 미스와 페이지 테이블 탐색이 줄어든다. 큰 메모리를 랜덤 접근하는 DB·JVM 힙에 효과가 있다."
+  },
+  {
+    "note": "06-numa-hugepages-tuning",
+    "q": "Redis 가 THP 를 싫어하는 이유와 최근 버전의 해결은?",
+    "a": "fork 후 1바이트 쓰기에도 2MiB 페이지가 통째로 복사돼 메모리와 지연이 늘고, 압축 대기로 할당 지연이 생긴다. 최근 Redis 는 disable-thp yes 로 자기 프로세스만 THP 를 끈다(이 VM 에서 THP_enabled 0 확인)."
+  },
+  {
+    "note": "06-numa-hugepages-tuning",
+    "q": "커널 튜닝의 올바른 절차는?",
+    "a": "증상을 수치로 → 원인 가설을 관측으로 확인 → 한 번에 하나만 바꾸고 같은 부하로 재측정 → 왜 바꿨는지 기록. 블로그의 sysctl 목록 복사는 금물이다."
+  },
+  {
+    "note": "06-numa-hugepages-tuning",
+    "q": "컨테이너 안에서 sysctl 을 바꿀 때 주의할 점은?",
+    "a": "대부분 호스트 커널 전체의 값이다(일부 net.* 은 네임스페이스로 분리). Kubernetes 는 안전한 sysctl 만 Pod 단위로 허용하고 나머지는 노드 설정으로 한다."
+  },
+  {
+    "note": "07-containers-are-processes",
+    "q": "'컨테이너' 를 커널 기능으로 풀어 쓰면?",
+    "a": "프로세스 + 네임스페이스(보이는 것) + cgroup(쓸 수 있는 양) + overlayfs(파일) + capability(루트의 권한 조각) + seccomp(허용 시스템 콜) + LSM."
+  },
+  {
+    "note": "07-containers-are-processes",
+    "q": "CapEff 비트마스크로 본 일반 컨테이너, study-redis, 특권 컨테이너의 차이는?",
+    "a": "일반 root 컨테이너 0xa80425fb(14개), study-redis 의 redis-server(uid 999)는 0, --privileged 는 0x1ffffffffff(41개 전부)."
+  },
+  {
+    "note": "07-containers-are-processes",
+    "q": "seccomp 와 no_new_privs 는 각각 무엇을 막나?",
+    "a": "seccomp 는 허용 목록 밖의 시스템 콜(mount, bpf, kexec 등)을 커널 안에서 거부한다. no_new_privs 는 setuid 바이너리로 권한을 다시 얻는 것을 막는다(allowPrivilegeEscalation: false)."
+  },
+  {
+    "note": "07-containers-are-processes",
+    "q": "이 사이트의 OS·eBPF 실험이 --privileged 와 --pid=host 를 쓰는 이유와 운영에서의 원칙은?",
+    "a": "drop_caches 쓰기, perf_event_open, bpf() 와 다른 컨테이너의 /proc 접근이 필요해서다. 특권 컨테이너는 사실상 호스트 root 라 운영에선 꼭 필요한 노드 에이전트 DaemonSet 에만 허용한다."
+  },
+  {
+    "note": "07-containers-are-processes",
+    "q": "gVisor·Kata/Firecracker 가 일반 컨테이너보다 강한 격리를 주는 이유는?",
+    "a": "일반 컨테이너는 커널을 공유해 커널 취약점 하나가 경계를 무너뜨린다. gVisor 는 유저 공간 커널로 시스템 콜을 가로채고, Kata/Firecracker 는 컨테이너마다 경량 VM(자기 커널)을 둔다."
+  }
+]
