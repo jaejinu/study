@@ -4,7 +4,7 @@ order: 8
 level: 중급
 summary: Cache-Aside, Write-Through, Write-Behind 비교와 stampede·stale·불일치 문제의 해법
 tags: [캐시, cache-aside, stampede, 무효화, TTL]
-experiments: [cache-aside, expire-ttl]
+experiments: [cache-aside, cache-stampede, expire-ttl]
 ---
 
 ## Cache-Aside (Lazy Loading)

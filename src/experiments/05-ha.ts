@@ -60,9 +60,25 @@ redis-cli -p 6381 WAIT 2 1000           # 2 (레플리카 2개가 ACK)
 redis-cli -p 6383 ROLE`,
   requires: requiresHa,
   async run({ rec, k, newClient }) {
-    const master = await newClient("master:6381", { port: HA.master });
-    const r1 = await newClient("replica:6382", { port: HA.replicas[0] });
-    const r2 = await newClient("replica:6383", { port: HA.replicas[1] });
+    // failover 실험 뒤에는 마스터가 바뀌어 있을 수 있으므로 ROLE 로 찾는다
+    const ports = [HA.master, ...HA.replicas];
+    const roles = await Promise.all(
+      ports.map(async (port) => {
+        const c = createRedis({ port, host: "127.0.0.1" });
+        try {
+          await ensureConnected(c);
+          return ((await c.role()) as unknown[])[0] as string;
+        } finally {
+          c.disconnect();
+        }
+      }),
+    );
+    const masterPort = ports[roles.indexOf("master")];
+    const replicaPorts = ports.filter((p) => p !== masterPort);
+    rec.note(`현재 마스터 ${masterPort}, 레플리카 ${replicaPorts.join(", ")}`);
+    const master = await newClient(`master:${masterPort}`, { port: masterPort });
+    const r1 = await newClient(`replica:${replicaPorts[0]}`, { port: replicaPorts[0] });
+    const r2 = await newClient(`replica:${replicaPorts[1]}`, { port: replicaPorts[1] });
 
     const info = parseInfo(await master.info("replication"));
     rec.check("마스터에 레플리카 2개 연결", info.role === "master" && info.connected_slaves === "2", `role=${info.role} connected_slaves=${info.connected_slaves}`);
@@ -86,7 +102,7 @@ redis-cli -p 6383 ROLE`,
     rec.check("레플리카 2개가 ACK", acked === 2, acked);
 
     const role = (await r2.role()) as unknown[];
-    rec.check("ROLE 은 slave + 마스터 주소", role[0] === "slave" && role[2] === HA.master, role.slice(0, 3));
+    rec.check("ROLE 은 slave + 마스터 주소", role[0] === "slave" && role[2] === masterPort, role.slice(0, 3));
     const rinfo = parseInfo(await r1.info("replication"));
     rec.note(`레플리카 상태: master_link_status=${rinfo.master_link_status}, offset=${rinfo.slave_repl_offset}`);
     await master.del(k("greeting"), k("counter"));

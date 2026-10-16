@@ -4,7 +4,7 @@ order: 7
 level: 중급
 summary: 세 가지 메시징 방식의 전달 보장 차이, 컨슈머 그룹과 PEL, 언제 무엇을 쓸지
 tags: [PubSub, Stream, 큐, 컨슈머그룹, XREADGROUP]
-experiments: [list-queue, pubsub, streams]
+experiments: [list-queue, pubsub, streams, keyspace-notifications]
 ---
 
 ## 비교표

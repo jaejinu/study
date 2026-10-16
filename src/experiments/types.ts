@@ -2,7 +2,7 @@ import type Redis from "ioredis";
 import type { RedisOptions } from "ioredis";
 import type { Recorder, Step } from "@/lib/trace";
 
-export type Category = "자료구조" | "원자성·동시성" | "메시징" | "패턴·활용" | "내부 동작" | "고가용성";
+export type Category = "자료구조" | "원자성·동시성" | "메시징" | "패턴·활용" | "내부 동작" | "고가용성" | "모듈 (Redis 8)";
 
 export interface RunContext {
   /** 기록되는(wrapped) 기본 클라이언트 */

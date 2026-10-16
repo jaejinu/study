@@ -4,7 +4,7 @@ order: 3
 level: 기초
 summary: TTL 동작 원리, 만료 키 삭제 방식, maxmemory 와 축출 정책(LRU/LFU)
 tags: [TTL, 만료, maxmemory, eviction, LRU, LFU]
-experiments: [expire-ttl]
+experiments: [expire-ttl, keyspace-notifications]
 ---
 
 ## TTL 설정하기

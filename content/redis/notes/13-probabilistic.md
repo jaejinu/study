@@ -4,7 +4,7 @@ order: 13
 level: 심화
 summary: 정확도를 조금 포기하고 메모리를 극적으로 줄이는 구조들, 각각의 오차와 용도
 tags: [HyperLogLog, Bitmap, Bloom, 카디널리티, 근사]
-experiments: [hyperloglog, bitmap-dau]
+experiments: [hyperloglog, bitmap-dau, bloom-filter]
 ---
 
 ## 왜 필요한가

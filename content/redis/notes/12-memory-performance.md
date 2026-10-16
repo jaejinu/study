@@ -91,6 +91,8 @@ SCAN 0 MATCH user:* COUNT 1000
 
 ## 벤치마크
 
+이 사이트의 **벤치마크** 페이지(`/redis/benchmark`)가 아래 명령을 파이프라인 유무로 두 번 실행해 차트로 보여주고, **모니터** 페이지(`/redis/monitor`)가 INFO·SLOWLOG 를 2초마다 읽어 ops/sec 추이를 그린다.
+
 ```
 redis-benchmark -q -n 100000 -t set,get,incr,lpush,zadd -P 16
 # -P 16 : 파이프라인 16

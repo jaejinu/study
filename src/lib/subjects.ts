@@ -35,6 +35,8 @@ export const subjects: Subject[] = [
       { href: "/redis/lab", label: "실험실", icon: "⚗", desc: "실제 Redis 로 동작 확인" },
       { href: "/redis/console", label: "콘솔", icon: "›_", desc: "redis-cli 처럼 명령 실행" },
       { href: "/redis/keys", label: "키 브라우저", icon: "⌘", desc: "저장된 키와 값 살펴보기" },
+      { href: "/redis/monitor", label: "모니터", icon: "∿", desc: "INFO · SLOWLOG 실시간" },
+      { href: "/redis/benchmark", label: "벤치마크", icon: "▮", desc: "redis-benchmark 차트" },
       { href: "/redis/tests", label: "테스트", icon: "✓", desc: "vitest 결과 리포트" },
     ],
     setup: [
