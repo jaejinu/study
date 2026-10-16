@@ -79,6 +79,8 @@ CDN (정적, 페이지 캐시 60s)
 
 계산: 1만 rps 중 CDN 70% 흡수 → 3천 rps 앱 → Redis 95% 히트 → DB 150 rps. 레플리카 2대면 여유.
 
+> 더 깊이: [캐시 계층 설계](/architecture/notes/10-cache-layers-cdn) · [멀티테넌시](/architecture/notes/08-multitenancy-saas)
+
 ## 실습 체크리스트
 
 - [ ] stampede 실험으로 락이 DB 호출을 1/50 로 줄이는 것 확인

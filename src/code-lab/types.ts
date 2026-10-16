@@ -1,6 +1,6 @@
 import type { Recorder, Step } from "@/lib/trace";
 
-export type CodeSubject = "kafka" | "postgres" | "ai-systems" | "chaos" | "observability" | "search" | "db-internals" | "api-design" | "messaging" | "mlops" | "testing" | "distributed-systems";
+export type CodeSubject = "kafka" | "postgres" | "ai-systems" | "chaos" | "observability" | "opensearch" | "db-internals" | "api-design" | "messaging" | "mlops" | "testing" | "distributed-systems";
 
 export interface CodeCtx {
   rec: Recorder;

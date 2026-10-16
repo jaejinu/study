@@ -1126,5 +1126,311 @@
     "subject": "iac",
     "def": "2023 년 Terraform 라이선스 변경 후 Linux Foundation 이 만든 호환 포크. state 클라이언트 측 암호화 등 독자 기능. 이 프로젝트 실험은 tofu 를 쓴다.",
     "link": "/iac/notes/01-why-iac"
+  },
+  {
+    "term": "서킷 브레이커",
+    "subject": "chaos",
+    "def": "연속 실패나 실패율이 임계를 넘으면 open 으로 전환해 의존성 호출을 즉시 거부(fail-fast)하고, 일정 시간 뒤 half-open 시험 호출 1회로 복구를 감지해 closed 로 돌아가는 상태 머신.",
+    "link": "/chaos/notes/03-resilience-patterns-verified"
+  },
+  {
+    "term": "재시도 폭풍 (retry storm)",
+    "subject": "chaos",
+    "def": "의존성 장애 중 모든 클라이언트가 즉시 재시도해 요청이 N×재시도 배로 불어나 복구 중인 시스템을 다시 눕히는 현상. 지수 백오프+지터와 재시도 예산으로 막는다.",
+    "link": "/chaos/notes/03-resilience-patterns-verified"
+  },
+  {
+    "term": "재시도 예산 (retry budget)",
+    "subject": "chaos",
+    "def": "재시도가 전체 요청의 일정 비율(예: 10%)을 넘으면 재시도를 멈추는 규칙. 의존성이 진짜 죽었을 때 폭풍을 막는 마지막 안전장치.",
+    "link": "/chaos/notes/03-resilience-patterns-verified"
+  },
+  {
+    "term": "벌크헤드 (bulkhead)",
+    "subject": "chaos",
+    "def": "커넥션 풀·동시성·프로세스를 의존성이나 트래픽 종류별로 나눠 한 의존성 장애가 전체 자원을 잠그지 못하게 하는 격리. 가득 차면 기다리지 않고 거부한다.",
+    "link": "/chaos/notes/03-resilience-patterns-verified"
+  },
+  {
+    "term": "게임데이 (game day)",
+    "subject": "chaos",
+    "def": "정상 상태·가설·폭발 반경·중단 조건을 정하고 장애를 일부러 주입해 가설을 검증하는 정기 행사. 가설이 틀리면 장애 전에 약점을 찾은 것이라 성공이다.",
+    "link": "/chaos/notes/04-gameday-and-automation"
+  },
+  {
+    "term": "OIDC (GitHub Actions)",
+    "subject": "github-actions",
+    "def": "잡 실행 시 GitHub 가 발급한 짧은 서명 JWT 를 클라우드가 검증하고, 클레임(repo·ref·environment)이 신뢰 정책과 맞으면 임시 자격 증명을 주는 방식. 장기 액세스 키를 저장하지 않는다.",
+    "link": "/github-actions/notes/05-runners-and-security"
+  },
+  {
+    "term": "pull_request_target",
+    "subject": "github-actions",
+    "def": "베이스 브랜치 컨텍스트(시크릿·쓰기 토큰)로 실행되는 PR 이벤트. PR 의 코드를 체크아웃해 실행하면 포크의 코드가 시크릿을 들고 돈다 — 가장 흔한 CI 침해 경로.",
+    "link": "/github-actions/notes/05-runners-and-security"
+  },
+  {
+    "term": "ARC (Actions Runner Controller)",
+    "subject": "github-actions",
+    "def": "Kubernetes 위에서 잡마다 러너 Pod 를 띄우고 끝나면 지우는 GitHub Actions 오토스케일 러너 컨트롤러.",
+    "link": "/github-actions/notes/05-runners-and-security"
+  },
+  {
+    "term": "캐시 restore-keys",
+    "subject": "github-actions",
+    "def": "actions/cache 에서 key 가 정확히 일치하지 않을 때 접두사로 가장 최근 캐시를 복원하는 대체 키. 락파일이 바뀐 PR 도 이전 캐시 위에 차분만 받는다.",
+    "link": "/github-actions/notes/06-ci-performance"
+  },
+  {
+    "term": "노이지 네이버 (noisy neighbor)",
+    "subject": "architecture",
+    "def": "공유 자원을 쓰는 한 테넌트의 과도한 사용이 다른 테넌트의 성능을 떨어뜨리는 문제. 테넌트별 레이트리밋·쿼터·큐 분리·셀 아키텍처로 막는다.",
+    "link": "/architecture/notes/08-multitenancy-saas"
+  },
+  {
+    "term": "셀 아키텍처 (cell-based)",
+    "subject": "architecture",
+    "def": "앱·DB·캐시 한 벌(셀)에 테넌트 묶음을 배정해 장애·배포 실수의 폭발 반경을 셀 크기로 제한하는 구조.",
+    "link": "/architecture/notes/08-multitenancy-saas"
+  },
+  {
+    "term": "이중 기입 원장 (double-entry ledger)",
+    "subject": "architecture",
+    "def": "모든 거래를 두 계정 이상에 반대 방향 같은 금액으로 기록해 거래별 합이 0 이 되게 하는 append-only 장부. 잔액은 분개의 합으로 구하는 파생값.",
+    "link": "/architecture/notes/09-payments-ledger-consistency"
+  },
+  {
+    "term": "멱등 키 (idempotency key)",
+    "subject": "architecture",
+    "def": "클라이언트가 요청마다 만드는 고유 키. 서버는 같은 키의 재요청을 처리하지 않고 첫 결과를 돌려준다. 원자적 선점과 요청 해시 비교가 핵심.",
+    "link": "/architecture/notes/09-payments-ledger-consistency"
+  },
+  {
+    "term": "대사 (reconciliation)",
+    "subject": "architecture",
+    "def": "우리 원장과 외부(PG·은행) 정산 기록을 주문번호로 대조해 누락·불일치를 찾아 해소하는 정기 작업. 결제 정합성의 최종 안전망.",
+    "link": "/architecture/notes/09-payments-ledger-consistency"
+  },
+  {
+    "term": "stale-while-revalidate",
+    "subject": "architecture",
+    "def": "캐시 만료 후 지정 시간 동안 낡은 응답을 즉시 주면서 백그라운드로 원본에 갱신을 요청하는 Cache-Control 지시자. 사용자 지연을 없앤다.",
+    "link": "/architecture/notes/10-cache-layers-cdn"
+  },
+  {
+    "term": "요청 병합 (request collapsing)",
+    "subject": "architecture",
+    "def": "같은 캐시 키의 동시 미스 중 하나만 원본으로 보내고 나머지는 그 결과를 기다리게 하는 CDN·프록시 기능. 썬더링 허드를 막는다(Nginx proxy_cache_lock, 앱의 single-flight).",
+    "link": "/architecture/notes/10-cache-layers-cdn"
+  },
+  {
+    "term": "연속 프로파일링",
+    "subject": "observability",
+    "def": "에이전트가 수 초마다 샘플링 프로파일을 찍어 저장해 두고 시간 범위·라벨로 조회하는 방식(Pyroscope·Parca). 메트릭·로그·트레이스에 이은 네 번째 신호.",
+    "link": "/observability/notes/10-continuous-profiling"
+  },
+  {
+    "term": "self time / total time",
+    "subject": "observability",
+    "def": "프로파일에서 함수 자신이 실행 중이던 샘플 비율(self)과 자손 호출을 포함한 비율(total). 최적화 대상은 self 가 큰 함수.",
+    "link": "/observability/notes/10-continuous-profiling"
+  },
+  {
+    "term": "레코딩 룰 (recording rule)",
+    "subject": "observability",
+    "def": "PromQL 식을 주기적으로 미리 계산해 새 시계열로 저장하는 Prometheus 규칙. SLO 처럼 긴 범위 쿼리를 빠르게 하고 알림·대시보드가 같은 식을 공유하게 한다.",
+    "link": "/observability/notes/11-slo-dashboard-burn-rate"
+  },
+  {
+    "term": "역색인 (inverted index)",
+    "subject": "opensearch",
+    "def": "텀(토큰) → 그 텀을 포함한 문서 목록(포스팅: 문서 ID·tf·위치·오프셋)의 매핑. 검색 엔진과 PostgreSQL GIN 의 핵심 구조.",
+    "link": "/opensearch/notes/01-inverted-index-analyzers"
+  },
+  {
+    "term": "분석기 (analyzer)",
+    "subject": "opensearch",
+    "def": "문자 필터 → 토크나이저(1개) → 토큰 필터로 이뤄진 텍스트 → 토큰 파이프라인. 색인과 질의에 같은 분석기를 써야 매치된다.",
+    "link": "/opensearch/notes/01-inverted-index-analyzers"
+  },
+  {
+    "term": "nori",
+    "subject": "opensearch",
+    "def": "Lucene/OpenSearch 의 한국어 형태소 분석기. mecab-ko-dic 사전과 비용 최소 경로로 분할하고 품사 필터로 조사·어미를 버린다. 도메인 용어는 사용자 사전으로 가르친다.",
+    "link": "/opensearch/notes/07-korean-and-ranking"
+  },
+  {
+    "term": "세그먼트 (Lucene)",
+    "subject": "opensearch",
+    "def": "불변인 작은 역색인 파일. refresh 로 생기고 머지로 합쳐지며, 삭제는 비트맵 표시 후 머지 때 회수된다. LSM 의 SSTable 과 같은 구조.",
+    "link": "/opensearch/notes/01-inverted-index-analyzers"
+  },
+  {
+    "term": "doc values",
+    "subject": "opensearch",
+    "def": "keyword·숫자·날짜 필드를 문서 순서대로 저장한 열 저장 구조. 집계·정렬에 쓰인다. text 필드에는 없다.",
+    "link": "/opensearch/notes/04-aggregations-log-analysis"
+  },
+  {
+    "term": "refresh (near-real-time)",
+    "subject": "opensearch",
+    "def": "색인 버퍼를 새 세그먼트로 열어 검색 가능하게 만드는 작업(기본 1초). 그 전에는 색인된 문서가 검색에 보이지 않는다. 내구성은 translog 가 따로 맡는다.",
+    "link": "/opensearch/notes/02-mapping-shards-replicas"
+  },
+  {
+    "term": "BM25",
+    "subject": "opensearch",
+    "def": "tf 포화(k1)와 문서 길이 정규화(b)를 넣은 관련도 점수. 문서 점수 = 질의 텀별 IDF × 포화된 tf 의 합. TF-IDF 의 후계.",
+    "link": "/opensearch/notes/03-query-dsl-bm25"
+  },
+  {
+    "term": "filter context",
+    "subject": "opensearch",
+    "def": "bool.filter·must_not 처럼 점수를 계산하지 않고 참/거짓만 판단하는 질의 문맥. 비트셋으로 캐시되어 빠르다.",
+    "link": "/opensearch/notes/03-query-dsl-bm25"
+  },
+  {
+    "term": "리랭킹 (크로스 인코더)",
+    "subject": "opensearch",
+    "def": "1단계 검색의 상위 수십 건을 질의와 문서를 함께 넣는 모델로 다시 정렬하는 2단계. 정확하지만 비싸서 상위 일부에만 쓴다.",
+    "link": "/opensearch/notes/05-hybrid-search-rag"
+  },
+  {
+    "term": "ISM / ILM",
+    "subject": "opensearch",
+    "def": "인덱스 수명 주기 관리. 롤오버(크기·나이) → warm(읽기 전용·force merge) → delete 로 시계열 인덱스를 자동 관리한다.",
+    "link": "/opensearch/notes/06-operations"
+  },
+  {
+    "term": "nDCG",
+    "subject": "opensearch",
+    "def": "관련도 등급과 순위 할인(log2)을 반영해 이상적 순위 대비로 정규화한 검색 품질 지표. _rank_eval API 로 계산한다.",
+    "link": "/opensearch/notes/07-korean-and-ranking"
+  },
+  {
+    "term": "쓰기 증폭 (write amplification)",
+    "subject": "db-internals",
+    "def": "실제 디스크 쓰기 바이트 / 논리적으로 쓴 바이트. 페이지 단위 쓰기, 로그+데이터 이중 쓰기, 컴팩션, SSD 내부 GC 가 키운다.",
+    "link": "/db-internals/notes/01-disk-memory-hierarchy"
+  },
+  {
+    "term": "fsync",
+    "subject": "db-internals",
+    "def": "파일의 dirty 페이지와 장치 쓰기 캐시를 디스크까지 내리고 완료를 기다리는 시스템 콜. 0.1~수 ms 라 커밋 지연의 본체다. macOS 는 F_FULLFSYNC 가 진짜.",
+    "link": "/db-internals/notes/01-disk-memory-hierarchy"
+  },
+  {
+    "term": "B+tree",
+    "subject": "db-internals",
+    "def": "노드 = 페이지, 내부 노드엔 키와 자식 포인터만, 값은 연결된 리프에 두는 균형 트리. 팬아웃이 수백이라 높이 3~4 로 수억 키를 담는다.",
+    "link": "/db-internals/notes/02-btree-pages-buffer-pool"
+  },
+  {
+    "term": "페이지 분할 (page split)",
+    "subject": "db-internals",
+    "def": "B-tree 리프가 가득 찰 때 새 페이지에 키 절반을 옮기고 부모에 구분자를 넣는 작업. 무작위 키는 분할을 자주 일으켜 채움률이 ~70% 로 떨어진다.",
+    "link": "/db-internals/notes/02-btree-pages-buffer-pool"
+  },
+  {
+    "term": "버퍼 풀 (buffer pool)",
+    "subject": "db-internals",
+    "def": "DB 가 디스크 페이지를 메모리 프레임에 올려 재사용하는 영역. 교체 정책(clock sweep, LRU 변형)과 스캔 저항이 핵심이다.",
+    "link": "/db-internals/notes/02-btree-pages-buffer-pool"
+  },
+  {
+    "term": "LSM 트리",
+    "subject": "db-internals",
+    "def": "WAL + 메모리 memtable 에 쓰고, 가득 차면 정렬된 불변 SSTable 로 flush, 백그라운드 컴팩션으로 병합하는 구조. 쓰기에 강하고 읽기·공간 증폭을 대가로 낸다.",
+    "link": "/db-internals/notes/03-lsm-tree-compaction"
+  },
+  {
+    "term": "컴팩션 (compaction)",
+    "subject": "db-internals",
+    "def": "LSM 의 SSTable 들을 병합 정렬하며 옛 버전과 톰스톤을 버리는 백그라운드 작업. 레벨드는 쓰기 증폭이 크고, 티어드는 읽기·공간 증폭이 크다.",
+    "link": "/db-internals/notes/03-lsm-tree-compaction"
+  },
+  {
+    "term": "톰스톤 (tombstone)",
+    "subject": "db-internals",
+    "def": "불변 저장 구조에서 삭제를 표시하는 레코드. 컴팩션이 바닥 레벨까지 내려가며 실제 공간을 회수한다. 분산에서 너무 일찍 지우면 데이터가 부활한다.",
+    "link": "/db-internals/notes/03-lsm-tree-compaction"
+  },
+  {
+    "term": "write stall",
+    "subject": "db-internals",
+    "def": "LSM 에서 컴팩션이 flush 를 못 따라가 L0 파일이 쌓이면 엔진이 쓰기를 늦추거나 멈추는 현상. p99 스파이크의 흔한 원인.",
+    "link": "/db-internals/notes/03-lsm-tree-compaction"
+  },
+  {
+    "term": "LSN (Log Sequence Number)",
+    "subject": "db-internals",
+    "def": "WAL 레코드의 단조 증가 위치. 페이지의 pageLSN 과 비교해 redo 의 멱등성을 보장하고, WAL 규칙(로그 먼저 flush)을 구현한다.",
+    "link": "/db-internals/notes/04-wal-checkpoint-recovery"
+  },
+  {
+    "term": "ARIES",
+    "subject": "db-internals",
+    "def": "분석 → redo(역사 반복) → undo(미완료 되돌리기, CLR 기록) 세 단계의 복구 알고리즘. steal/no-force 버퍼 정책을 가능하게 한다.",
+    "link": "/db-internals/notes/04-wal-checkpoint-recovery"
+  },
+  {
+    "term": "체크포인트",
+    "subject": "db-internals",
+    "def": "특정 LSN 이전 변경이 모두 데이터 파일에 있음을 보장하는 지점. 복구 시간을 묶고 옛 WAL 을 재활용하게 하지만 dirty 페이지 쓰기로 I/O 스파이크를 만든다.",
+    "link": "/db-internals/notes/04-wal-checkpoint-recovery"
+  },
+  {
+    "term": "그룹 커밋",
+    "subject": "db-internals",
+    "def": "동시에 커밋하는 여러 트랜잭션의 로그 fsync 를 한 번으로 합치는 기법. 동시성이 높을수록 커밋당 fsync 비용이 줄어든다.",
+    "link": "/db-internals/notes/04-wal-checkpoint-recovery"
+  },
+  {
+    "term": "BRIN",
+    "subject": "db-internals",
+    "def": "연속 페이지 묶음마다 min/max 만 저장하는 아주 작은 손실 인덱스. 값이 물리 순서와 상관된 큰 시계열 테이블에서 강력하다(존 맵).",
+    "link": "/db-internals/notes/05-index-structures"
+  },
+  {
+    "term": "커버링 인덱스",
+    "subject": "db-internals",
+    "def": "질의에 필요한 열을 INCLUDE 로 리프에 실어 힙 방문 없이 Index Only Scan 으로 답하는 인덱스.",
+    "link": "/db-internals/notes/05-index-structures"
+  },
+  {
+    "term": "HOT (Heap-Only Tuple)",
+    "subject": "db-internals",
+    "def": "PostgreSQL 에서 새 버전이 같은 페이지에 들어가고 인덱스 열이 안 바뀌면 인덱스를 갱신하지 않는 최적화. 테이블 fillfactor 로 여유를 둔다.",
+    "link": "/db-internals/notes/06-mvcc-gc-comparison"
+  },
+  {
+    "term": "XID 랩어라운드",
+    "subject": "db-internals",
+    "def": "PostgreSQL 의 32비트 트랜잭션 ID 가 한 바퀴 돌아 freeze 안 된 옛 튜플이 미래로 보이는 문제. 막기 위해 VACUUM freeze 가 필요하고, 못 따라가면 쓰기가 거부된다.",
+    "link": "/db-internals/notes/06-mvcc-gc-comparison"
+  },
+  {
+    "term": "쓰기 왜곡 (write skew)",
+    "subject": "db-internals",
+    "def": "스냅샷 격리에서 두 트랜잭션이 같은 조건을 읽고 서로 다른 행을 써서 불변식을 깨는 이상 현상. SSI 나 SELECT FOR UPDATE 로 막는다.",
+    "link": "/db-internals/notes/06-mvcc-gc-comparison"
+  },
+  {
+    "term": "벡터화 실행",
+    "subject": "db-internals",
+    "def": "연산자가 행 하나 대신 값 수천 개 묶음을 처리해 함수 호출 오버헤드를 줄이고 SIMD·캐시를 활용하는 실행 방식. DuckDB·ClickHouse 의 핵심.",
+    "link": "/db-internals/notes/07-query-execution-columnar"
+  },
+  {
+    "term": "열 저장 (columnar)",
+    "subject": "db-internals",
+    "def": "한 열의 값들을 연속으로 저장하는 방식. 필요한 열만 읽고 사전·RLE·델타로 압축이 잘 돼 분석에 강하고, 행 단위 쓰기에는 약하다.",
+    "link": "/db-internals/notes/07-query-execution-columnar"
+  },
+  {
+    "term": "해시 조인",
+    "subject": "db-internals",
+    "def": "작은 쪽으로 해시 테이블을 만들고 큰 쪽을 훑으며 탐색하는 조인. O(N+M) 이지만 빌드 쪽이 메모리를 넘으면 디스크로 유출된다.",
+    "link": "/db-internals/notes/07-query-execution-columnar"
   }
 ]

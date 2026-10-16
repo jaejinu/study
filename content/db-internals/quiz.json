@@ -1,1 +1,182 @@
-[]
+[
+  {
+    "note": "01-disk-memory-hierarchy",
+    "q": "메모리 참조와 NVMe 임의 읽기, fsync 의 대략적 자릿수는?",
+    "a": "메모리 ~100ns, NVMe 4KB 임의 읽기 ~20~100µs, fsync 0.1~2ms. 메모리와 디스크는 약 1,000배 차이."
+  },
+  {
+    "note": "01-disk-memory-hierarchy",
+    "q": "SSD 에서도 순차 쓰기가 임의 쓰기보다 유리한 이유는?",
+    "a": "SSD 는 덮어쓰기가 불가해 블록 단위로 지우고 FTL 이 GC 를 한다. 임의 작은 쓰기는 블록마다 무효 페이지를 흩뿌려 내부 쓰기 증폭과 지연 스파이크를 만든다."
+  },
+  {
+    "note": "01-disk-memory-hierarchy",
+    "q": "write() 가 성공해도 전원이 나가면 데이터가 사라질 수 있는 이유는?",
+    "a": "write 는 페이지 캐시만 더럽히고 돌아온다. fsync 가 페이지 캐시와 장치 쓰기 캐시까지 비워야 영속이다."
+  },
+  {
+    "note": "01-disk-memory-hierarchy",
+    "q": "쓰기·읽기·공간 증폭의 정의는?",
+    "a": "쓰기: 실제 디스크 쓰기/논리 쓰기. 읽기: 질의당 읽은 페이지 수. 공간: 디스크 사용량/실제 데이터 크기."
+  },
+  {
+    "note": "01-disk-memory-hierarchy",
+    "q": "실험에서 108바이트 행 커밋이 4~9KB 를 쓰는 이유는?",
+    "a": "디스크는 페이지(4KB) 단위로 쓰고, 롤백 저널은 원본 페이지 복사 + 데이터 페이지 덮어쓰기, WAL 은 페이지 프레임을 로그에 추가하기 때문이다."
+  },
+  {
+    "note": "02-btree-pages-buffer-pool",
+    "q": "B-tree 노드를 페이지 하나로 만드는 이유는?",
+    "a": "노드당 키 수백 개(팬아웃)로 높이를 3~4 로 낮춰 디스크 읽기 횟수를 최소화한다. 이진 트리는 높이가 log2 N 이라 수십 번 읽는다."
+  },
+  {
+    "note": "02-btree-pages-buffer-pool",
+    "q": "무작위 키(UUID v4)가 B-tree 에 나쁜 이유 세 가지는?",
+    "a": "중간 분할로 채움률이 ~70% 로 떨어지고, 인덱스 전체가 작업 집합이 돼 캐시가 무력해지며, 체크포인트 후 full page write 로 WAL 이 폭증한다."
+  },
+  {
+    "note": "02-btree-pages-buffer-pool",
+    "q": "InnoDB 의 보조 인덱스와 PostgreSQL 의 보조 인덱스 리프는 무엇을 가리키나?",
+    "a": "InnoDB 는 행의 기본 키(그래서 PK 트리를 다시 탐색), PostgreSQL 은 힙 주소 ctid(페이지, 슬롯)."
+  },
+  {
+    "note": "02-btree-pages-buffer-pool",
+    "q": "LRU 버퍼 풀의 순차 스캔 오염을 PostgreSQL 은 어떻게 피하나?",
+    "a": "큰 순차 스캔·VACUUM·COPY 에 작은 링 버퍼를 따로 써서 공유 버퍼 전체를 밀어내지 않는다. 교체 정책은 clock sweep."
+  },
+  {
+    "note": "02-btree-pages-buffer-pool",
+    "q": "B-link tree 의 high key 와 오른쪽 형제 포인터는 무엇을 가능하게 하나?",
+    "a": "분할 중인 노드를 읽던 탐색이 찾는 키가 high key 보다 크면 오른쪽 형제로 이동해, 읽기가 분할을 기다리지 않는다."
+  },
+  {
+    "note": "03-lsm-tree-compaction",
+    "q": "LSM 의 쓰기가 빠른 이유는?",
+    "a": "WAL 순차 추가 + memtable 메모리 삽입이 전부이고, 디스크에는 정렬된 SSTable 을 통째로 순차로 쓴다. 제자리 임의 갱신이 없다."
+  },
+  {
+    "note": "03-lsm-tree-compaction",
+    "q": "LSM 점 조회에서 블룸 필터의 역할은?",
+    "a": "SSTable 마다 '이 키는 확실히 없다' 를 메모리에서 판단해 불필요한 디스크 읽기를 생략한다. 키당 10비트면 오탐 ~1%."
+  },
+  {
+    "note": "03-lsm-tree-compaction",
+    "q": "레벨드와 티어드 컴팩션의 트레이드오프는?",
+    "a": "레벨드는 읽기·공간 증폭이 낮고 쓰기 증폭이 높다(10~30×). 티어드는 쓰기 증폭이 낮고 읽기·공간 증폭이 높다(최대 2×)."
+  },
+  {
+    "note": "03-lsm-tree-compaction",
+    "q": "write stall 이 생기는 이유는?",
+    "a": "컴팩션이 flush 를 못 따라가 L0 파일이 쌓이면 읽기가 느려지므로 엔진이 쓰기를 늦추거나 멈춘다. p99 스파이크의 흔한 원인."
+  },
+  {
+    "note": "03-lsm-tree-compaction",
+    "q": "톰스톤이 gc_grace 전에 사라지면 분산 저장소에서 생기는 문제는?",
+    "a": "그때 오프라인이던 복제본이 돌아와 옛 값을 퍼뜨려 지운 데이터가 되살아난다. repair 주기를 gc_grace 보다 짧게 둔다."
+  },
+  {
+    "note": "04-wal-checkpoint-recovery",
+    "q": "steal/no-force 정책에서 undo 와 redo 가 각각 필요한 이유는?",
+    "a": "steal 은 커밋 안 된 변경이 디스크에 갈 수 있어 undo 가, no-force 는 커밋된 변경이 디스크에 없을 수 있어 redo 가 필요하다."
+  },
+  {
+    "note": "04-wal-checkpoint-recovery",
+    "q": "WAL 규칙 두 가지는?",
+    "a": "페이지를 디스크에 쓰기 전에 그 변경의 로그가 먼저 디스크에 있어야 하고, 커밋 응답 전에 커밋 로그 레코드가 디스크에 있어야 한다."
+  },
+  {
+    "note": "04-wal-checkpoint-recovery",
+    "q": "ARIES 복구의 세 단계는?",
+    "a": "분석(진행 중 트랜잭션과 dirty 페이지 재구성) → redo(마지막 상태까지 역사 반복, pageLSN 으로 멱등) → undo(미완료 되돌리기, CLR 기록)."
+  },
+  {
+    "note": "04-wal-checkpoint-recovery",
+    "q": "PostgreSQL 의 full page write 는 무엇을 막나?",
+    "a": "8KB 페이지 중 일부만 써진 토른 페이지. 체크포인트 후 첫 수정 때 페이지 전체를 WAL 에 써 복구 때 통째로 덮는다."
+  },
+  {
+    "note": "04-wal-checkpoint-recovery",
+    "q": "Kafka 가 메시지마다 fsync 하지 않고도 내구성을 얻는 방법은?",
+    "a": "acks=all + min.insync.replicas 로 여러 브로커의 메모리에 복제되면 커밋으로 본다. 한 디스크 대신 여러 노드의 메모리로 내구성을 산다."
+  },
+  {
+    "note": "04-wal-checkpoint-recovery",
+    "q": "synchronous_commit=off 의 위험은 무엇이고 무엇은 안전한가?",
+    "a": "최근 수백 ms 의 커밋이 유실될 수 있지만 데이터 손상은 없다. 트랜잭션마다 SET LOCAL 로 고를 수 있다."
+  },
+  {
+    "note": "05-index-structures",
+    "q": "GIN 이 B-tree 로 안 되는 어떤 질의를 처리하나?",
+    "a": "값 안의 원소 포함: 배열 @>, JSONB @>, 전문 검색 @@, pg_trgm 으로 중간 일치 like."
+  },
+  {
+    "note": "05-index-structures",
+    "q": "BRIN 이 효과적이려면 데이터에 어떤 성질이 필요한가?",
+    "a": "열 값이 물리적 저장 순서와 상관돼 있어야 한다(추가 전용 시계열의 시간 열). 섞여 있으면 블록 범위가 전체를 덮어 무력하다."
+  },
+  {
+    "note": "05-index-structures",
+    "q": "복합 인덱스 (a, b, c) 로 b = 2 조건만 있는 질의를 처리할 수 없는 이유는?",
+    "a": "인덱스가 a 로 먼저 정렬돼 있어 b 만으로는 위치를 찾을 수 없다. 등호 열을 앞에, 범위 열을 뒤에 둔다."
+  },
+  {
+    "note": "05-index-structures",
+    "q": "HNSW 와 IVF 의 차이는?",
+    "a": "HNSW 는 계층 근접 그래프로 재현율·지연이 좋지만 메모리가 크고, IVF 는 k-means 클러스터 중 nprobe 개만 뒤져 메모리가 작지만 분포 변화에 재학습이 필요하다."
+  },
+  {
+    "note": "05-index-structures",
+    "q": "부분 인덱스가 특히 강한 패턴은?",
+    "a": "큐 테이블처럼 관심 있는 행(미처리)이 전체의 일부일 때. where processed = false 인덱스는 작고 빠르다."
+  },
+  {
+    "note": "06-mvcc-gc-comparison",
+    "q": "PostgreSQL 과 InnoDB 의 MVCC 버전 저장 방식 차이는?",
+    "a": "PostgreSQL 은 새 튜플을 힙에 추가하고 옛 것을 남겨 VACUUM 으로 정리, InnoDB 는 제자리 갱신하고 옛 값을 undo 로그에 두어 purge 로 정리한다."
+  },
+  {
+    "note": "06-mvcc-gc-comparison",
+    "q": "HOT 갱신의 조건과 이점은?",
+    "a": "새 버전이 같은 페이지에 들어가고 인덱스 열이 안 바뀌면 인덱스를 갱신하지 않고 페이지 안 사슬로 연결한다. fillfactor 로 여유를 둔다."
+  },
+  {
+    "note": "06-mvcc-gc-comparison",
+    "q": "긴 트랜잭션이 MVCC 시스템을 해치는 이유는?",
+    "a": "가장 오래된 활성 스냅샷이 볼 수 있는 옛 버전은 치울 수 없어 블로트(PG)나 undo 증가(InnoDB)가 쌓이고, PG 에선 freeze 도 막는다."
+  },
+  {
+    "note": "06-mvcc-gc-comparison",
+    "q": "XID 랩어라운드란?",
+    "a": "PG 의 32비트 XID 가 한 바퀴 돌면 freeze 안 된 옛 튜플이 미래로 보여 사라질 수 있다. 막기 위해 PG 는 결국 쓰기를 거부한다."
+  },
+  {
+    "note": "06-mvcc-gc-comparison",
+    "q": "스냅샷 격리에서 쓰기 왜곡이 생기는 예와 해법은?",
+    "a": "당직 2명이 각자 '다른 사람이 있으니' 자기 행을 off 로 바꿔 0명이 됨. SERIALIZABLE(SSI), SELECT FOR UPDATE, 제약으로 막는다."
+  },
+  {
+    "note": "07-query-execution-columnar",
+    "q": "볼케이노 모델이 분석 질의에서 느린 이유는?",
+    "a": "행마다 연산자마다 가상 함수 호출과 분기가 있어 실제 계산보다 해석 오버헤드가 크고 SIMD 를 못 쓴다."
+  },
+  {
+    "note": "07-query-execution-columnar",
+    "q": "벡터화 실행이 빠른 이유는?",
+    "a": "값 수천 개 묶음 단위로 단단한 루프를 돌려 함수 호출을 줄이고 SIMD·캐시 지역성을 얻는다."
+  },
+  {
+    "note": "07-query-execution-columnar",
+    "q": "열 저장에서 압축된 채로 계산한다는 예는?",
+    "a": "사전 인코딩 열의 where country='KR' 을 코드 정수 비교로, RLE 열의 count 를 반복 수 합으로 처리한다."
+  },
+  {
+    "note": "07-query-execution-columnar",
+    "q": "해시 조인이 느려지는 대표적 원인은?",
+    "a": "빌드 쪽이 work_mem 을 넘어 디스크로 유출(Batches > 1)되거나, 추정이 틀려 큰 테이블을 빌드 쪽으로 고른 경우."
+  },
+  {
+    "note": "07-query-execution-columnar",
+    "q": "OLTP 와 OLAP 저장소를 나누는 이유는?",
+    "a": "OLTP 는 행 저장·B-tree·점 조회·짧은 트랜잭션, OLAP 는 열 저장·스캔·집계·배치 적재로 최적화 방향이 반대라서. CDC 로 연결한다."
+  }
+]

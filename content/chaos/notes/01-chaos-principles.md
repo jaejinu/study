@@ -86,6 +86,8 @@ spec:
 
 실험은 실제 컨테이너·클러스터에 장애를 주입하고 **반드시 원복**한다(finally). 각 실험은 정상 상태 측정 → 주입 → 관찰(지연·에러·복구 시간) → 원복 → 교훈 순서다. 돌리는 동안 [관측성 대시보드](/observability)의 최근 알림, Grafana 의 받은 알림·에러율 패널, Loki 의 `alert.received`·`experiment.run` 로그를 함께 보면 "장애가 어떻게 보이는가" 를 배운다.
 
+> 다음: [복원력 패턴 실측](/chaos/notes/03-resilience-patterns-verified) · [게임데이와 자동화](/chaos/notes/04-gameday-and-automation)
+
 ## 실습 체크리스트
 
 - [ ] 실험 5개를 모두 돌리고 각 실험의 "교훈" 노트를 자기 서비스에 대입해 보기

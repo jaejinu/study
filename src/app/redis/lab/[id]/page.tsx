@@ -57,7 +57,7 @@ export default async function ExperimentPage({ params }: Props) {
         </Card>
         <Card className="p-4">
           <h2 className="mb-2 text-sm font-semibold">redis-cli 로 보면</h2>
-          <pre className="overflow-x-auto rounded-md bg-[#0d1117] p-3 text-xs leading-relaxed">{exp.code}</pre>
+          <pre className="overflow-x-auto rounded-md code-surface p-3 text-xs leading-relaxed">{exp.code}</pre>
         </Card>
       </div>
 

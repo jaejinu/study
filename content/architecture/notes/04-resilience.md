@@ -4,7 +4,7 @@ order: 4
 level: 중급
 summary: 분산 시스템은 부분 장애가 정상이다. 타임아웃 예산, 지수 백오프와 지터, 재시도 폭풍, 서킷브레이커 상태 머신, 벌크헤드와 부하 차단, 우아한 성능 저하, 헬스체크 설계, 카오스 엔지니어링. 코드 예시
 tags: [복원력, 타임아웃, 재시도, 서킷브레이커, 벌크헤드, 백오프, 카오스]
-experiments: []
+experiments: [chaos-circuit-breaker, chaos-retry-storm, chaos-redis-hang]
 ---
 
 ## 전제: 모든 것은 실패한다
@@ -102,3 +102,5 @@ readiness 에 **의존성 전체**를 넣으면 Redis 장애 시 모든 Pod 이 
 - [ ] 장애 시 사용자 경험 정의 (저하 모드)
 - [ ] 대시보드: 에러율·지연·서킷 상태·재시도율
 - [ ] 장애 주입 테스트 1회 이상
+
+> 실측 증거: [복원력 패턴을 장애로 검증](/chaos/notes/03-resilience-patterns-verified) — 서킷 브레이커·재시도 폭풍 실험

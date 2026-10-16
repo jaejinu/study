@@ -84,7 +84,16 @@ export function Flashcards({ cards, subject, stats: initialStats = {}, defaultMo
     restart(buildOrder(cards, stats, m, Date.now()));
   };
 
-  if (cards.length === 0) return <p className="text-sm text-muted">아직 이 주제의 퀴즈가 없습니다.</p>;
+  if (cards.length === 0)
+    return (
+      <div className="rounded-xl border border-dashed border-border px-6 py-8 text-center text-sm">
+        <p className="font-medium">아직 이 주제의 퀴즈 카드가 없습니다</p>
+        <p className="mt-1 text-muted">노트를 먼저 읽어 보세요. 카드는 노트와 함께 추가됩니다.</p>
+        <Link href={`/${subject}/notes`} className="mt-4 inline-block rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">
+          학습 노트 목차 →
+        </Link>
+      </div>
+    );
   if (done)
     return (
       <div className="rounded-lg border border-border bg-surface p-6 text-center">
@@ -103,7 +112,7 @@ export function Flashcards({ cards, subject, stats: initialStats = {}, defaultMo
 
   return (
     <div>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[13px] text-muted">
         <span>
           {idx + 1} / {order.length}
           {mode === "review" && dueCount > 0 && <span className="ml-2 text-warn">복습 기한 지난 카드 {dueCount}장</span>}

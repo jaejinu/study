@@ -108,6 +108,8 @@ POST /orders ─▶ 주문 서비스: BEGIN; INSERT orders; INSERT outbox; COMMI
 
 실패 시나리오를 하나씩 따라가 보자: 재고 서비스가 죽으면? (Kafka 에 남아 재시작 후 처리) 결제가 승인됐는데 주문 서비스가 이벤트를 못 받으면? (재전송·멱등) 같은 이벤트가 두 번 오면? (processed_events).
 
+> 돈이 걸린 정합성: [결제와 원장](/architecture/notes/09-payments-ledger-consistency)
+
 ## 실습 체크리스트
 
 - [ ] Kafka 컨슈머 그룹 실험으로 fan-out 확인

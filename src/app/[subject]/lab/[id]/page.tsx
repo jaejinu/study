@@ -7,6 +7,7 @@ import { Badge, Card } from "@/components/ui";
 import { getLab, listLab } from "@/lab/registry";
 import { listNotes } from "@/lib/notes";
 import { getSubject } from "@/lib/subjects";
+import { RecentTracker } from "@/components/shell/recent";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,8 @@ export default async function ShellExperimentPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-3 flex items-center gap-2 pt-8 text-xs text-muted md:pt-0">
+      <RecentTracker kind="lab" subject={sid} href={`/${sid}/lab/${exp.id}`} title={exp.title} />
+      <div className="mb-3 flex items-center gap-2 text-xs text-muted">
         <Link href={`/${sid}/lab`} className="hover:text-foreground">
           {subject.name} 실험실
         </Link>
@@ -61,7 +63,7 @@ export default async function ShellExperimentPage({ params }: Props) {
         </Card>
         <Card className="p-4">
           <h2 className="mb-2 text-sm font-semibold">{exp.kind === "shell" ? "터미널에서 하면" : "CLI / SQL 로 보면"}</h2>
-          <pre className="overflow-x-auto rounded-md bg-[#0d1117] p-3 text-xs leading-relaxed">{exp.code}</pre>
+          <pre className="overflow-x-auto rounded-md code-surface p-3 text-xs leading-relaxed">{exp.code}</pre>
         </Card>
       </div>
 

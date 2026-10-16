@@ -12,6 +12,48 @@
   --ok: #3fb950;
   --warn: #d29922;
   --info: #58a6ff;
+  --heading: #f0f4f8;   /* 본문 h3·첫 문단·표 머리 */
+  --strong: #ffffff;
+  --code-fg: #e8eef5;   /* 인라인 code */
+  --zebra: rgba(255, 255, 255, 0.02);
+}
+
+/* 라이트 테마: data-theme="light", 또는 data-theme="system" + OS 라이트. 다크가 기본 */
+:root[data-theme="light"] {
+  --background: #f7f8fa;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --border: #d8dee6;
+  --foreground: #1b2430;
+  --muted: #566475;      /* 흰 배경 대비 5.9:1 */
+  --accent: #d92d20;
+  --accent-soft: rgba(217, 45, 32, 0.09);
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --info: #0969da;
+  --heading: #111821;
+  --strong: #0b1118;
+  --code-fg: #24303d;
+  --zebra: rgba(0, 0, 0, 0.025);
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    --background: #f7f8fa;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --border: #d8dee6;
+    --foreground: #1b2430;
+    --muted: #566475;
+    --accent: #d92d20;
+    --accent-soft: rgba(217, 45, 32, 0.09);
+    --ok: #1a7f37;
+    --warn: #9a6700;
+    --info: #0969da;
+    --heading: #111821;
+    --strong: #0b1118;
+    --code-fg: #24303d;
+    --zebra: rgba(0, 0, 0, 0.025);
+  }
 }
 
 @theme inline {
@@ -31,6 +73,8 @@
 }
 
 html { color-scheme: dark; }
+:root[data-theme="light"] { color-scheme: light; }
+@media (prefers-color-scheme: light) { :root[data-theme="system"] { color-scheme: light; } }
 body {
   background: var(--background);
   color: var(--foreground);
@@ -43,11 +87,11 @@ code, pre, kbd { font-family: var(--font-geist-mono), ui-monospace, SFMono-Regul
 
 /* ---------- Markdown 노트 ---------- */
 .note { line-height: 1.85; font-size: 16.5px; max-width: 78ch; }
-.note > p:first-of-type { font-size: 1.04em; color: #f0f4f8; }
+.note > p:first-of-type { font-size: 1.04em; color: var(--heading); }
 .note h1 { font-size: 1.9rem; font-weight: 700; margin: 0 0 1rem; letter-spacing: -0.01em; }
-.note h2 { position: relative; font-size: 1.42rem; font-weight: 700; margin: 3rem 0 1rem; padding: 0 0 0.5rem 0.9rem; border-bottom: 1px solid var(--border); scroll-margin-top: 5rem; letter-spacing: -0.01em; }
-.note h2::before { content: ""; position: absolute; left: 0; top: 0.25rem; bottom: 0.75rem; width: 4px; border-radius: 2px; background: var(--accent); }
-.note h3 { font-size: 1.12rem; font-weight: 650; margin: 2rem 0 0.7rem; scroll-margin-top: 5rem; color: #f0f4f8; }
+.note h2 { position: relative; font-size: 1.42rem; font-weight: 700; margin: 3rem 0 1rem; padding: 0 0 0.5rem 0; border-bottom: 1px solid var(--border); scroll-margin-top: 5rem; letter-spacing: -0.01em; }
+.note h2::before { content: ""; position: absolute; left: -0.9rem; top: 0.25rem; bottom: 0.75rem; width: 4px; border-radius: 2px; background: var(--accent); }
+.note h3 { font-size: 1.12rem; font-weight: 650; margin: 2rem 0 0.7rem; scroll-margin-top: 5rem; color: var(--heading); }
 .note h4 { font-size: 1rem; font-weight: 600; margin: 1.4rem 0 0.5rem; color: var(--muted); text-transform: none; }
 .note p { margin: 0.95rem 0; }
 .note ul, .note ol { margin: 0.9rem 0 0.9rem 1.5rem; }
@@ -58,18 +102,52 @@ code, pre, kbd { font-family: var(--font-geist-mono), ui-monospace, SFMono-Regul
 .note li > ul, .note li > ol { margin-top: 0.3rem; margin-bottom: 0.3rem; }
 .note a { color: var(--info); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--info) 45%, transparent); text-underline-offset: 3px; }
 .note a:hover { text-decoration-color: var(--info); }
-.note strong { color: #fff; font-weight: 650; }
+.note strong { color: var(--strong); font-weight: 650; }
 .note blockquote { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 0.7rem 1.1rem; margin: 1.2rem 0; border-radius: 0 8px 8px 0; }
 .note blockquote p { margin: 0.35rem 0; }
-.note code { background: var(--surface-2); border: 1px solid var(--border); padding: 0.12rem 0.4rem; border-radius: 5px; font-size: 0.86em; color: #e8eef5; }
+.note code { background: var(--surface-2); border: 1px solid var(--border); padding: 0.12rem 0.4rem; border-radius: 5px; font-size: 0.86em; color: var(--code-fg); }
 .note pre { background: #0d1117; border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.15rem; overflow-x: auto; margin: 1.2rem 0; font-size: 0.875rem; line-height: 1.65; }
-.note pre code { background: none; border: none; padding: 0; font-size: inherit; color: inherit; }
+.note pre { scrollbar-width: thin; }
+.note pre::-webkit-scrollbar { height: 6px; }
+.note pre code { background: none; border: none; padding: 0; font-size: inherit; color: #e6edf3; }
 .note table { border-collapse: separate; border-spacing: 0; width: 100%; margin: 1.2rem 0; font-size: 0.92rem; line-height: 1.55; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: block; overflow-x: auto; }
+/* TableWrap 이 감싼 표: 스크롤은 바깥 div 가 맡고 표는 원래 table 레이아웃 */
+.note .table-outer { margin: 1.2rem 0; }
+.note .table-hint { font-size: 11.5px; color: var(--muted); text-align: right; margin-bottom: 0.3rem; }
+.note .table-wrap { position: relative; overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; scrollbar-width: thin; }
+.note .table-wrap table { display: table; margin: 0; border: 0; border-radius: 0; overflow: visible; }
+.note .table-wrap.is-clipped { box-shadow: inset -18px 0 14px -14px rgba(0, 0, 0, 0.55); }
+/* 코드 블록 툴바 (언어 라벨 · 복사) */
+.note .code-block { position: relative; margin: 1.2rem 0; }
+.note .code-block pre { margin: 0; padding-top: 1.9rem; }
+.note .code-toolbar { position: absolute; top: 0.35rem; left: 0.75rem; right: 0.5rem; display: flex; align-items: center; justify-content: space-between; pointer-events: none; z-index: 1; }
+.note .code-lang { font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: #7d8a9b; font-family: var(--font-geist-mono), ui-monospace, monospace; }
+.note .code-copy { pointer-events: auto; margin-left: auto; font-size: 11px; color: #9aa8ba; border: 1px solid #2b3646; background: #161d27; border-radius: 6px; padding: 0.1rem 0.5rem; opacity: 0; transition: opacity 0.15s; }
+.note .code-block:hover .code-copy, .note .code-copy:focus-visible { opacity: 1; }
+@media (hover: none) { .note .code-copy { opacity: 1; } }
+/* 콜아웃: 인용문 첫 문단의 접두어로 분류 (Markdown.tsx calloutKind) */
+.note blockquote[data-callout] { position: relative; }
+.note blockquote[data-callout="warn"] { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 11%, transparent); }
+.note blockquote[data-callout="tip"] { border-left-color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.note blockquote[data-callout="key"] { border-left-color: var(--accent); background: var(--accent-soft); }
+.note blockquote[data-callout="link"] { border-left-color: var(--info); background: color-mix(in srgb, var(--info) 8%, transparent); font-size: 0.95em; }
+.note blockquote[data-callout="quote"] { border-left-color: var(--muted); background: transparent; font-style: italic; color: var(--muted); }
+.note blockquote[data-callout="warn"]::before, .note blockquote[data-callout="tip"]::before, .note blockquote[data-callout="key"]::before { position: absolute; left: -0.95rem; top: 0.75rem; width: 1.3rem; height: 1.3rem; border-radius: 999px; display: grid; place-items: center; font-size: 11px; font-weight: 700; font-style: normal; color: #fff; }
+.note blockquote[data-callout="warn"]::before { content: "!"; background: var(--warn); }
+.note blockquote[data-callout="tip"]::before { content: "✓"; background: var(--ok); }
+.note blockquote[data-callout="key"]::before { content: "★"; background: var(--accent); font-size: 10px; }
+/* 확대 가능한 그림 */
+.note .zoom-trigger { position: relative; display: block; width: 100%; margin: 1.4rem 0 0.4rem; cursor: zoom-in; background: none; border: 0; padding: 0; }
+.note .zoom-trigger img { margin: 0 auto; }
+.note .zoom-hint { position: absolute; right: 0.6rem; bottom: 0.6rem; font-size: 11px; color: #e6edf3; background: rgba(13, 17, 23, 0.8); border: 1px solid #2b3646; border-radius: 6px; padding: 0.1rem 0.45rem; opacity: 0; transition: opacity 0.15s; }
+.note .zoom-trigger:hover .zoom-hint, .note .zoom-trigger:focus-visible .zoom-hint { opacity: 1; }
+.note .figure-caption { display: block; text-align: center; font-size: 12.5px; color: var(--muted); margin-bottom: 1.2rem; }
 .note th, .note td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0.55rem 0.8rem; text-align: left; vertical-align: top; }
 .note th:last-child, .note td:last-child { border-right: 0; }
+.note td:first-child { min-width: 7.5em; }
 .note tr:last-child td { border-bottom: 0; }
-.note th { background: var(--surface-2); font-weight: 650; color: #f0f4f8; white-space: nowrap; }
-.note tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.02); }
+.note th { background: var(--surface-2); font-weight: 650; color: var(--heading); white-space: nowrap; }
+.note tbody tr:nth-child(even) td { background: var(--zebra); }
 .note hr { border: 0; border-top: 1px solid var(--border); margin: 2.4rem 0; }
 .note img { max-width: 100%; border-radius: 10px; border: 1px solid var(--border); display: block; margin: 1.4rem auto; }
 .note input[type="checkbox"] { margin-right: 0.5rem; accent-color: var(--ok); }
@@ -78,7 +156,7 @@ code, pre, kbd { font-family: var(--font-geist-mono), ui-monospace, SFMono-Regul
 /* 작은 markdown (실험 설명 등) */
 .note-sm { font-size: 14.5px; max-width: none; }
 .note-sm h2 { margin-top: 1.4rem; padding-left: 0.7rem; }
-.note-sm h2::before { width: 3px; }
+.note-sm h2::before { width: 3px; left: 0; }
 .note-sm h2 { font-size: 1.1rem; margin-top: 1.4rem; }
 
 /* highlight.js 색상은 layout 에서 import 한 테마를 사용 */
@@ -89,6 +167,25 @@ code, pre, kbd { font-family: var(--font-geist-mono), ui-monospace, SFMono-Regul
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
+/* 항상 어두운 코드·터미널 패널: 라이트 테마에서도 안쪽 토큰을 다크 값으로 고정해 글자가 읽히게 */
+.code-surface {
+  background: #0d1117;
+  color: #e6edf3;
+  --foreground: #e6edf3;
+  --muted: #9aa8ba;
+  --border: #243040;
+  --surface: #121821;
+  --surface-2: #1a222e;
+  --info: #58a6ff;
+  --ok: #3fb950;
+  --warn: #d29922;
+  color-scheme: dark;
+}
+
 /* 줄 수 제한 */
+.clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* 키보드 포커스 */
+:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; border-radius: 4px; }

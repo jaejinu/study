@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Badge, PageHeader } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
+import { LabList } from "@/components/lab/LabList";
 import { hasLab, labCategories, listLab } from "@/lab/registry";
 import { getSubject } from "@/lib/subjects";
 import { getProgress } from "@/lib/progress";
@@ -30,29 +30,7 @@ export default async function ShellLabPage({ params }: Props) {
       <div className="mb-6">
         <ProgressBar done={list.filter((e) => progress.labDone.includes(e.id)).length} total={list.length} label="성공한 실험" />
       </div>
-      {labCategories(id).map((c) => (
-        <section key={c} className="mb-8">
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">{c}</h2>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {list
-              .filter((e) => e.category === c)
-              .map((e) => (
-                <li key={e.id}>
-                  <Link href={`/${id}/lab/${e.id}`} className="block h-full rounded-lg border border-border bg-surface p-3 transition-colors hover:border-muted">
-                    <div className="text-sm font-medium">
-                      {progress.labDone.includes(e.id) && <span className="mr-1 text-ok">✓</span>}
-                      {e.title}
-                    </div>
-                    <div className="mt-1 text-xs text-muted">{e.summary}</div>
-                    <div className="mt-2">
-                      <Badge>{e.id}</Badge>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-          </ul>
-        </section>
-      ))}
+      <LabList categories={labCategories(id)} items={list.map((e) => ({ id: e.id, title: e.title, summary: e.summary, category: e.category, href: `/${id}/lab/${e.id}`, done: progress.labDone.includes(e.id) }))} />
     </div>
   );
 }

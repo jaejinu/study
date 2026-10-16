@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { LevelBadge, PageHeader } from "@/components/ui";
 import { experiments } from "@/experiments";
 import { listNotes } from "@/lib/notes";
-import { getSubject } from "@/lib/subjects";
+import { getSubject, subjects } from "@/lib/subjects";
 import { getProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 
@@ -32,7 +32,26 @@ export default async function NotesPage({ params }: Props) {
       <div className="mb-6">
         <ProgressBar done={notes.filter((n) => progress.read.includes(n.slug)).length} total={notes.length} />
       </div>
-      {notes.length === 0 && <p className="text-muted">아직 노트가 없습니다.</p>}
+      {notes.length === 0 && (
+        <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
+          <div className="text-3xl" aria-hidden>
+            ✎
+          </div>
+          <p className="mt-3 font-medium">{subject.name} 노트를 준비하고 있습니다</p>
+          <p className="mt-1 text-sm text-muted">그동안 같은 트랙의 다른 주제를 읽거나, ⌘K 로 관련 내용을 찾아보세요.</p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2 text-sm">
+            {subjects
+              .filter((s) => s.track === subject.track && s.id !== subject.id)
+              .slice(0, 4)
+              .map((s) => (
+                <Link key={s.id} href={`/${s.id}/notes`} className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">
+                  <span className={`grid h-5 w-5 place-items-center rounded text-[9px] font-bold text-white ${s.color}`}>{s.mark}</span>
+                  {s.name}
+                </Link>
+              ))}
+          </div>
+        </div>
+      )}
       {groups.map((g) => {
         const list = notes.filter((n) => n.level === g.level);
         if (list.length === 0) return null;

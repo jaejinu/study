@@ -4,7 +4,7 @@ order: 6
 level: 심화
 summary: "원자적 커밋 문제와 2PC 의 동작·블로킹 문제·3PC, Saga 의 보상 트랜잭션과 설계 규칙, 합의 서비스 위의 리더 선출과 리스, 분산 락이 안전하지 않은 이유와 펜싱 토큰, Redlock 논쟁의 양쪽 주장, 멱등 키·중복 제거로 만드는 '사실상 정확히 한 번', Kafka 트랜잭션의 실제 범위"
 tags: [2PC, 3PC, Saga, 분산 락, 펜싱 토큰, 리스, Redlock, 멱등성, exactly-once, Kafka 트랜잭션]
-experiments: []
+experiments: [ds-fencing-token]
 ---
 
 ## 원자적 커밋(atomic commit) 문제

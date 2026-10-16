@@ -4,7 +4,7 @@ order: 3
 level: 중급
 summary: 일관성 모델의 계층(선형화·순차·인과·세션 보장·최종), 각 모델이 허용하는 이상 현상과 비용, CAP 정리의 정확한 진술과 흔한 오해, PACELC, 격리 수준과의 관계, 그리고 Redis 복제 지연·PostgreSQL 동기 복제·Kafka 읽기에서 실제로 어떤 모델을 얻는지
 tags: [선형화, 순차 일관성, 인과 일관성, 최종 일관성, CAP, PACELC, read-your-writes, 단조 읽기]
-experiments: []
+experiments: [ds-quorum-read-write]
 ---
 
 ## 일관성 모델이란

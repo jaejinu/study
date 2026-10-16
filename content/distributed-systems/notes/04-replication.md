@@ -4,7 +4,7 @@ order: 4
 level: 중급
 summary: "복제의 목적과 세 가지 토폴로지, 동기·비동기·반동기 복제의 트레이드오프, 복제 지연이 만드는 이상 현상, 쿼럼(W+R>N)의 수학과 한계, 읽기 복구·힌트 핸드오프·안티 엔트로피, 충돌 감지와 해결(LWW·버전 벡터·CRDT), Redis·PostgreSQL·Kafka·Cassandra 의 복제 설계 비교"
 tags: [복제, 리더, 쿼럼, 동기 복제, 복제 지연, 충돌, CRDT, 버전 벡터, ISR]
-experiments: []
+experiments: [ds-quorum-read-write, ds-lamport-vector-clock]
 ---
 
 ## 복제를 왜 하나

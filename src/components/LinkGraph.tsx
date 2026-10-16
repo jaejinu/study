@@ -65,7 +65,7 @@ export function LinkGraph({ nodes, edges, subjects }: { nodes: GraphNode[]; edge
         ))}
         <span className="self-center text-muted">● 노트 &nbsp; ◆ 실험 &nbsp; 노드 {nodes.length} · 링크 {edges.length}</span>
       </div>
-      <div className="relative overflow-hidden rounded-lg border border-border bg-[#0d1117]">
+      <div className="relative overflow-hidden rounded-lg border border-border code-surface">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
           {edges.map((e, i) => {
             const a = pos.get(e.from);
