@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" font-family="ui-sans-serif, system-ui, 'Apple SD Gothic Neo', sans-serif" font-size="12.5">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#8b98a9"/></marker></defs>
+  <rect width="900" height="420" fill="#0d1117"/>
+  <text x="30" y="32" fill="#e6edf3" font-weight="600" font-size="15">LLM 애플리케이션의 구성요소와 요청 흐름</text>
+  <g fill="#1a222e" stroke="#243040">
+    <rect x="30" y="60" width="110" height="46" rx="8"/>
+    <rect x="170" y="60" width="150" height="46" rx="8"/>
+    <rect x="350" y="60" width="150" height="46" rx="8"/>
+    <rect x="530" y="60" width="150" height="46" rx="8"/>
+    <rect x="710" y="60" width="160" height="46" rx="8"/>
+  </g>
+  <g fill="#e6edf3" font-weight="600"><text x="44" y="80">사용자</text><text x="184" y="80">게이트웨이</text><text x="364" y="80">입력 가드레일</text><text x="544" y="80">캐시 조회</text><text x="724" y="80">컨텍스트 조립</text></g>
+  <g fill="#8b98a9" font-size="11"><text x="184" y="97">인증·레이트리밋·라우팅</text><text x="364" y="97">PII·인젝션·길이</text><text x="544" y="97">정확일치 → 시맨틱</text><text x="724" y="97">시스템+메모리+RAG+대화</text></g>
+  <g fill="none" stroke="#8b98a9" marker-end="url(#a)"><path d="M140 83 H168"/><path d="M320 83 H348"/><path d="M500 83 H528"/><path d="M680 83 H708"/></g>
+  <!-- row 2 -->
+  <rect x="530" y="150" width="340" height="110" rx="10" fill="#121821" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="546" y="174" fill="#a78bfa" font-weight="600">LLM 호출 (스트리밍, 툴 정의 포함)</text>
+  <g fill="#8b98a9" font-size="11"><text x="546" y="196">타임아웃 30s · 429/5xx 지수 백오프 · 프롬프트 캐시</text><text x="546" y="214">stop_reason = tool_use 이면 ↓</text></g>
+  <rect x="546" y="222" width="310" height="28" rx="6" fill="#1a222e" stroke="#243040"/>
+  <text x="556" y="241" fill="#e6edf3" font-size="11.5">툴 실행 (권한·검증·타임아웃·승인) → tool_result → 재호출 (최대 N회)</text>
+  <path d="M790 106 V148" fill="none" stroke="#8b98a9" marker-end="url(#a)"/>
+  <g fill="#1a222e" stroke="#243040"><rect x="350" y="170" width="150" height="46" rx="8"/><rect x="170" y="170" width="150" height="46" rx="8"/><rect x="30" y="170" width="110" height="46" rx="8"/></g>
+  <g fill="#e6edf3" font-weight="600"><text x="364" y="190">출력 가드레일</text><text x="184" y="190">응답 스트리밍</text><text x="44" y="190">사용자</text></g>
+  <g fill="#8b98a9" font-size="11"><text x="364" y="207">스키마·정책·인용 검증</text><text x="184" y="207">저장·로그·트레이스</text></g>
+  <g fill="none" stroke="#8b98a9" marker-end="url(#a)"><path d="M530 193 H502"/><path d="M350 193 H322"/><path d="M170 193 H142"/></g>
+  <!-- storage row -->
+  <g fill="#121821" stroke="#243040"><rect x="30" y="300" width="160" height="90" rx="8"/><rect x="210" y="300" width="160" height="90" rx="8"/><rect x="390" y="300" width="160" height="90" rx="8"/><rect x="570" y="300" width="140" height="90" rx="8"/><rect x="730" y="300" width="140" height="90" rx="8"/></g>
+  <g fill="#e6edf3" font-weight="600" font-size="12"><text x="42" y="322">Redis</text><text x="222" y="322">벡터 인덱스</text><text x="402" y="322">관측</text><text x="582" y="322">평가</text><text x="742" y="322">비동기</text></g>
+  <g fill="#8b98a9" font-size="11">
+    <text x="42" y="342">레이트리밋 · 세션 메모리</text><text x="42" y="358">시맨틱 캐시 · 승인 상태</text>
+    <text x="222" y="342">문서 청크 임베딩</text><text x="222" y="358">Redis Search / pgvector</text>
+    <text x="402" y="342">토큰·비용·TTFT span</text><text x="402" y="358">프롬프트 로그 (마스킹)</text>
+    <text x="582" y="342">피드백 👍👎</text><text x="582" y="358">judge 샘플링</text>
+    <text x="742" y="342">요약 갱신 · 배치</text><text x="742" y="358">큐 + 워커</text>
+  </g>
+  <path d="M600 260 V298" fill="none" stroke="#8b98a9" stroke-dasharray="4 3"/>
+  <path d="M290 216 V298" fill="none" stroke="#8b98a9" stroke-dasharray="4 3"/>
+</svg>

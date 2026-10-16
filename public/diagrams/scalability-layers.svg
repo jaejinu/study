@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 360" font-family="ui-sans-serif, system-ui, 'Apple SD Gothic Neo', sans-serif" font-size="12.5">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#8b98a9"/></marker></defs>
+  <rect width="900" height="360" fill="#0d1117"/>
+  <text x="30" y="32" fill="#e6edf3" font-weight="600" font-size="15">읽기 많은 서비스의 확장 계층 — 요청이 아래로 내려갈수록 줄어든다</text>
+  <g font-weight="600" fill="#e6edf3">
+    <rect x="30" y="56" width="840" height="44" rx="8" fill="#1a222e" stroke="#243040"/><text x="44" y="83">CDN · 브라우저 캐시</text><text x="640" y="83" fill="#3fb950">10,000 rps → 70% 흡수</text>
+    <rect x="80" y="112" width="740" height="44" rx="8" fill="#1a222e" stroke="#243040"/><text x="94" y="139">로드밸런서 → 무상태 앱 × N (로컬 캐시 5s)</text><text x="640" y="139" fill="#3fb950">3,000 rps</text>
+    <rect x="130" y="168" width="640" height="44" rx="8" fill="#1a222e" stroke="#ff4438"/><text x="144" y="195">Redis (분산 캐시, 히트율 95%) · 세션 · 레이트리밋</text><text x="640" y="195" fill="#3fb950">→ miss 150 rps</text>
+    <rect x="180" y="224" width="540" height="44" rx="8" fill="#1a222e" stroke="#336791"/><text x="194" y="251">PostgreSQL 리더 (쓰기 50 rps) + 레플리카 × 2 (읽기)</text>
+    <rect x="230" y="280" width="440" height="44" rx="8" fill="#1a222e" stroke="#8b5cf6"/><text x="244" y="307">Kafka / 큐 — 비동기 작업, 이벤트, 읽기 모델 갱신</text>
+  </g>
+  <g fill="none" stroke="#8b98a9" marker-end="url(#a)"><path d="M450 100 V110"/><path d="M450 156 V166"/><path d="M450 212 V222"/><path d="M450 268 V278"/></g>
+  <text x="30" y="348" fill="#8b98a9" font-size="11.5">히트율 90% → DB 부하 1/10, 95% → 1/20. 캐시 몇 % 가 DB 를 2배 바꾼다. 쓰기 확장은 마지막에 샤딩으로.</text>
+</svg>

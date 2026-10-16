@@ -1,0 +1,98 @@
+---
+title: 데이터 모델링 — 경계, CQRS, 이벤트 소싱
+order: 5
+level: 중급
+summary: 서비스 경계와 데이터 소유권, 정규화 vs 비정규화와 읽기 모델, CQRS 의 실제 모습, 이벤트 소싱의 장점과 비용(스냅샷·버전·GDPR), 스키마 진화, 다중 저장소(폴리글랏)와 동기화. 예시로 주문·피드
+tags: [데이터모델링, 경계, CQRS, 이벤트소싱, 스키마진화, 폴리글랏]
+experiments: []
+---
+
+## 경계와 소유권
+
+마이크로서비스의 핵심 규칙: **데이터는 한 서비스만 쓴다.** 다른 서비스는 API 나 이벤트로만 본다. 공유 DB 는 서비스를 다시 결합시킨다.
+
+경계 찾기(DDD 의 bounded context): 같은 단어가 다른 뜻으로 쓰이는 곳("상품" 이 카탈로그·재고·주문에서 각각 다름), 함께 바뀌는 데이터, 팀 경계. 처음엔 모듈 경계(모노리스 안)로 시작해 검증한 뒤 분리.
+
+## 정규화 vs 읽기 모델
+
+- OLTP 쓰기는 **정규화**(중복 없음, 갱신 이상 없음).
+- 읽기는 조인이 비싸다 → 화면에 맞춘 **비정규화된 읽기 모델**(캐시, 검색 인덱스, 집계 테이블). 쓰기 시 또는 이벤트로 갱신.
+- 예: 상품 상세 페이지 = 상품 + 가격 + 재고 + 리뷰 집계 + 추천 → Redis Hash/JSON 하나로 미리 조립.
+
+## CQRS
+
+Command(쓰기)와 Query(읽기)의 **모델을 분리**한다. 거창한 것이 아니다 — 쓰기는 PostgreSQL 정규화 테이블, 읽기는 Redis/Elasticsearch 의 뷰, 둘 사이를 이벤트로 동기화하면 CQRS 다.
+
+![CQRS 흐름](/diagrams/cqrs.svg)
+
+```
+명령: POST /orders → 검증 → orders 테이블 (강한 일관성) → outbox → 이벤트
+조회: GET /orders/123 → Redis JSON (order.created/paid 이벤트로 갱신된 읽기 모델)
+      GET /search?q=… → Elasticsearch
+```
+
+- 읽기 모델은 **언제든 다시 만들 수 있어야** 한다(이벤트 재생 또는 쓰기 DB 에서 재구축).
+- 읽기 모델은 최종 일관성. "방금 만든 주문이 목록에 없어요" 를 UI 가 다루게(낙관적 UI, 폴링).
+- 과한 CQRS 는 복잡성만 늘린다. 읽기·쓰기 부하/형태가 크게 다를 때만.
+
+## 이벤트 소싱
+
+상태를 저장하는 대신 **상태를 바꾼 이벤트 전부**를 저장하고, 현재 상태는 이벤트를 접어서(fold) 계산한다.
+
+```
+계좌 이벤트 로그: Opened(0) → Deposited(100) → Withdrew(30) → Deposited(50)
+현재 잔액 = 0 + 100 − 30 + 50 = 120
+```
+
+장점:
+- 완전한 감사 이력, 시점 조회("지난달 잔액"), 버그 수정 후 **재계산**, 새 읽기 모델을 과거부터 생성.
+- 이벤트가 곧 통합 수단(Kafka 로 발행).
+
+비용:
+- 이벤트 수가 많으면 접기가 느림 → **스냅샷**(N 이벤트마다 상태 저장).
+- 이벤트 **스키마 진화**: 버전 필드, 업캐스터(옛 이벤트를 새 형식으로 변환). 이벤트는 불변이므로 "잘못된 이벤트" 는 보정 이벤트로.
+- 삭제 요청(GDPR): 불변 로그와 충돌 → 개인정보는 별도 저장소에 두고 이벤트엔 참조/암호화 키(crypto-shredding).
+- 쿼리는 전부 읽기 모델로(CQRS 필수).
+- 팀의 학습 곡선. 금융·회계·협업 도구처럼 이력이 본질인 도메인에 적합.
+
+Kafka 의 컴팩션 토픽이나 Redis Stream 을 이벤트 저장소로 쓸 수 있지만, 전용(EventStoreDB) 또는 PostgreSQL 테이블(`events(stream_id, version, type, payload)`, 유니크(stream_id, version) 로 낙관적 동시성)이 흔하다.
+
+```sql
+INSERT INTO events (stream_id, version, type, payload)
+VALUES ($1, $expected_version + 1, 'Withdrew', '{"amount":30}');   -- 유니크 충돌 = 동시 수정 → 재시도
+```
+
+## 스키마 진화
+
+- 추가는 안전, 삭제·이름 변경·타입 변경은 호환성 깨짐. 생산자/소비자가 동시에 배포되지 않는다는 가정.
+- API: 필드 추가만, 버전은 URL/헤더로, 폐기는 공지 → 측정 → 제거.
+- 이벤트: Schema Registry(Avro/Protobuf) 로 호환성 강제 ([Kafka 노트](/kafka/notes/04-delivery-guarantees)).
+- DB: 확장-마이그레이션-축소(expand/migrate/contract) — 새 컬럼 추가 → 이중 쓰기 → 백필 → 읽기 전환 → 옛 컬럼 제거. 잠금 주의 ([PostgreSQL DDL](/postgres/notes/04-locks-deadlocks)).
+
+## 폴리글랏 저장소
+
+| 데이터 | 저장소 |
+|---|---|
+| 트랜잭션·관계 | PostgreSQL |
+| 세션·캐시·카운터·랭킹 | Redis |
+| 전문 검색·로그 | Elasticsearch / Loki |
+| 이벤트·통합 | Kafka |
+| 파일·이미지 | 오브젝트 스토리지(S3) |
+| 시계열 메트릭 | Prometheus / TimescaleDB |
+| 벡터 | Redis / pgvector |
+
+저장소가 늘수록 **동기화**가 문제다. 원천(source of truth)을 하나 정하고 나머지는 파생(이벤트/CDC 로 갱신, 언제든 재구축 가능).
+
+## 예시: 소셜 피드
+
+- 쓰기: 게시글은 PostgreSQL(원천).
+- 읽기 모델: 사용자별 타임라인을 Redis List 에 **미리 계산**(fan-out on write) — 팔로워 수만큼 LPUSH. 유명인(팔로워 100만)은 fan-out on read(조회 시 병합)로 혼합.
+- 이벤트: post.created → 타임라인 서비스, 검색 인덱서, 알림.
+- 삭제: post.deleted → 모든 읽기 모델에서 제거(최종 일관성, 잠시 보일 수 있음을 허용).
+
+## 실습 체크리스트
+
+- [ ] 주문 도메인의 이벤트 5개를 정의하고 상태를 접는 함수 작성
+- [ ] PostgreSQL 에 events 테이블을 만들고 낙관적 동시성(유니크 version) 충돌을 두 세션으로 재현
+- [ ] Redis List 로 fan-out on write 타임라인 구현해 보기 (LPUSH + LTRIM)
+- [ ] expand/migrate/contract 로 컬럼 이름 바꾸는 마이그레이션 계획 작성

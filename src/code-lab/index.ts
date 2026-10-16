@@ -1,10 +1,12 @@
 import * as kafka from "./kafka";
 import * as postgres from "./postgres";
+import * as ai from "./ai";
 import type { CodeExperiment, CodeSubject } from "./types";
 
 export const codeExperiments: CodeExperiment[] = [
   ...Object.values(kafka).filter((v): v is CodeExperiment => typeof v === "object" && v !== null && "run" in v),
   ...Object.values(postgres).filter((v): v is CodeExperiment => typeof v === "object" && v !== null && "run" in v),
+  ...Object.values(ai).filter((v): v is CodeExperiment => typeof v === "object" && v !== null && "run" in v),
 ];
 
 export function listCodeExperiments(subject: CodeSubject | string): CodeExperiment[] {

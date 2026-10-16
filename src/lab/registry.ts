@@ -13,7 +13,7 @@ export interface LabItem {
 }
 
 const SHELL = new Set(["docker", "kubernetes", "linux-network"]);
-const CODE = new Set(["kafka", "postgres"]);
+const CODE = new Set(["kafka", "postgres", "ai-systems"]);
 
 export function hasLab(subject: string): boolean {
   return SHELL.has(subject) || CODE.has(subject);

@@ -145,8 +145,54 @@ export async function checkLinuxNetwork(): Promise<EnvStatus> {
   };
 }
 
+export async function checkAiSystems(): Promise<EnvStatus> {
+  const { ensureConnected, getRedis } = await import("./redis");
+  let search = false;
+  let json = false;
+  let redisOk = false;
+  try {
+    const r = getRedis();
+    await ensureConnected(r);
+    redisOk = true;
+    const list = (await r.call("MODULE", "LIST")) as unknown[][];
+    const names = list.map((m) => String(m[1]).toLowerCase());
+    search = names.includes("search");
+    json = names.includes("rejson");
+  } catch {
+    /* redis down */
+  }
+  const key = !!process.env.ANTHROPIC_API_KEY;
+  return {
+    ok: redisOk && search,
+    title: redisOk && search ? "벡터 검색 준비됨 (Redis 8 Search 모듈)" : redisOk ? "Redis 는 있지만 Search 모듈이 없습니다" : "Redis 에 연결할 수 없습니다",
+    lines: [
+      `Redis: ${redisOk ? "연결됨" : "없음"} · Search(벡터) 모듈: ${search ? "있음" : "없음"} · JSON 모듈: ${json ? "있음" : "없음"}`,
+      `ANTHROPIC_API_KEY: ${key ? "설정됨 (실제 LLM 호출 가능)" : "없음 — 실험은 결정적 가짜 임베딩/응답으로 동작합니다"}`,
+    ],
+    hint: redisOk && search ? undefined : "pnpm redis:docker   # brew 빌드에는 모듈이 없으니 Docker 의 redis:8 을 쓴다",
+    links: [{ label: "Claude API 문서", href: "https://docs.anthropic.com" }, { label: "Redis 벡터 검색 문서", href: "https://redis.io/docs/latest/develop/interact/search-and-query/query/vector-search/" }],
+  };
+}
+
+export async function checkArchitecture(): Promise<EnvStatus> {
+  return {
+    ok: true,
+    title: "아키텍처 주제는 별도 환경이 필요 없습니다",
+    lines: ["패턴의 증거는 다른 주제의 실험실에서 직접 돌려 봅니다:", "Redis(락·레이트리밋·스탬피드·Sentinel), Kafka(파티션·재처리), PostgreSQL(격리·잠금·SKIP LOCKED), Kubernetes(자가치유·롤링·HPA)"],
+    links: [
+      { label: "Redis 실험실", href: "/redis/lab" },
+      { label: "Kafka 실험실", href: "/kafka/lab" },
+      { label: "PostgreSQL 실험실", href: "/postgres/lab" },
+    ],
+  };
+}
+
 export async function checkEnv(subject: string): Promise<EnvStatus> {
   switch (subject) {
+    case "ai-systems":
+      return checkAiSystems();
+    case "architecture":
+      return checkArchitecture();
     case "kafka":
       return checkKafka();
     case "postgres":

@@ -1,0 +1,82 @@
+[
+ {
+  "note": "01-principles-tradeoffs",
+  "q": "PACELC 가 CAP 에 더한 것은?",
+  "a": "분단이 없을 때(E)도 지연(L)과 일관성(C) 중 골라야 한다는 것. 동기 복제는 느리고 비동기는 stale."
+ },
+ {
+  "note": "01-principles-tradeoffs",
+  "q": "리틀의 법칙으로 무엇을 계산하나?",
+  "a": "동시 요청 수 = 처리량 × 지연. 500 rps × 20ms = 10 동시 → 커넥션/스레드 수 산정. p99 가 2배면 자원도 2배."
+ },
+ {
+  "note": "02-scalability-patterns",
+  "q": "확장의 올바른 순서는?",
+  "a": "측정 → 수직 확장 → 캐시 → 무상태 수평 확장 → 읽기 복제 → 비동기화 → 샤딩(마지막, 되돌리기 어려움)."
+ },
+ {
+  "note": "02-scalability-patterns",
+  "q": "캐시 히트율 90% 와 95% 의 DB 부하 차이는?",
+  "a": "1/10 vs 1/20 — 히트율 5%p 가 DB 부하를 2배 바꾼다."
+ },
+ {
+  "note": "03-async-messaging-consistency",
+  "q": "왜 모든 소비자는 멱등해야 하나?",
+  "a": "네트워크에서 정확히 한 번은 없다. ACK 유실 시 재전송(at-least-once)되므로 중복이 반드시 온다. processed_events 테이블이나 upsert 로 처리."
+ },
+ {
+  "note": "03-async-messaging-consistency",
+  "q": "Outbox 패턴이 푸는 문제는?",
+  "a": "DB 저장과 이벤트 발행 사이에 죽어 생기는 불일치(이중 쓰기). 같은 트랜잭션에 outbox 행을 쓰고 릴레이/CDC 가 발행한다."
+ },
+ {
+  "note": "03-async-messaging-consistency",
+  "q": "Saga 의 보상 트랜잭션은 롤백인가?",
+  "a": "아니다. 이미 일어난 일을 되돌리는 게 아니라 '취소' 하는 새 작업(환불, 재고 해제, 취소 메일). 중간 상태가 보이므로 UI 가 다뤄야 한다."
+ },
+ {
+  "note": "04-resilience",
+  "q": "재시도에 지터가 필요한 이유는?",
+  "a": "모든 클라이언트가 같은 간격으로 동시에 재시도하면 재시도 폭풍이 된다. 무작위 지연을 더해 분산시킨다."
+ },
+ {
+  "note": "04-resilience",
+  "q": "서킷브레이커의 HALF-OPEN 상태는?",
+  "a": "OPEN 쿨다운 후 시험 호출 몇 건을 보내 보는 상태. 성공하면 CLOSED, 실패하면 다시 OPEN."
+ },
+ {
+  "note": "04-resilience",
+  "q": "readiness 에 모든 의존성을 넣으면 생기는 문제는?",
+  "a": "Redis 하나 장애에 모든 Pod 이 동시에 빠져 전면 장애. 핵심 의존성만, 저하 모드로 응답할 수 있게."
+ },
+ {
+  "note": "05-data-modeling-cqrs-event-sourcing",
+  "q": "이벤트 소싱에서 GDPR 삭제 요청을 어떻게 처리하나?",
+  "a": "이벤트는 불변이므로 개인정보는 별도 저장소에 두거나 암호화 키를 폐기(crypto-shredding) 한다."
+ },
+ {
+  "note": "05-data-modeling-cqrs-event-sourcing",
+  "q": "읽기 모델의 필수 조건은?",
+  "a": "언제든 재구축 가능해야 한다(이벤트 재생 또는 원천 DB 에서). 최종 일관성을 UI 가 다룬다."
+ },
+ {
+  "note": "06-design-cases",
+  "q": "좌석 예약에서 이중 판매를 막는 원자적 수단은?",
+  "a": "SET seat:{id} user NX PX ttl 또는 Lua 로 '비어 있으면 선점'. TTL 로 미결제 자동 해제, 확정은 DB 트랜잭션."
+ },
+ {
+  "note": "06-design-cases",
+  "q": "피드에서 유명인은 왜 fan-out on read 로 처리하나?",
+  "a": "팔로워 100만 명의 타임라인에 push 하면 쓰기 폭발. 조회 시 병합하는 혼합 방식이 현실적."
+ },
+ {
+  "note": "07-operations-architecture",
+  "q": "RPO 와 RTO 의 차이는?",
+  "a": "RPO 는 허용 데이터 유실량(시간), RTO 는 복구까지 허용 시간. 티어별로 다르게 정하고 복구 연습으로 증명한다."
+ },
+ {
+  "note": "07-operations-architecture",
+  "q": "블루/그린 배포의 전제 조건은?",
+  "a": "DB 스키마가 두 버전 모두와 호환(expand/contract)되어야 하고 자원이 2배 필요하다."
+ }
+]

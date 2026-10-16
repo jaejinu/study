@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300" font-family="ui-sans-serif, system-ui, 'Apple SD Gothic Neo', sans-serif" font-size="12.5">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#8b98a9"/></marker></defs>
+  <rect width="900" height="300" fill="#0d1117"/>
+  <text x="30" y="32" fill="#e6edf3" font-weight="600" font-size="15">CQRS — 쓰기 모델과 읽기 모델의 분리</text>
+  <rect x="30" y="60" width="100" height="180" rx="8" fill="#1a222e" stroke="#243040"/><text x="80" y="155" text-anchor="middle" fill="#e6edf3" font-weight="600">클라이언트</text>
+  <text x="150" y="88" fill="#ff4438" font-weight="600">명령 (쓰기)</text>
+  <g fill="#1a222e" stroke="#243040"><rect x="260" y="70" width="150" height="40" rx="6"/><rect x="440" y="70" width="170" height="40" rx="6"/><rect x="640" y="70" width="110" height="40" rx="6"/></g>
+  <g fill="#e6edf3" font-size="12"><text x="272" y="94">명령 핸들러 · 검증</text><text x="452" y="94">PostgreSQL (정규화, 원천)</text><text x="652" y="94">outbox</text></g>
+  <g fill="none" stroke="#8b98a9" marker-end="url(#a)"><path d="M130 90 H258"/><path d="M410 90 H438"/><path d="M610 90 H638"/></g>
+  <path d="M750 90 H790 Q805 90 805 105 V175 Q805 190 790 190 H765" fill="none" stroke="#8b98a9" marker-end="url(#a)"/>
+  <text x="812" y="140" fill="#8b98a9" font-size="11">이벤트</text>
+  <g fill="#1a222e" stroke="#243040"><rect x="600" y="170" width="160" height="40" rx="6"/><rect x="420" y="170" width="150" height="40" rx="6"/></g>
+  <g fill="#e6edf3" font-size="12"><text x="612" y="194">프로젝터 (이벤트 소비)</text><text x="432" y="194">읽기 모델 갱신</text></g>
+  <path d="M600 190 H572" fill="none" stroke="#8b98a9" marker-end="url(#a)"/>
+  <g fill="#1a222e" stroke="#ff4438"><rect x="260" y="150" width="130" height="34" rx="6"/></g><text x="272" y="172" fill="#e6edf3" font-size="12">Redis JSON/Hash</text>
+  <g fill="#1a222e" stroke="#d29922"><rect x="260" y="196" width="130" height="34" rx="6"/></g><text x="272" y="218" fill="#e6edf3" font-size="12">Elasticsearch</text>
+  <g fill="none" stroke="#8b98a9" marker-end="url(#a)"><path d="M420 185 H392"/><path d="M420 195 Q405 213 392 213"/></g>
+  <text x="150" y="176" fill="#58a6ff" font-weight="600">조회 (읽기)</text>
+  <g fill="none" stroke="#58a6ff" marker-end="url(#a)"><path d="M130 167 H258"/><path d="M130 213 H258"/></g>
+  <text x="30" y="275" fill="#8b98a9" font-size="11.5">읽기 모델은 최종 일관성 · 언제든 재구축 가능해야 한다 (이벤트 재생 또는 원천에서). 읽기/쓰기 부하·형태가 크게 다를 때만 가치가 있다.</text>
+</svg>

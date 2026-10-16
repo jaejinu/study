@@ -1,4 +1,4 @@
-export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network";
+export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network" | "ai-systems" | "architecture";
 
 export interface NavItem {
   href: string;
@@ -184,6 +184,41 @@ export const subjects: Subject[] = [
     setup: [
       { label: "포트 확인", cmd: "lsof -nP -i :6379" },
       { label: "핸드셰이크", cmd: "curl -v http://localhost:3000" },
+    ],
+  },
+  {
+    id: "ai-systems",
+    name: "AI 시스템 설계",
+    tagline: "LLM 앱 아키텍처 · RAG · 에이전트",
+    description: "LLM 을 제품에 넣을 때의 구조: 임베딩과 벡터 검색, RAG 파이프라인, 에이전트와 툴 호출, 프롬프트 캐싱·비용·지연, 평가와 가드레일. Redis 8 벡터 검색으로 직접 실험합니다.",
+    mark: "AI",
+    color: "bg-[#7c3aed]",
+    nav: [
+      { href: "/ai-systems", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/ai-systems/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/ai-systems/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/ai-systems/lab", label: "실험실", icon: "⚗", desc: "벡터 검색 · 시맨틱 캐시 · RAG" },
+    ],
+    setup: [
+      { label: "벡터 DB", cmd: "pnpm redis:docker  (Redis 8, Search 모듈)" },
+      { label: "LLM 키(선택)", cmd: "ANTHROPIC_API_KEY=... pnpm dev" },
+    ],
+  },
+  {
+    id: "architecture",
+    name: "시스템 아키텍처",
+    tagline: "설계 원칙 · 패턴 · 사례",
+    description: "트레이드오프(일관성·가용성·지연·비용), 확장성과 복원력 패턴, 비동기 메시징과 데이터 일관성, CQRS·이벤트 소싱, 실제 설계 사례. 다른 주제의 실험들이 이 패턴의 증거가 됩니다.",
+    mark: "SA",
+    color: "bg-[#0f766e]",
+    nav: [
+      { href: "/architecture", label: "대시보드", icon: "◉", desc: "학습 현황" },
+      { href: "/architecture/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/architecture/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+    ],
+    setup: [
+      { label: "패턴 실험", cmd: "Redis/Kafka/PostgreSQL 실험실" },
+      { label: "설계 연습", cmd: "노트 06 사례" },
     ],
   },
 ];
