@@ -8,7 +8,8 @@ import { Markdown } from "./Markdown";
 type Proposal = { subject: string; id: string; title: string; reason: string; href: string };
 type ToolEvent = { name: string; ms?: number; isError?: boolean; proposal?: Proposal };
 type Usage = { model: string; input: number; output: number; cached: number; costUsd: number; ttftMs: number | null; totalMs: number; toolCalls: number };
-type Msg = { role: "user" | "assistant"; content: string; tools?: ToolEvent[]; usage?: Usage; error?: string };
+type Source = { title: string; href: string; subject: string; kind: "current" | "related" };
+type Msg = { role: "user" | "assistant"; content: string; tools?: ToolEvent[]; usage?: Usage; error?: string; sources?: Source[] };
 type Config = { configured: boolean; model: string; models: string[]; baseUrl: string | null };
 
 const QUICK = ["이 노트를 3줄로 요약해 줘", "지금 이 부분을 예시로 다시 설명해 줘", "이 내용과 관련해 직접 돌려 볼 실험은?", "면접 질문 3개 내 줘"];
@@ -109,6 +110,7 @@ export function AskPanel() {
             else if (ev.type === "tool_start") patch((m) => ({ ...m, tools: [...(m.tools ?? []), { name: String(ev.name) }] }));
             else if (ev.type === "tool_result") patch((m) => ({ ...m, tools: (m.tools ?? []).map((t, i, arr) => (i === arr.length - 1 ? { ...t, ms: Number(ev.ms), isError: !!ev.isError, proposal: ev.proposal as Proposal | undefined } : t)) }));
             else if (ev.type === "usage") patch((m) => ({ ...m, usage: ev as unknown as Usage }));
+            else if (ev.type === "sources") patch((m) => ({ ...m, sources: ev.items as Source[] }));
             else if (ev.type === "error") patch((m) => ({ ...m, error: String(ev.message) }));
           }
         }
@@ -202,6 +204,25 @@ OPENAI_API_KEY=ollama OPENAI_BASE_URL=http://localhost:11434/v1 OPENAI_MODEL=qwe
                       </div>
                     ))}
                     {m.error && <div className="mt-1 text-[12px] text-accent">오류: {m.error}</div>}
+                    {(m.sources?.length || /사이트 밖 내용/.test(m.content)) && m.content ? (
+                      <div className="mt-2 border-t border-border pt-2">
+                        <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                          <span>근거로 쓴 노트</span>
+                          {/사이트 밖 내용/.test(m.content) && <span className="rounded border border-warn/40 bg-warn/10 px-1.5 py-0.5 text-warn">사이트 밖 내용 포함</span>}
+                        </div>
+                        <ul className="space-y-0.5">
+                          {(m.sources ?? []).map((src) => (
+                            <li key={src.href} className="truncate text-[12px]">
+                              <Link href={src.href} className="text-info hover:underline">
+                                {src.kind === "current" ? "📖 " : ""}
+                                {src.title}
+                              </Link>
+                              <span className="ml-1 text-muted">· {src.subject}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
                     {m.usage && (
                       <div className="mt-1.5 text-[10.5px] text-muted">
                         {m.usage.input + m.usage.output} 토큰 · ${m.usage.costUsd.toFixed(4)} · {m.usage.totalMs}ms{m.usage.toolCalls ? ` · 툴 ${m.usage.toolCalls}회` : ""}

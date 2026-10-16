@@ -23,20 +23,27 @@ const ASK_PROMPT = `
 4. 실험이 질문에 답이 되면 propose_experiment 로 제안한다(실행은 사용자가 한다).
 `;
 
-async function pageContext(ctx: PageContext, question: string): Promise<string> {
+type Source = { title: string; href: string; subject: string; kind: "current" | "related" };
+
+async function pageContext(ctx: PageContext, question: string): Promise<{ text: string; sources: Source[] }> {
   const parts: string[] = [];
+  const sources: Source[] = [];
   const m = /^\/([a-z0-9-]+)(?:\/notes\/([a-z0-9-]+))?/.exec(ctx.pathname ?? "");
   const subject = m ? getSubject(m[1]) : undefined;
   if (subject) parts.push(`현재 주제: ${subject.name} (${subject.id}) — ${subject.tagline}`);
   if (m?.[2] && subject) {
     const note = await getNote(subject.id, m[2]);
-    if (note) parts.push(`현재 노트: [${note.title}](/${subject.id}/notes/${m[2]}) (${note.level})\n요약: ${note.summary}\n\n--- 노트 본문 (앞 14000자) ---\n${note.content.slice(0, 14000)}`);
+    if (note) {
+      parts.push(`현재 노트: [${note.title}](/${subject.id}/notes/${m[2]}) (${note.level})\n요약: ${note.summary}\n\n--- 노트 본문 (앞 14000자) ---\n${note.content.slice(0, 14000)}`);
+      sources.push({ title: note.title, href: `/${subject.id}/notes/${m[2]}`, subject: subject.name, kind: "current" });
+    }
   } else if (ctx.pathname) parts.push(`현재 경로: ${ctx.pathname}`);
   if (ctx.selection?.trim()) parts.push(`사용자가 화면에서 선택한 텍스트:\n"""${ctx.selection.trim().slice(0, 2000)}"""`);
   // 모델이 툴을 안 쓰거나 검색어를 틀려도 근거가 있도록, 질문으로 관련 노트를 미리 찾아 붙인다 (검색 증강)
   const hits = (await searchSmart(question, 5)).filter((h) => h.kind === "note" && !(m?.[2] && h.href.endsWith(`/${m[2]}`)));
   if (hits.length) parts.push(`질문과 관련된 이 사이트의 노트 (근거로 쓰고 링크로 인용):\n${hits.map((h) => `- [${h.title}](${h.href}) — ${h.subjectName}: ${h.snippet}`).join("\n")}`);
-  return parts.join("\n\n");
+  for (const h of hits) sources.push({ title: h.title, href: h.href, subject: h.subjectName, kind: "related" });
+  return { text: parts.join("\n\n"), sources };
 }
 
 export async function POST(req: Request) {
@@ -57,13 +64,15 @@ export async function POST(req: Request) {
   const tracer = trace.getTracer("study-ask");
   const encoder = new TextEncoder();
   const usage = { input: 0, output: 0, cached: 0 };
-  const context = await pageContext(body.context ?? {}, history[history.length - 1].content);
+  const { text: context, sources } = await pageContext(body.context ?? {}, history[history.length - 1].content);
 
   const stream = new ReadableStream({
     async start(controller) {
       const send = (event: Record<string, unknown>) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
       await tracer.startActiveSpan("ask.chat", { attributes: { "gen_ai.system": "openai", "gen_ai.request.model": model, "gen_ai.operation.name": "chat", "study.ask.pathname": body.context?.pathname ?? "" } }, async (span) => {
         const tStart = performance.now();
+        // 모델에 준 근거를 먼저 보낸다 — 모델이 링크를 빼먹어도 사용자는 근거를 볼 수 있다
+        send({ type: "sources", items: sources });
         let firstToken = 0;
         let toolCalls = 0;
         const messages: OpenAIMessage[] = [
