@@ -7,6 +7,7 @@ import { Badge, Card } from "@/components/ui";
 import { getLab, listLab } from "@/lab/registry";
 import { listNotes } from "@/lib/notes";
 import { getSubject } from "@/lib/subjects";
+import { RecentTracker } from "@/components/shell/recent";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,8 @@ export default async function ShellExperimentPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-3 flex items-center gap-2 pt-8 text-xs text-muted md:pt-0">
+      <RecentTracker kind="lab" subject={sid} href={`/${sid}/lab/${exp.id}`} title={exp.title} />
+      <div className="mb-3 flex items-center gap-2 text-xs text-muted">
         <Link href={`/${sid}/lab`} className="hover:text-foreground">
           {subject.name} 실험실
         </Link>

@@ -11,6 +11,7 @@ import { loadQuiz } from "@/lib/quiz";
 import { cardKey, getNoteTime, getQuizStats } from "@/lib/study";
 import { StudyTimer } from "@/components/StudyTimer";
 import { Toc } from "@/components/Toc";
+import { RecentTracker } from "@/components/shell/recent";
 import { logger } from "@/lib/log";
 import { metrics } from "@/lib/metrics";
 import { getSubject } from "@/lib/subjects";
@@ -44,7 +45,8 @@ export default async function NotePage({ params }: Props) {
   return (
     <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[minmax(0,1fr)_230px]">
       <article>
-        <div className="mb-4 flex items-center gap-2 pt-8 text-xs text-muted md:pt-0">
+        <RecentTracker kind="note" subject={subject.id} href={`${base}/${slug}`} title={note.title} />
+        <div className="mb-4 flex items-center gap-2 text-xs text-muted">
           <Link href={base} className="hover:text-foreground">
             {subject.name} 학습 노트
           </Link>
