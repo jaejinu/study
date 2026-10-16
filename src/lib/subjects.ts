@@ -1,4 +1,4 @@
-export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network" | "ai-systems" | "architecture" | "chaos" | "security" | "iac" | "distributed-systems" | "performance" | "sre" | "ebpf" | "opensearch" | "db-internals" | "api-design" | "messaging" | "mlops" | "testing" | "finops" | "os-internals";
+export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network" | "ai-systems" | "architecture" | "chaos" | "security" | "iac" | "distributed-systems" | "performance" | "sre" | "ebpf" | "opensearch" | "db-internals" | "api-design" | "messaging" | "mlops" | "testing" | "finops" | "os-internals" | "ai-agents" | "clickhouse" | "data-engineering";
 
 export interface NavItem {
   href: string;
@@ -527,6 +527,63 @@ export const subjects: Subject[] = [
     setup: [
       { label: "도구", cmd: "docker run --privileged (perf, bpftrace)" },
       { label: "대상", cmd: "pnpm redis:docker" },
+    ],
+  },
+  {
+    id: "ai-agents",
+    track: "design",
+    name: "AI 에이전트 설계",
+    tagline: "툴 · 메모리 · 계획 · MCP · 평가",
+    description: "에이전트 루프와 툴 설계, MCP(Model Context Protocol) 서버·클라이언트, 단기·장기·벡터 메모리, 계획·반성·다중 에이전트, 가드레일·권한·사람 승인, 에이전트 평가와 트레이스 관측, 비용·지연 최적화. 이 사이트의 'AI 에게 묻기' 툴 루프와 로컬 모델(Ollama)을 교재로 직접 만들고 측정합니다.",
+    mark: "AG",
+    color: "bg-[#7c3aed]",
+    nav: [
+      { href: "/ai-agents", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/ai-agents/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/ai-agents/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/ai-agents/lab", label: "실험실", icon: "⚗", desc: "MCP · 툴 루프 · 인젝션 방어" },
+    ],
+    setup: [
+      { label: "모델", cmd: "ollama serve (qwen2.5)" },
+      { label: "관측", cmd: "pnpm obs:up (Tempo 트레이스)" },
+    ],
+  },
+  {
+    id: "clickhouse",
+    track: "data",
+    name: "ClickHouse · OLAP",
+    tagline: "열 지향 분석 DB · 로그 분석",
+    description: "열 지향 저장과 MergeTree, 파티션·정렬 키·스킵 인덱스, 머티리얼라이즈드 뷰와 사전 집계, 로그·트레이스 분석(Loki·OpenSearch 와 비교), 압축 코덱, 분산·복제. 이 사이트의 앱 로그를 넣어 질의 속도와 저장 용량을 실측합니다.",
+    mark: "CH",
+    color: "bg-[#facc15]",
+    nav: [
+      { href: "/clickhouse", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/clickhouse/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/clickhouse/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/clickhouse/lab", label: "실험실", icon: "⚗", desc: "정렬 키 · 압축 · 로그 분석 비교" },
+    ],
+    setup: [
+      { label: "서버", cmd: "pnpm clickhouse:up (HTTP 18123)" },
+      { label: "대상", cmd: "logs/app.jsonl · Loki" },
+    ],
+  },
+  {
+    id: "data-engineering",
+    track: "data",
+    name: "데이터 엔지니어링",
+    tagline: "배치·스트림 · 레이크하우스 · 변환 · 품질",
+    description: "배치와 스트리밍, 열 파일 포맷(Parquet)과 레이크하우스(Iceberg), 오케스트레이션(Airflow·Dagster), dbt 식 변환과 테스트, 스트림 처리, 데이터 품질·계보·계약. Debezium CDC → Kafka → 객체 저장소 → DuckDB 로 이 사이트의 데이터를 흘려 봅니다.",
+    mark: "DE",
+    color: "bg-[#0891b2]",
+    nav: [
+      { href: "/data-engineering", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/data-engineering/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/data-engineering/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/data-engineering/lab", label: "실험실", icon: "⚗", desc: "CDC → Parquet · DuckDB · 품질 검사" },
+    ],
+    setup: [
+      { label: "엔진", cmd: "DuckDB (@duckdb/node-api, 설치됨)" },
+      { label: "저장소", cmd: "pnpm lake:up (MinIO 19100)" },
     ],
   },
 ];

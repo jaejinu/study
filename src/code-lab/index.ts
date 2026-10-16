@@ -11,6 +11,9 @@ import * as mq from "./messaging";
 import * as mlops from "./mlops";
 import * as testing from "./testing";
 import * as ds from "./distributed";
+import * as agents from "./ai-agents";
+import * as ch from "./clickhouse";
+import * as de from "./data-engineering";
 import type { CodeExperiment, CodeSubject } from "./types";
 
 export const codeExperiments: CodeExperiment[] = [
@@ -20,7 +23,7 @@ export const codeExperiments: CodeExperiment[] = [
   ...Object.values(chaos).filter((v): v is CodeExperiment => typeof v === "object" && v !== null && "run" in v),
   ...Object.values(obs).filter((v): v is CodeExperiment => typeof v === "object" && v !== null && "run" in v),
   ...Object.values(cdc).filter((v): v is CodeExperiment => typeof v === "object" && v !== null && "run" in v),
-  ...[search, dbi, api, mq, mlops, testing, ds].flatMap((m) => Object.values(m as Record<string, unknown>).filter((v): v is CodeExperiment => typeof v === "object" && v !== null && "run" in v)),
+  ...[search, dbi, api, mq, mlops, testing, ds, agents, ch, de].flatMap((m) => Object.values(m as Record<string, unknown>).filter((v): v is CodeExperiment => typeof v === "object" && v !== null && "run" in v)),
 ];
 
 export function listCodeExperiments(subject: CodeSubject | string): CodeExperiment[] {

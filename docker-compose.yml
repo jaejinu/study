@@ -274,6 +274,38 @@ services:
     volumes:
       - mlflow-data:/data
 
+  # ---- ClickHouse : pnpm clickhouse:up (HTTP 18123) — ClickHouse 주제 ----
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.3-alpine
+    container_name: study-clickhouse
+    profiles: ["clickhouse"]
+    ports:
+      - "127.0.0.1:18123:8123"
+      - "127.0.0.1:19009:9000"
+    environment:
+      CLICKHOUSE_USER: study
+      CLICKHOUSE_PASSWORD: study
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+
+  # ---- MinIO (S3 호환 객체 저장소) : pnpm lake:up — 데이터 엔지니어링 주제 ----
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: study-minio
+    profiles: ["lake"]
+    command: ["server", "/data", "--console-address", ":9001"]
+    ports:
+      - "127.0.0.1:19100:9000"
+      - "127.0.0.1:19101:9001"
+    environment:
+      MINIO_ROOT_USER: study
+      MINIO_ROOT_PASSWORD: study-secret
+    volumes:
+      - minio-data:/data
+
   # ---- Nginx TLS 종단 : pnpm nginx:tls (사설 CA, https://localhost:18444) ----
   nginx-tls:
     image: nginx:1.27-alpine
@@ -288,6 +320,8 @@ services:
       - "host.docker.internal:host-gateway"
 
 volumes:
+  clickhouse-data:
+  minio-data:
   opensearch-data:
   nats-data:
   mlflow-data:

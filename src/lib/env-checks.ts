@@ -304,8 +304,25 @@ export async function checkOsInternals(): Promise<EnvStatus> {
   return checkSimple(docker ? `Linux VM 준비됨 (${kernel.out})` : "Docker 가 필요합니다", [{ label: "docker (특권 컨테이너로 perf·bpftrace)", ok: !!docker }, { label: "Redis(study-redis, 관측 대상)", ok: redis.ok && redis.out === "running" }], docker ? undefined : "Docker Desktop 실행");
 }
 
+export async function checkAiAgents(): Promise<EnvStatus> {
+  const [ollama, tempo] = await Promise.all([fetchText("http://127.0.0.1:11434/api/tags"), fetchText("http://127.0.0.1:13200/ready")]);
+  const models = ollama.ok ? (ollama.text.match(/"name"\s*:\s*"([^"]+)"/g) ?? []).map((m) => m.replace(/.*"([^"]+)"$/, "$1")).join(", ") : "";
+  return checkSimple(ollama.ok ? "에이전트 실험 준비됨 (로컬 모델)" : "Ollama 가 꺼져 있습니다", [{ label: "Ollama(11434)", ok: ollama.ok, detail: models || undefined }, { label: "Tempo(13200, 트레이스)", ok: tempo.ok }, { label: "OPENAI_API_KEY", ok: !!process.env.OPENAI_API_KEY, detail: "없으면 Ollama 사용" }], ollama.ok ? undefined : "ollama serve && ollama pull qwen2.5:1.5b", [{ label: "MCP 문서", href: "https://modelcontextprotocol.io" }]);
+}
+export async function checkClickhouse(): Promise<EnvStatus> {
+  const ch = await fetchText("http://127.0.0.1:18123/?query=SELECT%20version()");
+  return checkSimple(ch.ok ? `ClickHouse ${ch.text.trim()} 연결됨 (18123)` : "ClickHouse 가 꺼져 있습니다", [{ label: "ClickHouse HTTP(18123)", ok: ch.ok }], ch.ok ? undefined : "pnpm clickhouse:up", [{ label: "ClickHouse 문서", href: "https://clickhouse.com/docs" }]);
+}
+export async function checkDataEngineering(): Promise<EnvStatus> {
+  const [minio, kafka, connect] = await Promise.all([fetchText("http://127.0.0.1:19100/minio/health/live"), run("docker", ["inspect", "-f", "{{.State.Status}}", "study-kafka"]), fetchText("http://127.0.0.1:18083/connectors")]);
+  return checkSimple("데이터 파이프라인 구성 요소", [{ label: "DuckDB (내장)", ok: true }, { label: "MinIO(19100, 콘솔 19101)", ok: minio.ok }, { label: "Kafka(19092)", ok: kafka.ok && kafka.out === "running" }, { label: "Kafka Connect/Debezium(18083)", ok: connect.ok }], minio.ok ? undefined : "pnpm lake:up   # MinIO · CDC 실험은 pnpm cdc:up 도", [{ label: "MinIO 콘솔", href: "http://localhost:19101" }]);
+}
+
 export async function checkEnv(subject: string): Promise<EnvStatus> {
   switch (subject) {
+    case "ai-agents": return checkAiAgents();
+    case "clickhouse": return checkClickhouse();
+    case "data-engineering": return checkDataEngineering();
     case "sre": return checkSre();
     case "ebpf": return checkEbpf();
     case "opensearch": return checkSearch();
