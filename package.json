@@ -13,7 +13,12 @@
     "test:watch": "vitest",
     "test:report": "vitest run --reporter=default --reporter=json --outputFile.json=reports/vitest.json",
     "redis:docker": "docker compose up -d redis",
-    "redis:docker:down": "docker compose down"
+    "redis:docker:down": "docker compose down",
+    "k8s:cluster": "kind create cluster --name study --wait 120s",
+    "k8s:cluster:down": "kind delete cluster --name study",
+    "k8s:up": "kubectl kustomize --load-restrictor LoadRestrictionsNone k8s | kubectl apply -f - && kubectl -n study rollout status statefulset/redis --timeout=120s",
+    "k8s:down": "kubectl kustomize --load-restrictor LoadRestrictionsNone k8s | kubectl delete --ignore-not-found -f -",
+    "k8s:port": "kubectl -n study port-forward svc/redis 6379:6379"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",

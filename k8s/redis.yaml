@@ -1,0 +1,72 @@
+# Redis 단일 인스턴스를 StatefulSet 으로 배포한다. (Kubernetes 노트 06 참고)
+#  - 안정적인 이름(redis-0)과 PVC(data-redis-0)가 Pod 재생성 후에도 유지된다
+#  - 설정은 ConfigMap(kustomize 가 redis.conf 에서 생성), 데이터는 PVC(/data)
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels: { app: redis }
+spec:
+  selector: { app: redis }
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  labels: { app: redis }
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels: { app: redis }
+  template:
+    metadata:
+      labels: { app: redis }
+    spec:
+      containers:
+        - name: redis
+          image: redis:8-alpine
+          # 설정 파일의 bind 127.0.0.1 은 Pod 안의 루프백이라 Service 를 통한 접근이 막힌다 → 덮어쓴다
+          args:
+            - redis-server
+            - /usr/local/etc/redis/redis.conf
+            - --dir
+            - /data
+            - --bind
+            - 0.0.0.0
+            - --protected-mode
+            - "no"
+          ports:
+            - name: redis
+              containerPort: 6379
+          volumeMounts:
+            - name: config
+              mountPath: /usr/local/etc/redis
+              readOnly: true
+            - name: data
+              mountPath: /data
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 320Mi }     # redis.conf 의 maxmemory 256mb 보다 넉넉하게
+          readinessProbe:
+            exec: { command: [redis-cli, ping] }
+            periodSeconds: 5
+          livenessProbe:
+            exec: { command: [redis-cli, ping] }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: redis-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: { storage: 1Gi }

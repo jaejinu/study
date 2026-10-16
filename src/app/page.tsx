@@ -14,12 +14,12 @@ export default async function Home() {
     })),
   );
   return (
-    <div className="mx-auto max-w-4xl pt-10 md:pt-16">
+    <div className="mx-auto max-w-5xl pt-10 md:pt-16">
       <div className="mb-10 text-center">
         <h1 className="text-3xl font-bold tracking-tight md:text-4xl">무엇을 공부할까요?</h1>
         <p className="mt-3 text-muted">주제를 고르면 목차 순서의 학습 노트와 실습 환경이 열립니다.</p>
       </div>
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {subjects.map((s) => {
           const c = counts.find((x) => x.id === s.id)!;
           return (

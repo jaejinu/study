@@ -1,4 +1,4 @@
-export type SubjectId = "redis" | "docker";
+export type SubjectId = "redis" | "docker" | "kubernetes";
 
 export interface NavItem {
   href: string;
@@ -56,6 +56,22 @@ export const subjects: Subject[] = [
     setup: [
       { label: "확인", cmd: "docker version" },
       { label: "Redis 띄우기", cmd: "pnpm redis:docker" },
+    ],
+  },
+  {
+    id: "kubernetes",
+    name: "Kubernetes",
+    tagline: "컨테이너 오케스트레이션",
+    description: "클러스터 구조, Pod·Deployment·Service 같은 핵심 오브젝트, 설정·스토리지·배포 전략, 운영과 디버깅까지. 로컬 클러스터(kind)에 이 프로젝트의 Redis 를 직접 배포해 봅니다.",
+    mark: "K",
+    color: "bg-[#326ce5]",
+    nav: [
+      { href: "/kubernetes", label: "대시보드", icon: "◉", desc: "클러스터 점검 · 학습 현황" },
+      { href: "/kubernetes/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+    ],
+    setup: [
+      { label: "클러스터", cmd: "pnpm k8s:cluster" },
+      { label: "Redis 배포", cmd: "pnpm k8s:up" },
     ],
   },
 ];

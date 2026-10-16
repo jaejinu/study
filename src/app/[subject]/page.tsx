@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { DockerStatusCard } from "@/components/DockerStatusCard";
+import { KubeStatusCard } from "@/components/KubeStatusCard";
 import { RedisStatusCard } from "@/components/RedisStatusCard";
 import { Badge, Card, LevelBadge, PageHeader } from "@/components/ui";
 import { categories, experiments } from "@/experiments";
@@ -28,11 +29,17 @@ export default async function SubjectHome({ params }: Props) {
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title={`${subject.name} Study`}
-        subtitle={subject.id === "redis" ? "노트로 개념을 익히고 → 실험실에서 실제 동작을 확인하고 → 콘솔로 직접 만져 본다." : "노트로 개념을 익히고 → 터미널에서 직접 실습한다. 각 노트 끝의 실습 블록을 따라 해 보자."}
+        subtitle={
+          subject.id === "redis"
+            ? "노트로 개념을 익히고 → 실험실에서 실제 동작을 확인하고 → 콘솔로 직접 만져 본다."
+            : subject.id === "docker"
+              ? "노트로 개념을 익히고 → 터미널에서 직접 실습한다. 각 노트 끝의 실습 블록을 따라 해 보자."
+              : "노트로 개념을 익히고 → 로컬 클러스터(kind)에 직접 배포해 본다. kubectl 로 오브젝트를 만지며 익히자."
+        }
       />
 
       <Suspense fallback={<Card className="p-4 text-sm text-muted">환경 확인 중…</Card>}>
-        {subject.id === "redis" ? <RedisStatusCard /> : <DockerStatusCard />}
+        {subject.id === "redis" ? <RedisStatusCard /> : subject.id === "docker" ? <DockerStatusCard /> : <KubeStatusCard />}
       </Suspense>
 
       <section className="mt-8">
@@ -105,6 +112,23 @@ export default async function SubjectHome({ params }: Props) {
                 아직 리포트가 없습니다. <code>pnpm test:report</code> 를 실행하거나 테스트 페이지에서 실행하세요.
               </p>
             )}
+          </Card>
+        </section>
+      )}
+
+      {subject.id === "kubernetes" && (
+        <section className="mt-8">
+          <Card className="p-4">
+            <h2 className="mb-2 font-semibold">이 프로젝트의 Redis 를 Kubernetes 에 배포하기</h2>
+            <p className="text-sm text-muted">
+              <code>k8s/</code> 의 매니페스트(Namespace, ConfigMap, StatefulSet, Service)를 kustomize 로 적용합니다. 포트 포워딩하면 Redis 대시보드와 실험이 그대로 붙습니다.
+            </p>
+            <pre className="mt-2 rounded bg-[#0d1117] p-3 text-xs leading-relaxed">{`pnpm k8s:cluster     # kind 로 로컬 클러스터 생성 (최초 1회)
+pnpm k8s:up          # kustomize 빌드 → kubectl apply + 롤아웃 대기
+kubectl -n study get all,pvc,cm
+pnpm k8s:port        # svc/redis → localhost:6379 (다른 Redis 는 꺼 두기)
+pnpm k8s:down        # 리소스 삭제
+pnpm k8s:cluster:down`}</pre>
           </Card>
         </section>
       )}
