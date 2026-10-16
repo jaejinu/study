@@ -13,26 +13,27 @@ export interface LabItem {
 }
 
 const SHELL = new Set(["docker", "kubernetes", "linux-network", "observability"]);
-const CODE = new Set(["kafka", "postgres", "ai-systems", "chaos"]);
+const CODE = new Set(["kafka", "postgres", "ai-systems", "chaos", "observability"]);
 
 export function hasLab(subject: string): boolean {
   return SHELL.has(subject) || CODE.has(subject);
 }
 
+/** 한 주제에 셸 실험과 코드 실험이 함께 있을 수 있다 (예: 관측성) */
 export function listLab(subject: string): LabItem[] {
-  if (SHELL.has(subject)) return listShellExperiments(subject as "docker").map((e) => ({ kind: "shell", ...e }));
-  if (CODE.has(subject)) return listCodeExperiments(subject).map((e) => ({ kind: "code", ...e }));
-  return [];
+  const shell = SHELL.has(subject) ? listShellExperiments(subject as "docker").map((e) => ({ kind: "shell" as const, ...e })) : [];
+  const code = CODE.has(subject) ? listCodeExperiments(subject).map((e) => ({ kind: "code" as const, ...e })) : [];
+  return [...shell, ...code];
 }
 
 export function getLab(subject: string, id: string): LabItem | undefined {
   if (SHELL.has(subject)) {
     const e = getShellExperiment(subject, id);
-    return e && { kind: "shell", ...e };
+    if (e) return { kind: "shell", ...e };
   }
   if (CODE.has(subject)) {
     const e = getCodeExperiment(subject, id);
-    return e && { kind: "code", ...e };
+    if (e) return { kind: "code", ...e };
   }
   return undefined;
 }

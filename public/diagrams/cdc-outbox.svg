@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="400" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">Outbox + CDC — 앱은 DB 에만 쓰고, Debezium 이 WAL 을 이벤트로 바꾼다</text>
+  <!-- app -->
+  <rect x="30" y="80" width="170" height="110" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="115" y="105" text-anchor="middle" fill="#e6edf3" font-weight="600">앱 서비스</text>
+  <text x="115" y="130" text-anchor="middle" fill="#8b949e">BEGIN</text>
+  <text x="115" y="148" text-anchor="middle" fill="#8b949e">INSERT orders</text>
+  <text x="115" y="166" text-anchor="middle" fill="#8b949e">INSERT outbox</text>
+  <text x="115" y="184" text-anchor="middle" fill="#8b949e">COMMIT</text>
+  <!-- pg -->
+  <rect x="260" y="60" width="220" height="150" rx="10" fill="#161b22" stroke="#3b82f6"/>
+  <text x="370" y="85" text-anchor="middle" fill="#3b82f6" font-weight="600">PostgreSQL (wal_level=logical)</text>
+  <rect x="280" y="100" width="80" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="320" y="124" text-anchor="middle" fill="#e6edf3">orders</text>
+  <rect x="380" y="100" width="80" height="40" rx="6" fill="#0d1117" stroke="#f59e0b"/>
+  <text x="420" y="124" text-anchor="middle" fill="#f59e0b">outbox</text>
+  <rect x="280" y="155" width="180" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="370" y="172" text-anchor="middle" fill="#e6edf3">WAL</text>
+  <text x="370" y="188" text-anchor="middle" fill="#8b949e" font-size="11">복제 슬롯 study_outbox (pgoutput)</text>
+  <!-- debezium -->
+  <rect x="540" y="80" width="170" height="110" rx="10" fill="#161b22" stroke="#22c55e"/>
+  <text x="625" y="105" text-anchor="middle" fill="#22c55e" font-weight="600">Kafka Connect</text>
+  <text x="625" y="128" text-anchor="middle" fill="#e6edf3">Debezium PG 커넥터</text>
+  <text x="625" y="150" text-anchor="middle" fill="#8b949e" font-size="11">EventRouter SMT:</text>
+  <text x="625" y="166" text-anchor="middle" fill="#8b949e" font-size="11">topic ← aggregatetype</text>
+  <text x="625" y="181" text-anchor="middle" fill="#8b949e" font-size="11">key ← aggregateid</text>
+  <!-- kafka -->
+  <rect x="770" y="60" width="160" height="150" rx="10" fill="#161b22" stroke="#8b5cf6"/>
+  <text x="850" y="85" text-anchor="middle" fill="#8b5cf6" font-weight="600">Kafka</text>
+  <rect x="785" y="100" width="130" height="30" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="850" y="120" text-anchor="middle" fill="#e6edf3" font-size="12">outbox.order</text>
+  <rect x="785" y="140" width="130" height="30" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="850" y="160" text-anchor="middle" fill="#e6edf3" font-size="12">outbox.payment</text>
+  <text x="850" y="195" text-anchor="middle" fill="#8b949e" font-size="11">같은 키 → 같은 파티션 → 순서</text>
+  <!-- arrows -->
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <line x1="200" y1="135" x2="258" y2="135" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="229" y="125" text-anchor="middle" fill="#8b949e" font-size="11">1 트랜잭션</text>
+  <line x1="482" y1="175" x2="538" y2="150" stroke="#22c55e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="510" y="200" text-anchor="middle" fill="#22c55e" font-size="11">WAL 스트리밍</text>
+  <line x1="712" y1="135" x2="768" y2="135" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="740" y="125" text-anchor="middle" fill="#8b949e" font-size="11">produce</text>
+  <!-- consumer -->
+  <rect x="770" y="250" width="160" height="70" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="850" y="275" text-anchor="middle" fill="#e6edf3" font-weight="600">소비자 서비스</text>
+  <text x="850" y="298" text-anchor="middle" fill="#8b949e" font-size="11">멱등 처리 (event id 로 중복 제거)</text>
+  <line x1="850" y1="212" x2="850" y2="248" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <!-- bottom notes -->
+  <rect x="30" y="250" width="700" height="120" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="50" y="275" fill="#f59e0b" font-weight="600">왜 이게 "이중 쓰기" 를 없애나</text>
+  <text x="50" y="300" fill="#e6edf3">• DB 커밋 = 이벤트 발행 약속. 앱이 커밋 직후 죽어도 WAL 에 남아 있으니 반드시 발행된다 (at-least-once).</text>
+  <text x="50" y="322" fill="#e6edf3">• 앱 코드에 Kafka 클라이언트가 없다. 브로커 장애가 사용자 요청을 실패시키지 않는다.</text>
+  <text x="50" y="344" fill="#e6edf3">• 위험: Connect 가 멈추면 슬롯이 WAL 삭제를 막아 디스크가 찬다 → pg_replication_slots 지연 모니터링 필수.</text>
+  <text x="50" y="362" fill="#8b949e" font-size="11">실험: cdc-outbox-debezium (pnpm cdc:up)</text>
+</svg>

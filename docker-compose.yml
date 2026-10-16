@@ -64,11 +64,43 @@ services:
       timeout: 5s
       retries: 20
 
+  # ---- CDC: Kafka Connect + Debezium : pnpm cdc:up (kafka·postgres 프로파일과 함께) ----
+  connect:
+    image: quay.io/debezium/connect:3.0.0.Final
+    container_name: study-connect
+    profiles: ["cdc"]
+    ports:
+      - "127.0.0.1:18083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: study-connect
+      CONFIG_STORAGE_TOPIC: _connect_configs
+      OFFSET_STORAGE_TOPIC: _connect_offsets
+      STATUS_STORAGE_TOPIC: _connect_status
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8083/connectors >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
   # ---- PostgreSQL : pnpm pg:up ----
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16          # postgres:16 + pgvector 확장 (벡터 실험). 기존 데이터 볼륨 그대로 사용 가능
     container_name: study-postgres
     profiles: ["postgres"]
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=4", "-c", "max_wal_senders=4", "-c", "shared_preload_libraries=pg_stat_statements"]   # CDC(Debezium)·pg_stat_statements
     ports:
       - "127.0.0.1:15432:5432"
     environment:

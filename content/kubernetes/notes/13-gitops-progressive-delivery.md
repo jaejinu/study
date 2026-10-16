@@ -139,11 +139,12 @@ pnpm k8s:rollouts:watch
 
 - `k8s/argocd/application.yaml`: `automated.prune/selfHeal`, `ignoreDifferences` 로 HPA/Rollouts 가 바꾸는 replicas 는 드리프트로 보지 않는다.
 - `k8s/rollouts/web-rollout.yaml`: Ingress 없이 **복제본 비율**로 카나리. AnalysisTemplate 은 kube-prometheus-stack 의 Prometheus 에서 `study_redis_up` 과 타깃 `up` 을 본다 — 실패하면 자동 롤백.
-- 드리프트 실험: `kubectl -n study scale deploy/web --replicas=0` 하면 수 초~3분 안에 ArgoCD 가 2 로 되돌린다 (기본 폴링 3분, 웹훅 연결 시 즉시).
+- 드리프트 실험: `kubectl -n study set env deploy/web DRIFT=1` 로 git 에 없는 env 를 넣으면 수 초~3분 안에 ArgoCD 가 지운다 (기본 폴링 3분, 웹훅 연결 시 즉시). **replicas 는 `ignoreDifferences` 에 있어서 `scale` 로는 드리프트가 생기지 않는다** — HPA/Rollouts 와 싸우지 않기 위한 의도적 예외.
+- Argo Rollouts 의 CRD 는 커서 `kubectl apply` 의 어노테이션 한도(256KB)를 넘는다. `kubectl apply --server-side` 로 설치해야 한다(`pnpm k8s:rollouts` 에 반영).
 
 ## 실습 체크리스트
 
 - [ ] kind 에 ArgoCD 를 설치하고 이 저장소 `k8s/` 를 Application 으로 등록, Synced/Healthy 확인
-- [ ] `kubectl -n study scale deploy/web --replicas=1` 로 드리프트를 만들고 selfHeal 이 되돌리는지 보기
+- [ ] `kubectl -n study set env deploy/web DRIFT=1` 로 드리프트를 만들고 selfHeal 이 되돌리는지 보기 (`scale` 은 왜 드리프트가 아닌지 설명해 보기)
 - [ ] Argo Rollouts 를 설치해 web 을 Rollout 으로 바꾸고 `setWeight: 50` 에서 pause 되는지 확인
 - [ ] AnalysisTemplate 을 kube-prometheus-stack 에 연결해 자동 판정 돌려 보기

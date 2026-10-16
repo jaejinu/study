@@ -46,8 +46,10 @@
     "k8s:argocd": "kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f - && kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml && kubectl apply -f k8s/argocd/argocd-cm-patch.yaml && kubectl -n argocd rollout status deploy/argocd-server --timeout=600s && kubectl apply -f k8s/argocd/application.yaml",
     "k8s:argocd:port": "kubectl -n argocd port-forward svc/argocd-server 18443:443",
     "k8s:argocd:password": "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo",
-    "k8s:rollouts": "kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f - && kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml && kubectl -n argo-rollouts rollout status deploy/argo-rollouts --timeout=300s && kubectl apply -f k8s/rollouts/web-rollout.yaml",
-    "k8s:rollouts:watch": "kubectl argo rollouts get rollout web-canary -n study --watch"
+    "k8s:rollouts": "kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f - && kubectl apply --server-side -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml && kubectl -n argo-rollouts rollout status deploy/argo-rollouts --timeout=300s && kubectl apply -f k8s/rollouts/web-rollout.yaml",
+    "k8s:rollouts:watch": "kubectl argo rollouts get rollout web-canary -n study --watch",
+    "cdc:up": "docker compose --profile kafka --profile postgres --profile cdc up -d kafka postgres connect",
+    "cdc:down": "docker compose --profile cdc stop connect"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",

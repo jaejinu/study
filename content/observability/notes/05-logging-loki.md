@@ -4,7 +4,7 @@ order: 5
 level: 중급
 summary: 좋은 로그의 조건(구조화·상관관계·레벨·컨텍스트), 수집 경로(stdout → 수집기 → 저장소), Loki 의 라벨 모델과 LogQL, 이 프로젝트의 앱 로그가 Grafana 에 도달하기까지, 비용·보안·흔한 실수
 tags: [로그, 구조화로깅, Loki, Alloy, LogQL, trace_id, 샘플링]
-experiments: []
+experiments: [loki-log-pipeline]
 ---
 
 ## 로그는 "무슨 일이 있었나" 의 증거

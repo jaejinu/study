@@ -4,7 +4,7 @@ order: 6
 level: 심화
 summary: 토픽 사이에서 상태를 가진 처리를 하는 Kafka Streams(KStream·KTable·윈도우·조인·정확히 한 번), 외부 시스템과 잇는 Connect(소스·싱크 커넥터, Debezium CDC, SMT), 스키마를 강제하는 Schema Registry(Avro/Protobuf/JSON, 호환성 모드), ksqlDB·Flink 와의 비교
 tags: [Kafka Streams, KTable, 윈도우, Connect, Debezium, Schema Registry, Avro, exactly-once]
-experiments: [kafka-consumer-groups]
+experiments: [kafka-consumer-groups, cdc-outbox-debezium]
 ---
 
 ## Kafka Streams — 라이브러리로 하는 스트림 처리
@@ -62,7 +62,7 @@ curl localhost:8083/connectors/study-pg/status
 ```
 
 - Debezium 은 PostgreSQL **논리 복제 슬롯**(`wal_level=logical`)을 읽는다 — 폴링 없이 모든 INSERT/UPDATE/DELETE 가 이벤트로. 슬롯이 쌓이면 WAL 디스크가 차니 모니터링 ([PostgreSQL 운영](/postgres/notes/05-operations)).
-- **Outbox EventRouter** SMT 가 outbox 테이블 행을 `aggregate_type` 별 토픽으로 보낸다 — [Outbox 패턴](/architecture/notes/03-async-messaging-consistency) 의 완성형.
+- **Outbox EventRouter** SMT 가 outbox 테이블 행을 `aggregate_type` 별 토픽으로 보낸다 — [Outbox 패턴](/architecture/notes/03-async-messaging-consistency) 의 완성형. 자세한 동작·운영 함정은 [CDC 와 Outbox](/kafka/notes/08-cdc-outbox-debezium).
 - SMT(Single Message Transform): 필드 마스킹, 라우팅, 타임스탬프 변환을 설정으로.
 - Connect 의 오프셋·설정·상태는 내부 토픽(`connect-offsets` 등)에 저장 → 워커가 죽어도 이어서.
 - 싱크는 멱등/upsert 모드로 (`insert.mode=upsert`, `pk.mode=record_key`) at-least-once 중복을 흡수.

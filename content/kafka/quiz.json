@@ -1,72 +1,97 @@
 [
- {
-  "note": "01-kafka-overview",
-  "q": "Kafka 가 큐(List)와 가장 다른 점은?",
-  "a": "메시지를 소비해도 지우지 않고 보존한다. 그룹별 오프셋으로 여러 소비자가 독립적으로 읽고 재처리할 수 있다."
- },
- {
-  "note": "02-topics-partitions",
-  "q": "같은 주문의 이벤트 순서를 보장하려면?",
-  "a": "주문 ID 를 메시지 키로 보낸다. 같은 키는 같은 파티션에 순서대로 쌓인다. 순서 보장은 파티션 단위."
- },
- {
-  "note": "02-topics-partitions",
-  "q": "acks=all 이 내구성을 보장하려면 함께 설정할 것은?",
-  "a": "min.insync.replicas ≥ 2 와 replication.factor ≥ 3. 그래야 리더 장애 시 유실이 없다."
- },
- {
-  "note": "03-consumer-groups",
-  "q": "파티션 3개 토픽에 컨슈머 5개를 같은 그룹에 넣으면?",
-  "a": "3개만 파티션을 받고 2개는 논다. 병렬성 상한은 파티션 수."
- },
- {
-  "note": "03-consumer-groups",
-  "q": "처리 후 커밋 전에 컨슈머가 죽으면?",
-  "a": "재시작 시 그 메시지를 다시 받는다(at-least-once). 소비자 로직은 멱등해야 한다."
- },
- {
-  "note": "04-delivery-guarantees",
-  "q": "영구적으로 실패하는 메시지를 무한 재시도하면 안 되는 이유와 대안은?",
-  "a": "파티션이 막혀 뒤의 메시지가 모두 지연된다. Dead Letter Topic 으로 보내고 진행한다."
- },
- {
-  "note": "04-delivery-guarantees",
-  "q": "DB 쓰기와 Kafka 발행을 원자적으로 묶는 패턴은?",
-  "a": "Outbox: 같은 DB 트랜잭션에 outbox 테이블로 이벤트를 쓰고 별도 프로세스/CDC 가 Kafka 로 전달."
- },
- {
-  "note": "05-internals-storage-replication",
-  "q": "retention.ms 를 짧게 했는데 데이터가 안 지워지는 이유는?",
-  "a": "삭제는 세그먼트 단위이고 활성 세그먼트는 지우지 않는다. segment.ms/segment.bytes 로 롤되어야 삭제 대상이 된다."
- },
- {
-  "note": "05-internals-storage-replication",
-  "q": "High Watermark 가 소비자를 보호하는 방식은?",
-  "a": "ISR 전체가 복제한 오프셋까지만 읽게 해, 리더 교체 시 '읽었는데 사라지는' 메시지를 막는다."
- },
- {
-  "note": "05-internals-storage-replication",
-  "q": "브로커 JVM 힙을 작게 두는 이유는?",
-  "a": "Kafka 는 자체 캐시 대신 OS 페이지 캐시에 의존하므로 RAM 을 페이지 캐시에 남겨야 소비가 디스크를 안 거친다."
- },
- {
-  "note": "06-streams-connect-schema",
-  "q": "KStream 과 KTable 의 의미 차이는?",
-  "a": "KStream 은 이벤트 흐름(insert), KTable 은 키별 최신 값(upsert). 컴팩션 토픽이 KTable 에 대응."
- },
- {
-  "note": "06-streams-connect-schema",
-  "q": "Schema Registry 의 BACKWARD 호환성에서 허용되는 변경과 배포 순서는?",
-  "a": "필드 삭제, 기본값 있는 필드 추가. 소비자를 먼저 배포한다."
- },
- {
-  "note": "07-operations-tuning",
-  "q": "리밸런스 폭풍을 줄이는 세 가지 방법은?",
-  "a": "순차 배포, static membership(group.instance.id), CooperativeStickyAssignor. 처리 시간은 max.poll.interval.ms 안에."
- },
- {
-  "note": "07-operations-tuning",
-  "q": "UnderReplicatedPartitions > 0 이 뜻하는 것은?",
-  "a": "ISR 이 복제 계수보다 작다. 브로커·디스크·네트워크 문제로 팔로워가 못 따라오고 있다."
- }
+  {
+    "note": "01-kafka-overview",
+    "q": "Kafka 가 큐(List)와 가장 다른 점은?",
+    "a": "메시지를 소비해도 지우지 않고 보존한다. 그룹별 오프셋으로 여러 소비자가 독립적으로 읽고 재처리할 수 있다."
+  },
+  {
+    "note": "02-topics-partitions",
+    "q": "같은 주문의 이벤트 순서를 보장하려면?",
+    "a": "주문 ID 를 메시지 키로 보낸다. 같은 키는 같은 파티션에 순서대로 쌓인다. 순서 보장은 파티션 단위."
+  },
+  {
+    "note": "02-topics-partitions",
+    "q": "acks=all 이 내구성을 보장하려면 함께 설정할 것은?",
+    "a": "min.insync.replicas ≥ 2 와 replication.factor ≥ 3. 그래야 리더 장애 시 유실이 없다."
+  },
+  {
+    "note": "03-consumer-groups",
+    "q": "파티션 3개 토픽에 컨슈머 5개를 같은 그룹에 넣으면?",
+    "a": "3개만 파티션을 받고 2개는 논다. 병렬성 상한은 파티션 수."
+  },
+  {
+    "note": "03-consumer-groups",
+    "q": "처리 후 커밋 전에 컨슈머가 죽으면?",
+    "a": "재시작 시 그 메시지를 다시 받는다(at-least-once). 소비자 로직은 멱등해야 한다."
+  },
+  {
+    "note": "04-delivery-guarantees",
+    "q": "영구적으로 실패하는 메시지를 무한 재시도하면 안 되는 이유와 대안은?",
+    "a": "파티션이 막혀 뒤의 메시지가 모두 지연된다. Dead Letter Topic 으로 보내고 진행한다."
+  },
+  {
+    "note": "04-delivery-guarantees",
+    "q": "DB 쓰기와 Kafka 발행을 원자적으로 묶는 패턴은?",
+    "a": "Outbox: 같은 DB 트랜잭션에 outbox 테이블로 이벤트를 쓰고 별도 프로세스/CDC 가 Kafka 로 전달."
+  },
+  {
+    "note": "05-internals-storage-replication",
+    "q": "retention.ms 를 짧게 했는데 데이터가 안 지워지는 이유는?",
+    "a": "삭제는 세그먼트 단위이고 활성 세그먼트는 지우지 않는다. segment.ms/segment.bytes 로 롤되어야 삭제 대상이 된다."
+  },
+  {
+    "note": "05-internals-storage-replication",
+    "q": "High Watermark 가 소비자를 보호하는 방식은?",
+    "a": "ISR 전체가 복제한 오프셋까지만 읽게 해, 리더 교체 시 '읽었는데 사라지는' 메시지를 막는다."
+  },
+  {
+    "note": "05-internals-storage-replication",
+    "q": "브로커 JVM 힙을 작게 두는 이유는?",
+    "a": "Kafka 는 자체 캐시 대신 OS 페이지 캐시에 의존하므로 RAM 을 페이지 캐시에 남겨야 소비가 디스크를 안 거친다."
+  },
+  {
+    "note": "06-streams-connect-schema",
+    "q": "KStream 과 KTable 의 의미 차이는?",
+    "a": "KStream 은 이벤트 흐름(insert), KTable 은 키별 최신 값(upsert). 컴팩션 토픽이 KTable 에 대응."
+  },
+  {
+    "note": "06-streams-connect-schema",
+    "q": "Schema Registry 의 BACKWARD 호환성에서 허용되는 변경과 배포 순서는?",
+    "a": "필드 삭제, 기본값 있는 필드 추가. 소비자를 먼저 배포한다."
+  },
+  {
+    "note": "07-operations-tuning",
+    "q": "리밸런스 폭풍을 줄이는 세 가지 방법은?",
+    "a": "순차 배포, static membership(group.instance.id), CooperativeStickyAssignor. 처리 시간은 max.poll.interval.ms 안에."
+  },
+  {
+    "note": "07-operations-tuning",
+    "q": "UnderReplicatedPartitions > 0 이 뜻하는 것은?",
+    "a": "ISR 이 복제 계수보다 작다. 브로커·디스크·네트워크 문제로 팔로워가 못 따라오고 있다."
+  },
+  {
+    "note": "08-cdc-outbox-debezium",
+    "q": "이중 쓰기(dual write) 문제란?",
+    "a": "DB 저장과 메시지 발행을 각각 따로 하면 둘 사이에 죽을 때 한쪽만 반영된다. 두 시스템에 걸친 원자적 트랜잭션이 없어서 생긴다."
+  },
+  {
+    "note": "08-cdc-outbox-debezium",
+    "q": "Outbox 패턴에서 Kafka 발행을 앱이 아니라 Debezium 이 하면 무엇이 좋아지나?",
+    "a": "폴링이 없어 지연이 ms 단위, DB 부하가 거의 없고, 앱 코드에 Kafka 클라이언트가 사라진다. WAL 에 커밋된 변경은 반드시 발행된다."
+  },
+  {
+    "note": "08-cdc-outbox-debezium",
+    "q": "PostgreSQL 복제 슬롯이 위험한 이유는?",
+    "a": "구독자가 읽지 않은 WAL 을 서버가 지우지 않는다. 구독자가 오래 멈추면 WAL 이 디스크를 채워 DB 가 멈춘다. lag 모니터링과 max_slot_wal_keep_size 가 필요하다."
+  },
+  {
+    "note": "08-cdc-outbox-debezium",
+    "q": "EventRouter SMT 에서 aggregateid 를 메시지 키로 쓰는 이유는?",
+    "a": "같은 키는 같은 파티션으로 가므로 같은 집합(주문)의 이벤트가 커밋 순서대로 소비된다."
+  },
+  {
+    "note": "08-cdc-outbox-debezium",
+    "q": "Debezium 이 at-least-once 라면 소비자는 어떻게 해야 하나?",
+    "a": "멱등하게. outbox.id(헤더 id) 를 처리 테이블에 기록해 중복 이벤트를 건너뛴다."
+  }
 ]
