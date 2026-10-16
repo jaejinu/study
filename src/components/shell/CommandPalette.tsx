@@ -11,6 +11,7 @@ type Item = { kind: "page" | "subject" | PaletteHit["kind"]; title: string; href
 const PAGES: Item[] = [
   { kind: "page", title: "주제 선택 (홈)", href: "/", hint: "모든 트랙과 주제" },
   { kind: "page", title: "오늘의 복습", href: "/review", hint: "모든 주제의 기한 카드 + 새 카드 (FSRS)" },
+  { kind: "page", title: "장애 대응 훈련", href: "/drills", hint: "진짜 고장을 고치고 MTTR 기록 · 종합 과제(/capstone)" },
   { kind: "page", title: "학습 경로", href: "/path", hint: "트랙별 추천 순서·선수 주제" },
   { kind: "page", title: "약점 지도", href: "/mastery", hint: "주제·레벨별 숙련도와 다음에 공부할 것" },
   { kind: "page", title: "내 메모", href: "/memos", hint: "노트에 남긴 메모·하이라이트" },

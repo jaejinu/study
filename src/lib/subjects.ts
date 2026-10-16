@@ -263,6 +263,7 @@ export const subjects: Subject[] = [
       { href: "/chaos", label: "대시보드", icon: "◉", desc: "장애 주입 대상 점검" },
       { href: "/chaos/notes", label: "학습 노트", icon: "✎", desc: "원칙과 장애 카탈로그" },
       { href: "/chaos/lab", label: "실험실", icon: "⚗", desc: "장애 주입 실험 5개" },
+      { href: "/drills", label: "장애 훈련", icon: "🔥", desc: "고장을 직접 고치고 MTTR 기록" },
     ],
     setup: [
       { label: "대상", cmd: "pnpm redis:docker · kafka:up · pg:up · k8s:up" },
