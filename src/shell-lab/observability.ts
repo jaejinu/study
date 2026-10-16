@@ -1,3 +1,4 @@
+import { armUnpause } from "@/lib/deadman";
 import { exec } from "./runner";
 import type { ShellExperiment } from "./types";
 
@@ -52,6 +53,8 @@ docker unpause study-redis
     const before = (await getJson<AppAlert[]>(`${APP}/api/alerts`)) ?? [];
     const baseline = before.filter((a) => a.alertname === "RedisDown").length;
     ctx.note(`시작 전 앱이 받은 RedisDown 알림: ${baseline}건`);
+    const guard = armUnpause("study-redis", 240);
+    ctx.note(`데드맨 스위치 장전 (pid ${guard.pid}): 실험이 중단돼도 240초 뒤 docker unpause`);
     await ctx.sh("docker", ["pause", "study-redis"]);
     const t0 = performance.now();
 
@@ -85,6 +88,7 @@ docker unpause study-redis
 
     ctx.note("복구: unpause 후 resolved 알림을 기다린다 (resolve_timeout·그룹 간격 영향)");
     await ctx.sh("docker", ["unpause", "study-redis"]);
+    guard.disarm();
     const t1 = performance.now();
     await ctx.poll("Prometheus 에서 RedisDown 사라짐", async () => {
       const j = await getJson<PromAlerts>(`${PROM}/api/v1/alerts`);

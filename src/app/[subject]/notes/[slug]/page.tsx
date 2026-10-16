@@ -2,8 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Markdown } from "@/components/Markdown";
 import { LevelBadge } from "@/components/ui";
-import { experiments } from "@/experiments";
-import { getLab } from "@/lab/registry";
+import { findExperiment } from "@/lab/registry";
 import { getNote, listNotes } from "@/lib/notes";
 import { getNoteChecks, getProgress, isRead } from "@/lib/progress";
 import { ReadToggle } from "@/components/ProgressControls";
@@ -52,17 +51,10 @@ export default async function NotePage({ params }: Props) {
   const base = `/${subject.id}/notes`;
   const readMinutes = Math.max(1, Math.round(note.content.replace(/```[\s\S]*?```/g, "").length / 650));
 
-  // 이 노트와 연결된 실험 (모든 주제). redis 는 별도 레지스트리
+  // 이 노트와 연결된 실험 — 다른 주제의 실험도 증거로 참조할 수 있다
   const related = note.experiments
-    .map((eid) => {
-      if (subject.id === "redis") {
-        const e = experiments.find((x) => x.id === eid);
-        return e ? { id: e.id, title: e.title, summary: e.summary, href: `/redis/lab/${e.id}` } : null;
-      }
-      const e = getLab(subject.id, eid);
-      return e ? { id: e.id, title: e.title, summary: e.summary, href: `/${subject.id}/lab/${e.id}` } : null;
-    })
-    .filter((e): e is { id: string; title: string; summary: string; href: string } => e !== null);
+    .map((eid) => findExperiment(eid, subject.id))
+    .filter((e): e is NonNullable<ReturnType<typeof findExperiment>> => e !== undefined);
   const checklistTotal = (note.content.match(/^\s*- \[[ xX]\]/gm) ?? []).length;
 
   return (

@@ -4,6 +4,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { ensureConnected, getRedis } from "@/lib/redis";
 import { pgClient, requiresPg } from "./postgres";
+import { armRedisConfigRestore } from "@/lib/deadman";
 import type { CodeExperiment } from "./types";
 
 function quantile(xs: number[], q: number) {
@@ -246,6 +247,7 @@ CONFIG GET appendfsync / INFO persistence (aof_pending_bio_fsync, aof_delayed_fs
     const origFsync = (await r.config("GET", "appendfsync"))[1] as string;
     rec.steps.push({ cmd: "CONFIG GET appendonly / appendfsync (원래 값)", result: { appendonly: origAppendonly, appendfsync: origFsync }, ms: 0 });
     const redisRes: Record<string, { p50_ms: number; p99_ms: number; total_ms: number }> = {};
+    const cfgGuard = armRedisConfigRestore({ appendonly: origAppendonly, appendfsync: origFsync }, 120);
     try {
       await r.config("SET", "appendonly", "yes");
       await rec.sleep(300);
@@ -270,6 +272,7 @@ CONFIG GET appendfsync / INFO persistence (aof_pending_bio_fsync, aof_delayed_fs
     } finally {
       await r.config("SET", "appendfsync", origFsync).catch(() => {});
       await r.config("SET", "appendonly", origAppendonly).catch(() => {});
+      cfgGuard.disarm();
       const keys = await r.keys(`${k("aof")}:*`);
       if (keys.length) await r.del(...keys);
       rec.steps.push({ cmd: "CONFIG SET 원복 + 키 정리", result: { appendonly: origAppendonly, appendfsync: origFsync, deleted: keys.length }, ms: 0 });

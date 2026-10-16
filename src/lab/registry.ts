@@ -1,3 +1,4 @@
+import { experiments as redisExperiments } from "@/experiments";
 import { listCodeExperiments, getCodeExperiment } from "@/code-lab";
 import { listShellExperiments, getShellExperiment } from "@/shell-lab";
 
@@ -40,4 +41,22 @@ export function getLab(subject: string, id: string): LabItem | undefined {
 
 export function labCategories(subject: string): string[] {
   return [...new Set(listLab(subject).map((e) => e.category))];
+}
+
+/**
+ * 실험 id 로 실험을 찾는다. 노트의 frontmatter experiments 는 다른 주제의 실험을 "증거" 로 참조할 수 있다
+ * (예: 아키텍처 노트 → chaos·redis·postgres 실험). 우선 그 주제, 다음 Redis 실험, 마지막으로 모든 주제에서 찾는다.
+ */
+export function findExperiment(id: string, preferSubject?: string): { id: string; title: string; summary: string; subject: string; href: string } | undefined {
+  if (preferSubject && preferSubject !== "redis") {
+    const e = getLab(preferSubject, id);
+    if (e) return { id: e.id, title: e.title, summary: e.summary, subject: preferSubject, href: `/${preferSubject}/lab/${e.id}` };
+  }
+  const r = redisExperiments.find((x) => x.id === id);
+  if (r) return { id: r.id, title: r.title, summary: r.summary, subject: "redis", href: `/redis/lab/${r.id}` };
+  for (const s of [...SHELL, ...CODE]) {
+    const e = getLab(s, id);
+    if (e) return { id: e.id, title: e.title, summary: e.summary, subject: s, href: `/${s}/lab/${e.id}` };
+  }
+  return undefined;
 }

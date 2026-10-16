@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    name: lint · typecheck · experiments
+    name: lint · typecheck · experiments · content
     runs-on: ubuntu-latest
     services:
       redis:
@@ -28,7 +28,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm exec tsc --noEmit -p tsconfig.json
-      - name: Redis 실험 (vitest)
+      - name: vitest — Redis 실험 · 콘텐츠 무결성 · 코드 실험 · 데드맨 스위치
         run: pnpm test:report
         env:
           REDIS_URL: redis://127.0.0.1:6379

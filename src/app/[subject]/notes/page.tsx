@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LevelBadge, PageHeader } from "@/components/ui";
-import { experiments } from "@/experiments";
+import { findExperiment } from "@/lab/registry";
 import { listNotes } from "@/lib/notes";
 import { getSubject, subjects } from "@/lib/subjects";
 import { getProgress } from "@/lib/progress";
@@ -80,7 +80,7 @@ export default async function NotesPage({ params }: Props) {
                             </span>
                           ))}
                           {n.experiments.map((eid) => {
-                            const e = experiments.find((x) => x.id === eid);
+                            const e = findExperiment(eid, subject.id);
                             return e ? (
                               <span key={eid} className="rounded border border-accent/30 bg-accent-soft px-1.5 py-0.5 text-[11px] text-accent">
                                 ⚗ {e.title.split(":")[0]}

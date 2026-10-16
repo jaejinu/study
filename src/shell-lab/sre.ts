@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { armUnpause } from "@/lib/deadman";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -197,14 +197,6 @@ curl -s localhost:19090/api/v1/query --data-urlencode 'query=(1 - avg_over_time(
 };
 
 // ---------------------------------------------------------------- 2. 장애 중 번레이트
-/** 데드맨 스위치: 이 프로세스가 중간에 죽어도(타임아웃·강제 종료) N 초 뒤 반드시 unpause 하는 분리된 프로세스.
- *  cleanup 훅은 프로세스가 살아 있을 때만 돈다 — 장애 주입 실험의 안전장치는 주입한 쪽과 수명이 독립이어야 한다. */
-function armDeadMansSwitch(seconds: number) {
-  const child = spawn("sh", ["-c", `sleep ${seconds}; docker unpause study-redis >/dev/null 2>&1`], { detached: true, stdio: "ignore" });
-  child.unref();
-  return child.pid;
-}
-
 async function cleanupUnpause(ctx: ShellCtx) {
   await ctx.sh("docker", ["unpause", "study-redis"], { allowFail: true, label: "docker unpause study-redis   # 정리" });
 }
@@ -260,8 +252,8 @@ docker unpause study-redis`,
       return { ...v, page };
     };
 
-    const guard = armDeadMansSwitch(90);
-    ctx.note(`데드맨 스위치 장전 (pid ${guard}): 이 실험이 어떤 이유로 중단돼도 90초 뒤 docker unpause 가 실행된다`);
+    const guard = armUnpause("study-redis", 90);
+    ctx.note(`데드맨 스위치 장전 (pid ${guard.pid}): 이 실험이 어떤 이유로 중단돼도 90초 뒤 docker unpause 가 실행된다`);
     await ctx.sh("docker", ["pause", "study-redis"], { label: "docker pause study-redis   # 장애 주입: 연결은 살아 있고 응답만 없다" });
     let firstPage = -1;
     let maxShort = 0;
@@ -274,6 +266,7 @@ docker unpause study-redis`,
       }
     } finally {
       await ctx.sh("docker", ["unpause", "study-redis"], { label: "docker unpause study-redis   # 완화" });
+      guard.disarm();
     }
     const tUnpause = Date.now();
     let shortResetAt = -1;

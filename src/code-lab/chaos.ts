@@ -4,6 +4,7 @@ import { createRedis, ensureConnected, getRedis } from "@/lib/redis";
 import { exec } from "@/shell-lab/runner";
 import { KAFKA_BROKERS } from "./kafka";
 import { PG_URL } from "./postgres";
+import { armRedisConfigRestore, armRestart, armUnpause } from "@/lib/deadman";
 import type { CodeExperiment } from "./types";
 
 /** 장애 주입 실험: 실제 컨테이너를 멈추거나 자원을 고갈시키고, 앱 쪽 복원력 패턴이 어떻게 동작하는지 측정한다. */
@@ -56,7 +57,8 @@ redis-cli ping                      # PONG — ioredis 는 끊김 없이 바로 
     await withTimeout.set("chaos:key", "v", "EX", 60);
     rec.check("정상 상태: 캐시 히트", (await cachedGet(withTimeout)) === "from-cache");
 
-    rec.note("Redis 를 얼린다 (docker pause)");
+    rec.note("Redis 를 얼린다 (docker pause). 데드맨 스위치: 실험이 중단돼도 60초 뒤 자동 unpause");
+    const guard = armUnpause("study-redis", 60);
     await exec("docker", ["pause", "study-redis"]);
     try {
       const t0 = performance.now();
@@ -80,6 +82,7 @@ redis-cli ping                      # PONG — ioredis 는 끊김 없이 바로 
       rec.check("전체가 약 300~400ms 에 끝남 (직렬 대기 아님)", ms3 < 1200, ms3);
     } finally {
       await exec("docker", ["unpause", "study-redis"]);
+      guard.disarm();
     }
     rec.note("복구: unpause 후 재연결/재사용 시간");
     const t3 = performance.now();
@@ -126,10 +129,12 @@ CONFIG SET maxmemory 256mb ; CONFIG SET maxmemory-policy allkeys-lru`,
     await ensureConnected(r);
     const [, origMax] = (await r.config("GET", "maxmemory")) as string[];
     const [, origPolicy] = (await r.config("GET", "maxmemory-policy")) as string[];
-    rec.note(`현재 설정: maxmemory=${origMax} policy=${origPolicy} (실험 후 원복)`);
+    rec.note(`현재 설정: maxmemory=${origMax} policy=${origPolicy} (실험 후 원복, 중단돼도 데드맨 스위치가 120초 뒤 원복)`);
+    let cfgGuard: { disarm: () => void } | undefined;
     const used = Number(((await r.info("memory")).match(/used_memory:(\d+)/) ?? [])[1] ?? 0);
     const limit = used + 2 * 1024 * 1024;
     try {
+      cfgGuard = armRedisConfigRestore({ maxmemory: origMax, "maxmemory-policy": origPolicy }, 120);
       await r.config("SET", "maxmemory", String(limit));
       await r.config("SET", "maxmemory-policy", "noeviction");
       rec.steps.push({ cmd: `CONFIG SET maxmemory ${limit} (현재 사용량 + 2MB) · policy noeviction`, result: "OK", ms: 0 });
@@ -162,6 +167,7 @@ CONFIG SET maxmemory 256mb ; CONFIG SET maxmemory-policy allkeys-lru`,
     } finally {
       await r.config("SET", "maxmemory", origMax);
       await r.config("SET", "maxmemory-policy", origPolicy);
+      cfgGuard?.disarm();
       rec.steps.push({ cmd: `원복: maxmemory ${origMax}, policy ${origPolicy}`, result: "OK", ms: 0 });
       let cursor = "0";
       do {
@@ -192,6 +198,7 @@ docker start study-kafka              # 30초쯤 걸려 healthy
   requires: async () => ((await containerRunning("study-kafka")) ? null : "Docker 의 study-kafka 컨테이너가 실행 중이어야 합니다 (`pnpm kafka:up`). 이 실험은 브로커를 약 20초 정지합니다."),
   async run({ rec, k }) {
     const topic = k("events").replace(/_/g, ".");
+    let kafkaGuard: { disarm: () => void } | undefined;
     const kafka = new Kafka({ clientId: "chaos", brokers: KAFKA_BROKERS, logLevel: logLevel.NOTHING, retry: { retries: 3, initialRetryTime: 300, maxRetryTime: 2000 } });
     const admin = kafka.admin();
     const producer = kafka.producer({ retry: { retries: 3, initialRetryTime: 300, maxRetryTime: 2000 } });
@@ -203,7 +210,8 @@ docker start study-kafka              # 30초쯤 걸려 healthy
       await producer.send({ topic, messages: [{ value: "before" }] });
       rec.steps.push({ cmd: "정상 상태 send('before')", result: "OK", ms: 0 });
 
-      rec.note("브로커 정지 (docker stop)");
+      rec.note("브로커 정지 (docker stop). 데드맨 스위치: 실험이 중단돼도 120초 뒤 자동 start");
+      kafkaGuard = armRestart("study-kafka", 120);
       await exec("docker", ["stop", "study-kafka"], { timeout: 60_000 });
       const t0 = performance.now();
       let err = "";
@@ -249,6 +257,7 @@ docker start study-kafka              # 30초쯤 걸려 healthy
       await admin.deleteTopics({ topics: [topic] }).catch(() => {});
       await admin.disconnect().catch(() => {});
       await exec("docker", ["start", "study-kafka"], { timeout: 60_000 });
+      kafkaGuard?.disarm();
     }
   },
 };
@@ -454,6 +463,7 @@ docker pause study-redis / docker unpause study-redis`,
 
     rec.note("Redis 를 얼린다 (docker pause). 타임아웃 300ms 인 호출이 연속 실패한다");
     const rows: { label: string; ok: boolean; ms: number; state: string; err?: string }[] = [];
+    const cbGuard = armUnpause("study-redis", 60);
     try {
       await exec("docker", ["pause", "study-redis"]);
       for (let i = 1; i <= 6; i++) rows.push(await attempt(`멈춤 중 #${i}`));
@@ -472,6 +482,7 @@ docker pause study-redis / docker unpause study-redis`,
       rec.check("half-open 시험 호출이 실패하면 다시 open", trial.state === "open" && !trial.ok);
     } finally {
       await exec("docker", ["unpause", "study-redis"]);
+      cbGuard.disarm();
     }
     rec.note("Redis 복구(unpause). 다음 시험 호출이 성공하면 closed 로 돌아온다");
     await new Promise((r) => setTimeout(r, 2100));
@@ -512,6 +523,7 @@ docker unpause study-redis
     const runScenario = async (label: string, backoff: (attempt: number) => number) => {
       const attempts: Attempt[] = [];
       const t0 = performance.now();
+      const stormGuard = armUnpause("study-redis", 60);
       await exec("docker", ["pause", "study-redis"]);
       const unpauseAt = 3000;
       const unpauser = new Promise<void>((r) => setTimeout(async () => { await exec("docker", ["unpause", "study-redis"]); r(); }, unpauseAt));
@@ -534,6 +546,7 @@ docker unpause study-redis
       } finally {
         await unpauser;
         await exec("docker", ["unpause", "study-redis"]);
+        stormGuard.disarm();
       }
       const total = attempts.length;
       const perSec = new Map<number, number>();
