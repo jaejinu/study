@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { runShellExperimentAction } from "@/actions/shell-lab";
 import type { ShellResult, ShellStep } from "@/shell-lab/types";
-import { Badge, Button } from "./ui";
+import { RunningIndicator, RunSummary, useLabRun } from "./lab/RunStatus";
+import { Button } from "./ui";
 
 function human(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -88,23 +89,17 @@ function StepRow({ s, i }: { s: ShellStep; i: number }) {
 }
 
 export function ShellLabRunner({ subject, id }: { subject: string; id: string }) {
-  const [result, setResult] = useState<ShellResult | null>(null);
-  const [pending, start] = useTransition();
+  const { result, previous, pending, run } = useLabRun<ShellResult>(`${subject}/${id}`, () => runShellExperimentAction(subject, id));
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={() => start(async () => setResult(await runShellExperimentAction(subject, id)))} disabled={pending}>
-          {pending ? "실행 중… (수십 초 걸릴 수 있음)" : result ? "다시 실행 ▶" : "실험 실행 ▶"}
+        <Button onClick={run} disabled={pending}>
+          {pending ? "실행 중…" : result ? "다시 실행 ▶" : "실험 실행 ▶"}
         </Button>
-        {result && (
-          <>
-            <Badge tone={result.ok ? "ok" : "accent"}>{result.ok ? "성공" : "실패"}</Badge>
-            <span className="text-xs text-muted">
-              {result.steps.length}단계 · {(result.durationMs / 1000).toFixed(1)}s · {new Date(result.ranAt).toLocaleTimeString("ko-KR")}
-            </span>
-          </>
-        )}
+        {!result && !pending && <span className="text-sm text-muted">서버가 실제 명령을 실행하고 명령·출력·소요 시간을 순서대로 보여 줍니다(수십 초 걸릴 수 있음). 만든 리소스(lab-*)는 끝나면 정리됩니다.</span>}
       </div>
+      {pending && <RunningIndicator previousMs={previous?.durationMs} />}
+      {result && !pending && <RunSummary result={result} previous={previous} />}
       {result?.error && <pre className="whitespace-pre-wrap rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-xs text-accent">{result.error}</pre>}
       {result && result.steps.length > 0 && (
         <div className="rounded-lg border border-border">
@@ -113,7 +108,6 @@ export function ShellLabRunner({ subject, id }: { subject: string; id: string })
           ))}
         </div>
       )}
-      {!result && <p className="text-sm text-muted">버튼을 누르면 서버가 실제 명령을 실행하고 명령·출력·소요 시간을 순서대로 보여줍니다. 실험이 만든 리소스(lab-*)는 끝나면 정리됩니다.</p>}
     </div>
   );
 }

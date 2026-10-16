@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { Badge, PageHeader } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
+import { LabList } from "@/components/lab/LabList";
 import { categories, experiments } from "@/experiments";
 import { getProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
@@ -16,31 +16,10 @@ export default async function LabPage() {
       <div className="mb-6">
         <ProgressBar done={experiments.filter((e) => progress.labDone.includes(e.id)).length} total={experiments.length} label="성공한 실험" />
       </div>
-      {categories.map((c) => {
-        const list = experiments.filter((e) => e.category === c);
-        if (!list.length) return null;
-        return (
-          <section key={c} className="mb-8">
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">{c}</h2>
-            <ul className="grid gap-2 sm:grid-cols-2">
-              {list.map((e) => (
-                <li key={e.id}>
-                  <Link href={`/redis/lab/${e.id}`} className="block h-full rounded-lg border border-border bg-surface p-3 transition-colors hover:border-muted">
-                    <div className="text-sm font-medium">
-                      {progress.labDone.includes(e.id) && <span className="mr-1 text-ok">✓</span>}
-                      {e.title}
-                    </div>
-                    <div className="clamp-3 mt-1.5 text-[13px] leading-relaxed text-foreground/75">{e.summary}</div>
-                    <div className="mt-2 opacity-60">
-                      <Badge>{e.id}</Badge>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        );
-      })}
+      <LabList
+        categories={categories.filter((c) => experiments.some((e) => e.category === c))}
+        items={experiments.map((e) => ({ id: e.id, title: e.title, summary: e.summary, category: e.category, href: `/redis/lab/${e.id}`, done: progress.labDone.includes(e.id) }))}
+      />
     </div>
   );
 }
