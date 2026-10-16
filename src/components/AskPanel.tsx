@@ -59,9 +59,13 @@ export function AskPanel() {
       if (e.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKey);
+    // 상단 바 등 다른 곳에서 패널 열기: window.dispatchEvent(new CustomEvent("ask:open"))
+    const onOpen = () => setOpen(true);
+    window.addEventListener("ask:open", onOpen);
     return () => {
       document.removeEventListener("selectionchange", onSel);
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("ask:open", onOpen);
     };
   }, []);
   useEffect(() => {
@@ -124,7 +128,7 @@ export function AskPanel() {
         <button
           onClick={() => setOpen(true)}
           title="AI 에게 묻기 (⌘/)"
-          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-accent/40 bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-black/40 transition-all hover:bg-accent/90"
+          className="fixed bottom-[calc(4.25rem+env(safe-area-inset-bottom))] right-4 z-40 flex md:bottom-5 md:right-5 items-center gap-2 rounded-full border border-accent/40 bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-black/40 transition-all hover:bg-accent/90"
         >
           <span>✦</span>
           <span className="hidden sm:inline">AI 에게 묻기</span>

@@ -12,6 +12,48 @@
   --ok: #3fb950;
   --warn: #d29922;
   --info: #58a6ff;
+  --heading: #f0f4f8;   /* 본문 h3·첫 문단·표 머리 */
+  --strong: #ffffff;
+  --code-fg: #e8eef5;   /* 인라인 code */
+  --zebra: rgba(255, 255, 255, 0.02);
+}
+
+/* 라이트 테마: data-theme="light", 또는 data-theme="system" + OS 라이트. 다크가 기본 */
+:root[data-theme="light"] {
+  --background: #f7f8fa;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --border: #d8dee6;
+  --foreground: #1b2430;
+  --muted: #566475;      /* 흰 배경 대비 5.9:1 */
+  --accent: #d92d20;
+  --accent-soft: rgba(217, 45, 32, 0.09);
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --info: #0969da;
+  --heading: #111821;
+  --strong: #0b1118;
+  --code-fg: #24303d;
+  --zebra: rgba(0, 0, 0, 0.025);
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    --background: #f7f8fa;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --border: #d8dee6;
+    --foreground: #1b2430;
+    --muted: #566475;
+    --accent: #d92d20;
+    --accent-soft: rgba(217, 45, 32, 0.09);
+    --ok: #1a7f37;
+    --warn: #9a6700;
+    --info: #0969da;
+    --heading: #111821;
+    --strong: #0b1118;
+    --code-fg: #24303d;
+    --zebra: rgba(0, 0, 0, 0.025);
+  }
 }
 
 @theme inline {
@@ -31,6 +73,8 @@
 }
 
 html { color-scheme: dark; }
+:root[data-theme="light"] { color-scheme: light; }
+@media (prefers-color-scheme: light) { :root[data-theme="system"] { color-scheme: light; } }
 body {
   background: var(--background);
   color: var(--foreground);
@@ -43,11 +87,11 @@ code, pre, kbd { font-family: var(--font-geist-mono), ui-monospace, SFMono-Regul
 
 /* ---------- Markdown 노트 ---------- */
 .note { line-height: 1.85; font-size: 16.5px; max-width: 78ch; }
-.note > p:first-of-type { font-size: 1.04em; color: #f0f4f8; }
+.note > p:first-of-type { font-size: 1.04em; color: var(--heading); }
 .note h1 { font-size: 1.9rem; font-weight: 700; margin: 0 0 1rem; letter-spacing: -0.01em; }
 .note h2 { position: relative; font-size: 1.42rem; font-weight: 700; margin: 3rem 0 1rem; padding: 0 0 0.5rem 0; border-bottom: 1px solid var(--border); scroll-margin-top: 5rem; letter-spacing: -0.01em; }
 .note h2::before { content: ""; position: absolute; left: -0.9rem; top: 0.25rem; bottom: 0.75rem; width: 4px; border-radius: 2px; background: var(--accent); }
-.note h3 { font-size: 1.12rem; font-weight: 650; margin: 2rem 0 0.7rem; scroll-margin-top: 5rem; color: #f0f4f8; }
+.note h3 { font-size: 1.12rem; font-weight: 650; margin: 2rem 0 0.7rem; scroll-margin-top: 5rem; color: var(--heading); }
 .note h4 { font-size: 1rem; font-weight: 600; margin: 1.4rem 0 0.5rem; color: var(--muted); text-transform: none; }
 .note p { margin: 0.95rem 0; }
 .note ul, .note ol { margin: 0.9rem 0 0.9rem 1.5rem; }
@@ -58,21 +102,21 @@ code, pre, kbd { font-family: var(--font-geist-mono), ui-monospace, SFMono-Regul
 .note li > ul, .note li > ol { margin-top: 0.3rem; margin-bottom: 0.3rem; }
 .note a { color: var(--info); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--info) 45%, transparent); text-underline-offset: 3px; }
 .note a:hover { text-decoration-color: var(--info); }
-.note strong { color: #fff; font-weight: 650; }
+.note strong { color: var(--strong); font-weight: 650; }
 .note blockquote { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 0.7rem 1.1rem; margin: 1.2rem 0; border-radius: 0 8px 8px 0; }
 .note blockquote p { margin: 0.35rem 0; }
-.note code { background: var(--surface-2); border: 1px solid var(--border); padding: 0.12rem 0.4rem; border-radius: 5px; font-size: 0.86em; color: #e8eef5; }
+.note code { background: var(--surface-2); border: 1px solid var(--border); padding: 0.12rem 0.4rem; border-radius: 5px; font-size: 0.86em; color: var(--code-fg); }
 .note pre { background: #0d1117; border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.15rem; overflow-x: auto; margin: 1.2rem 0; font-size: 0.875rem; line-height: 1.65; }
 .note pre { scrollbar-width: thin; }
 .note pre::-webkit-scrollbar { height: 6px; }
-.note pre code { background: none; border: none; padding: 0; font-size: inherit; color: inherit; }
+.note pre code { background: none; border: none; padding: 0; font-size: inherit; color: #e6edf3; }
 .note table { border-collapse: separate; border-spacing: 0; width: 100%; margin: 1.2rem 0; font-size: 0.92rem; line-height: 1.55; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: block; overflow-x: auto; }
 .note th, .note td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0.55rem 0.8rem; text-align: left; vertical-align: top; }
 .note th:last-child, .note td:last-child { border-right: 0; }
 .note td:first-child { min-width: 7.5em; }
 .note tr:last-child td { border-bottom: 0; }
-.note th { background: var(--surface-2); font-weight: 650; color: #f0f4f8; white-space: nowrap; }
-.note tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.02); }
+.note th { background: var(--surface-2); font-weight: 650; color: var(--heading); white-space: nowrap; }
+.note tbody tr:nth-child(even) td { background: var(--zebra); }
 .note hr { border: 0; border-top: 1px solid var(--border); margin: 2.4rem 0; }
 .note img { max-width: 100%; border-radius: 10px; border: 1px solid var(--border); display: block; margin: 1.4rem auto; }
 .note input[type="checkbox"] { margin-right: 0.5rem; accent-color: var(--ok); }
@@ -93,6 +137,7 @@ code, pre, kbd { font-family: var(--font-geist-mono), ui-monospace, SFMono-Regul
 ::-webkit-scrollbar-track { background: transparent; }
 
 /* 줄 수 제한 */
+.clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
