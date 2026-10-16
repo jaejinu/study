@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="440" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">LSM 트리 — 쓰기는 메모리 + 순차 추가, 정리는 백그라운드 컴팩션</text>
+  <rect x="30" y="60" width="150" height="50" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="105" y="90" text-anchor="middle" fill="#e6edf3">PUT k=v</text>
+  <rect x="230" y="50" width="200" height="34" rx="6" fill="#161b22" stroke="#22c55e"/>
+  <text x="330" y="72" text-anchor="middle" fill="#22c55e">WAL (순차 추가, fsync)</text>
+  <rect x="230" y="94" width="200" height="34" rx="6" fill="#161b22" stroke="#3b82f6"/>
+  <text x="330" y="116" text-anchor="middle" fill="#3b82f6">memtable (정렬, 메모리)</text>
+  <line x1="180" y1="80" x2="228" y2="68" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="180" y1="92" x2="228" y2="110" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="330" y1="128" x2="330" y2="158" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="340" y="148" fill="#8b949e" font-size="11">가득 차면 flush (순차 쓰기 1회)</text>
+  <g font-size="11">
+    <text x="40" y="180" fill="#e6edf3" font-weight="600">L0</text>
+    <rect x="80" y="164" width="90" height="26" rx="4" fill="#161b22" stroke="#3b82f6"/><text x="125" y="181" text-anchor="middle" fill="#e6edf3">a…z</text>
+    <rect x="180" y="164" width="90" height="26" rx="4" fill="#161b22" stroke="#3b82f6"/><text x="225" y="181" text-anchor="middle" fill="#e6edf3">c…x</text>
+    <rect x="280" y="164" width="90" height="26" rx="4" fill="#161b22" stroke="#3b82f6"/><text x="325" y="181" text-anchor="middle" fill="#e6edf3">b…y</text>
+    <text x="390" y="181" fill="#8b949e">범위 겹침 → 읽기는 전부 확인</text>
+    <text x="40" y="236" fill="#e6edf3" font-weight="600">L1</text>
+    <rect x="80" y="220" width="70" height="26" rx="4" fill="#161b22" stroke="#8b5cf6"/><text x="115" y="237" text-anchor="middle" fill="#e6edf3">a…e</text>
+    <rect x="155" y="220" width="70" height="26" rx="4" fill="#161b22" stroke="#8b5cf6"/><text x="190" y="237" text-anchor="middle" fill="#e6edf3">f…k</text>
+    <rect x="230" y="220" width="70" height="26" rx="4" fill="#161b22" stroke="#8b5cf6"/><text x="265" y="237" text-anchor="middle" fill="#e6edf3">l…q</text>
+    <rect x="305" y="220" width="70" height="26" rx="4" fill="#161b22" stroke="#8b5cf6"/><text x="340" y="237" text-anchor="middle" fill="#e6edf3">r…z</text>
+    <text x="390" y="237" fill="#8b949e">256MB · 범위 안 겹침 → 파일 1개만</text>
+    <text x="40" y="292" fill="#e6edf3" font-weight="600">L2</text>
+    <rect x="80" y="276" width="295" height="26" rx="4" fill="#161b22" stroke="#8b5cf6"/><text x="227" y="293" text-anchor="middle" fill="#e6edf3">[SST][SST][SST][SST][SST][SST] …</text>
+    <text x="390" y="293" fill="#8b949e">2.5GB (×10)</text>
+    <text x="40" y="348" fill="#e6edf3" font-weight="600">L3</text>
+    <rect x="80" y="332" width="295" height="26" rx="4" fill="#161b22" stroke="#8b5cf6"/><text x="227" y="349" text-anchor="middle" fill="#e6edf3">… 데이터의 ~90% …</text>
+    <text x="390" y="349" fill="#8b949e">25GB (×10)</text>
+  </g>
+  <path d="M 375 190 C 420 200, 420 210, 378 224" stroke="#f59e0b" stroke-width="2" fill="none" marker-end="url(#a)"/>
+  <path d="M 375 246 C 420 256, 420 266, 378 280" stroke="#f59e0b" stroke-width="2" fill="none" marker-end="url(#a)"/>
+  <path d="M 375 302 C 420 312, 420 322, 378 336" stroke="#f59e0b" stroke-width="2" fill="none" marker-end="url(#a)"/>
+  <text x="80" y="384" fill="#f59e0b" font-size="12">컴팩션 = 병합 정렬 + 옛 버전·톰스톤 제거 (레벨드: 쓰기 증폭 10~30× · 공간 1.1×)</text>
+  <!-- read path -->
+  <rect x="620" y="60" width="320" height="250" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="780" y="84" text-anchor="middle" fill="#e6edf3" font-weight="600">GET k — 최신부터 찾는다</text>
+  <text x="636" y="110" fill="#e6edf3" font-size="12">1. memtable(들)</text>
+  <text x="636" y="134" fill="#e6edf3" font-size="12">2. L0 파일 전부 (겹침)</text>
+  <text x="636" y="158" fill="#e6edf3" font-size="12">3. L1… 레벨마다 범위 맞는 파일 1개</text>
+  <text x="636" y="190" fill="#22c55e" font-size="12">블룸 필터: "여긴 확실히 없음" → 디스크 생략</text>
+  <text x="636" y="212" fill="#22c55e" font-size="12">펜스 포인터: 블록 1개만 읽기</text>
+  <text x="636" y="234" fill="#22c55e" font-size="12">블록 캐시: 뜨거운 블록은 메모리</text>
+  <text x="636" y="266" fill="#8b949e" font-size="11">삭제 = 톰스톤 쓰기 → 컴팩션이 바닥까지 가며 회수</text>
+  <text x="636" y="288" fill="#8b949e" font-size="11">L0 가 쌓이면 write stall (p99 스파이크)</text>
+  <rect x="620" y="326" width="320" height="64" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="780" y="348" text-anchor="middle" fill="#8b949e" font-size="11">같은 구조: RocksDB · Cassandra · Lucene 세그먼트</text>
+  <text x="780" y="366" text-anchor="middle" fill="#8b949e" font-size="11">Kafka 로그 세그먼트 · Redis AOF 재작성 · ClickHouse MergeTree</text>
+  <text x="780" y="384" text-anchor="middle" fill="#8b949e" font-size="11">티어드: 쓰기 증폭 ↓, 읽기·공간 증폭 ↑</text>
+  <rect x="30" y="402" width="910" height="28" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="485" y="421" text-anchor="middle" fill="#8b949e" font-size="12">B-tree 는 제자리 갱신(읽기 유리) · LSM 은 추가 후 병합(쓰기 유리) — RUM 추측: 세 증폭을 동시에 줄일 수 없다</text>
+</svg>

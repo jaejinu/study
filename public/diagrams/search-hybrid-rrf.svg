@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="400" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">하이브리드 검색 — 두 검색기를 따로 돌리고 순위로 합친 뒤 리랭킹</text>
+  <rect x="30" y="160" width="150" height="60" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="105" y="185" text-anchor="middle" fill="#8b949e" font-size="12">질의</text>
+  <text x="105" y="205" text-anchor="middle" fill="#e6edf3">메시지 순서 보장 키</text>
+  <rect x="230" y="70" width="230" height="130" rx="10" fill="#161b22" stroke="#3b82f6"/>
+  <text x="345" y="94" text-anchor="middle" fill="#3b82f6" font-weight="600">BM25 (역색인)</text>
+  <text x="246" y="118" fill="#e6edf3" font-size="12">1. redis/키 만료 (10.8)</text>
+  <text x="246" y="138" fill="#e6edf3" font-size="12">2. kafka/전달 보장 (10.8)</text>
+  <text x="246" y="158" fill="#e6edf3" font-size="12">3. 분산/시간과 순서 (8.4)</text>
+  <text x="246" y="178" fill="#e6edf3" font-size="12">4. arch/비동기·메시징 (7.1)</text>
+  <text x="345" y="196" text-anchor="middle" fill="#8b949e" font-size="10">정확한 단어 · 식별자 · 에러 코드에 강함</text>
+  <rect x="230" y="220" width="230" height="130" rx="10" fill="#161b22" stroke="#22c55e"/>
+  <text x="345" y="244" text-anchor="middle" fill="#22c55e" font-weight="600">kNN (HNSW 벡터)</text>
+  <text x="246" y="268" fill="#e6edf3" font-size="12">1. arch/비동기·메시징 (0.62)</text>
+  <text x="246" y="288" fill="#e6edf3" font-size="12">2. redis/분산 락 (0.60)</text>
+  <text x="246" y="308" fill="#e6edf3" font-size="12">3. 분산/2PC·Saga (0.58)</text>
+  <text x="246" y="328" fill="#e6edf3" font-size="12">4. redis/메시징 (0.57)</text>
+  <text x="345" y="346" text-anchor="middle" fill="#8b949e" font-size="10">의미 · 다른 표현 · 동의어에 강함</text>
+  <line x1="180" y1="180" x2="228" y2="140" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="180" y1="200" x2="228" y2="280" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="510" y="110" width="220" height="200" rx="10" fill="#161b22" stroke="#f59e0b"/>
+  <text x="620" y="134" text-anchor="middle" fill="#f59e0b" font-weight="600">RRF 융합 (k = 60)</text>
+  <text x="620" y="158" text-anchor="middle" fill="#e6edf3" font-size="12">score = Σ 1 / (60 + rank)</text>
+  <text x="526" y="188" fill="#e6edf3" font-size="12">1. arch/비동기·메시징</text>
+  <text x="540" y="206" fill="#8b949e" font-size="11">1/64 + 1/61 = 0.0320  ← 양쪽 합의</text>
+  <text x="526" y="230" fill="#e6edf3" font-size="12">2. redis/키 만료</text>
+  <text x="540" y="248" fill="#8b949e" font-size="11">1/61 = 0.0164  ← 한쪽만</text>
+  <text x="526" y="272" fill="#e6edf3" font-size="12">3. kafka/전달 보장 …</text>
+  <text x="620" y="298" text-anchor="middle" fill="#8b949e" font-size="10">점수 스케일 무관 · 튜닝 거의 없음</text>
+  <line x1="462" y1="140" x2="508" y2="180" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="462" y1="280" x2="508" y2="240" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="770" y="130" width="170" height="70" rx="10" fill="#161b22" stroke="#8b5cf6"/>
+  <text x="855" y="154" text-anchor="middle" fill="#8b5cf6" font-weight="600">리랭커</text>
+  <text x="855" y="174" text-anchor="middle" fill="#e6edf3" font-size="11">크로스 인코더(질의, 문서)</text>
+  <text x="855" y="190" text-anchor="middle" fill="#8b949e" font-size="11">상위 50 → 5</text>
+  <rect x="770" y="230" width="170" height="70" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="855" y="254" text-anchor="middle" fill="#e6edf3" font-weight="600">LLM (RAG)</text>
+  <text x="855" y="274" text-anchor="middle" fill="#8b949e" font-size="11">근거 청크 + 인용 링크</text>
+  <line x1="732" y1="190" x2="768" y2="170" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="855" y1="200" x2="855" y2="228" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="30" y="362" width="910" height="28" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="485" y="381" text-anchor="middle" fill="#8b949e" font-size="12">대안: min-max 정규화 후 가중 평균 (OpenSearch hybrid + normalization-processor) — 각 목록 1위가 무조건 1.0 이 되는 약점 · 실험 search-hybrid-rrf</text>
+</svg>

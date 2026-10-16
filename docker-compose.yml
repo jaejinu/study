@@ -218,6 +218,8 @@ services:
     image: opensearchproject/opensearch:2.19.1
     container_name: study-opensearch
     profiles: ["search"]
+    # 한국어 형태소 분석기 nori 를 시작 시 설치 (컨테이너를 재생성해도 유지되도록)
+    command: ["bash", "-c", "bin/opensearch-plugin list | grep -q analysis-nori || bin/opensearch-plugin install --batch analysis-nori; exec ./opensearch-docker-entrypoint.sh"]
     ports:
       - "127.0.0.1:19200:9200"
     environment:
