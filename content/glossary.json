@@ -3286,5 +3286,221 @@
     "subject": "system-design",
     "def": "입력이 일정 시간 멈춘 뒤에만 요청을 보내는 클라이언트 기법. 자동완성 호출 수를 크게 줄인다.",
     "link": "/system-design/notes/07-search-autocomplete"
+  },
+  {
+    "term": "데이터 플레인 / 컨트롤 플레인 (메시)",
+    "subject": "service-mesh",
+    "def": "데이터 플레인은 실제 요청을 나르는 프록시들(linkerd-proxy·Envoy), 컨트롤 플레인은 엔드포인트·정책·인증서를 프록시에 내려주는 서버들(destination·identity·injector). 컨트롤 플레인이 죽어도 기존 프록시는 마지막 설정으로 동작한다.",
+    "link": "/service-mesh/notes/01-what-mesh-solves"
+  },
+  {
+    "term": "네이티브 사이드카",
+    "subject": "service-mesh",
+    "def": "initContainers 에 restartPolicy: Always 를 준 컨테이너(쿠버네티스 1.28+). 앱보다 먼저 떠서 앱이 끝난 뒤 종료돼, 사이드카의 시작·종료 경쟁과 Job 미완료 문제를 없앤다.",
+    "link": "/service-mesh/notes/02-sidecar-ambient"
+  },
+  {
+    "term": "ambient 메시",
+    "subject": "service-mesh",
+    "def": "Istio 의 사이드카 없는 모델. 노드마다 L4 프록시 ztunnel 이 mTLS·L4 인가를, 필요한 곳에만 둔 waypoint(Envoy)가 L7 기능을 맡는다. 자원은 적지만 노드 단위 장애 반경을 갖는다.",
+    "link": "/service-mesh/notes/02-sidecar-ambient"
+  },
+  {
+    "term": "opaque 포트",
+    "subject": "service-mesh",
+    "def": "메시 프록시가 프로토콜 감지 없이 TCP 로만 다루는 포트. 서버가 먼저 말하는 프로토콜(MySQL·PostgreSQL·Redis·SMTP)에서 감지 지연(약 10초)을 피한다.",
+    "link": "/service-mesh/notes/02-sidecar-ambient"
+  },
+  {
+    "term": "SPIFFE",
+    "subject": "service-mesh",
+    "def": "워크로드 신원을 spiffe://<트러스트 도메인>/ns/<네임스페이스>/sa/<서비스계정> 같은 URI 로 인증서 SAN 에 담는 표준. 그 인증서를 SVID 라 한다. Istio 가 쓰고 Linkerd 도 같은 발상(SA 기반 신원)이다.",
+    "link": "/service-mesh/notes/03-mtls-identity"
+  },
+  {
+    "term": "트러스트 앵커 / 발급자 인증서",
+    "subject": "service-mesh",
+    "def": "메시 인증서 체인의 루트와 중간 인증서. 워크로드 인증서(24h)는 자동 회전되지만 이 둘은 사람이 관리하며, 만료되면 메시 전체의 인증서 발급이 멈춘다. cert-manager 와 만료 알림으로 관리한다.",
+    "link": "/service-mesh/notes/03-mtls-identity"
+  },
+  {
+    "term": "AuthorizationPolicy (Linkerd)",
+    "subject": "service-mesh",
+    "def": "Server(보호할 Pod·포트)나 HTTPRoute 에 MeshTLSAuthentication(허용할 신원 목록) 같은 인증 요구를 연결하는 정책. 실험에서 허용 신원은 200, 메시 밖 클라이언트는 403 을 받았다.",
+    "link": "/service-mesh/notes/03-mtls-identity"
+  },
+  {
+    "term": "장애 축적 (failure accrual)",
+    "subject": "service-mesh",
+    "def": "메시 프록시가 연속 N 번 실패한 엔드포인트를 부하 분산 후보에서 잠시 빼고 시험 요청으로 복구를 확인하는 엔드포인트 단위 서킷 브레이커. Linkerd 의 balancer.linkerd.io/failure-accrual.",
+    "link": "/service-mesh/notes/04-traffic-policy"
+  },
+  {
+    "term": "P2C + EWMA 부하 분산",
+    "subject": "service-mesh",
+    "def": "엔드포인트 2개를 무작위로 골라 지수 가중 이동 평균 지연 × 진행 중 요청 수가 작은 쪽으로 보내는 알고리즘. 느린 Pod 를 피하고 떼 현상을 막는다. Linkerd 프록시의 기본.",
+    "link": "/service-mesh/notes/04-traffic-policy"
+  },
+  {
+    "term": "골든 시그널 (메시)",
+    "subject": "service-mesh",
+    "def": "프록시가 모든 요청에서 자동으로 만드는 성공률·요청량·지연 분포 메트릭(request_total·response_total·response_latency_ms). outbound 는 호출자 관점(재시도 후 결과), inbound 는 서버 관점이다.",
+    "link": "/service-mesh/notes/05-observability"
+  },
+  {
+    "term": "GAMMA (Gateway API for Mesh)",
+    "subject": "service-mesh",
+    "def": "Gateway API 의 HTTPRoute 를 parentRefs 에 Service 를 지정해 서비스 간(동-서) 트래픽 라우팅에 쓰는 방식. 가중치 분할·헤더 라우팅을 메시 종류와 무관한 표준으로 표현한다.",
+    "link": "/service-mesh/notes/06-canary-traffic-split"
+  },
+  {
+    "term": "트래픽 미러링 (섀도 트래픽)",
+    "subject": "service-mesh",
+    "def": "실제 응답은 기존 버전이 주고 같은 요청을 새 버전에도 보내 결과를 버리는 검증 방식. 쓰기 요청을 미러링하면 두 번 쓰이므로 읽기 경로에만 쓴다.",
+    "link": "/service-mesh/notes/06-canary-traffic-split"
+  },
+  {
+    "term": "주입 웹훅 실패 정책",
+    "subject": "service-mesh",
+    "def": "사이드카 주입 어드미션 웹훅이 응답하지 않을 때의 동작. Ignore 면 배포는 되지만 Pod 가 조용히 메시 밖으로 생긴다. '주입 안 된 Pod' 를 감시해야 한다.",
+    "link": "/service-mesh/notes/07-mesh-comparison-ops"
+  },
+  {
+    "term": "머리 막힘 (Head-of-Line blocking)",
+    "subject": "network-protocols",
+    "def": "줄 맨 앞의 지연·손실 하나가 뒤의 모든 것을 세우는 현상. HTTP/1.1 은 HTTP 수준, HTTP/2 는 TCP 수준(손실 하나가 모든 스트림을 세움), HTTP/3 은 QUIC 의 스트림 독립으로 없앴다.",
+    "link": "/network-protocols/notes/01-http1-http2-http3"
+  },
+  {
+    "term": "HPACK",
+    "subject": "network-protocols",
+    "def": "HTTP/2 의 헤더 압축. 자주 쓰는 헤더를 정적·동적 테이블 인덱스로 보내 반복 헤더를 수 바이트로 줄인다. HTTP/3 은 순서 없는 전송에 맞춘 QPACK 을 쓴다.",
+    "link": "/network-protocols/notes/01-http1-http2-http3"
+  },
+  {
+    "term": "h2c",
+    "subject": "network-protocols",
+    "def": "TLS 없는 평문 HTTP/2. 브라우저는 쓰지 않고 서버 간·gRPC 내부·실험에서 클라이언트가 처음부터 HTTP/2 로 말하는 prior knowledge 방식으로 쓴다(curl --http2-prior-knowledge).",
+    "link": "/network-protocols/notes/01-http1-http2-http3"
+  },
+  {
+    "term": "Alt-Svc",
+    "subject": "network-protocols",
+    "def": "서버가 같은 서비스를 다른 프로토콜·포트로도 제공한다고 알리는 응답 헤더(h3=\":443\"). 브라우저는 이를 보고 다음 접속부터 HTTP/3 을 시도한다. DNS HTTPS 레코드가 같은 역할을 한다.",
+    "link": "/network-protocols/notes/01-http1-http2-http3"
+  },
+  {
+    "term": "QUIC",
+    "subject": "network-protocols",
+    "def": "UDP 위 유저 공간에서 동작하는 전송 프로토콜. TLS 1.3 을 내장해 1-RTT 연결, 스트림별 순서 보장, 패킷 번호 기반 손실 복구, 연결 ID 기반 연결 이전을 제공한다. HTTP/3 의 전송 계층.",
+    "link": "/network-protocols/notes/02-quic"
+  },
+  {
+    "term": "연결 이전 (connection migration)",
+    "subject": "network-protocols",
+    "def": "QUIC 연결이 4-튜플 대신 연결 ID 로 식별돼 클라이언트 IP 가 바뀌어도(와이파이→LTE) 끊기지 않고 이어지는 기능. 4-튜플로 해싱하는 L4 로드밸런서와는 충돌한다.",
+    "link": "/network-protocols/notes/02-quic"
+  },
+  {
+    "term": "프로토콜 경직 (ossification)",
+    "subject": "network-protocols",
+    "def": "미들박스가 프로토콜 헤더를 해석·수정하면서 새 옵션을 버려 프로토콜을 더 이상 바꿀 수 없게 되는 현상. QUIC 이 헤더를 거의 전부 암호화한 이유다.",
+    "link": "/network-protocols/notes/02-quic"
+  },
+  {
+    "term": "0-RTT (조기 데이터)",
+    "subject": "network-protocols",
+    "def": "이전 세션의 티켓으로 만든 키로 첫 메시지에 요청을 실어 보내는 TLS 1.3·QUIC 기능. 재전송 공격에 취약해 멱등 요청에만 허용하고, 서버는 425 Too Early 로 거절할 수 있다.",
+    "link": "/network-protocols/notes/03-tls13-handshake"
+  },
+  {
+    "term": "key_share",
+    "subject": "network-protocols",
+    "def": "TLS 1.3 ClientHello 에 미리 담는 키 교환 공개값(예: X25519). 서버가 바로 공유 비밀을 계산할 수 있어 핸드셰이크가 1 RTT 로 줄었다. 추측이 틀리면 HelloRetryRequest 로 1 RTT 가 늘어난다.",
+    "link": "/network-protocols/notes/03-tls13-handshake"
+  },
+  {
+    "term": "슬로 스타트",
+    "subject": "network-protocols",
+    "def": "TCP 연결 시작 시 혼잡 윈도를 초기 10 세그먼트(≈14KB)에서 RTT 마다 두 배로 키우는 단계. 짧은 연결이 대역폭을 다 못 쓰는 이유이며, 연결 여러 개가 유리한 이유다.",
+    "link": "/network-protocols/notes/04-congestion-control"
+  },
+  {
+    "term": "BBR",
+    "subject": "network-protocols",
+    "def": "손실 대신 측정한 병목 대역폭과 최소 RTT 로 보내는 속도·비행량을 정하는 TCP 혼잡 제어(Google). 큐를 채우지 않아 지연이 낮고 무작위 손실에 둔감하다. 이 Docker Desktop 커널에는 없다.",
+    "link": "/network-protocols/notes/04-congestion-control"
+  },
+  {
+    "term": "AIMD",
+    "subject": "network-protocols",
+    "def": "Additive Increase Multiplicative Decrease. Reno 의 규칙으로 혼잡 회피 중 RTT 당 1 세그먼트씩 늘리고 손실 시 절반으로 줄인다. 공정하지만 고-BDP 경로 회복이 느리다.",
+    "link": "/network-protocols/notes/04-congestion-control"
+  },
+  {
+    "term": "BDP (대역폭-지연 곱)",
+    "subject": "network-protocols",
+    "def": "대역폭 × RTT, 파이프 안에 날아가는 중인 데이터 양. 윈도·소켓 버퍼가 BDP 보다 작으면 연결 하나의 처리량은 버퍼/RTT 에서 멈춘다.",
+    "link": "/network-protocols/notes/05-loss-latency-throughput"
+  },
+  {
+    "term": "Mathis 공식",
+    "subject": "network-protocols",
+    "def": "손실률 p 에서 Reno 류 TCP 처리량 상한 ≈ MSS/RTT · 1.22/√p. 처리량이 RTT 와 손실률의 제곱근에 반비례함을 보여 준다. 실험에서 장거리 행은 측정과 같은 자릿수였다.",
+    "link": "/network-protocols/notes/05-loss-latency-throughput"
+  },
+  {
+    "term": "버퍼블로트",
+    "subject": "network-protocols",
+    "def": "병목 앞 큐가 지나치게 깊어 손실 기반 TCP 가 큐를 가득 채우고, 같은 링크의 모든 패킷이 오래 기다리는 현상. 실측: 처리량은 같고 RTT 만 48ms→183ms.",
+    "link": "/network-protocols/notes/05-loss-latency-throughput"
+  },
+  {
+    "term": "AQM (fq_codel · CAKE)",
+    "subject": "network-protocols",
+    "def": "큐에서 오래 기다린 패킷을 일찍 버리거나 ECN 표시해 TCP 가 일찍 속도를 줄이게 하는 능동 큐 관리. 흐름별 큐로 작은 흐름을 보호해 버퍼블로트를 막는다.",
+    "link": "/network-protocols/notes/05-loss-latency-throughput"
+  },
+  {
+    "term": "netem",
+    "subject": "network-protocols",
+    "def": "리눅스 tc 의 네트워크 에뮬레이터 qdisc. 송신 방향에 지연·지터·손실·대역폭 제한·큐 깊이를 걸어 나쁜 네트워크를 재현한다. 세그먼트 오프로드를 꺼야 패킷 단위가 정확하다.",
+    "link": "/network-protocols/notes/05-loss-latency-throughput"
+  },
+  {
+    "term": "DSR (Direct Server Return)",
+    "subject": "network-protocols",
+    "def": "L4 로드밸런서가 요청만 백엔드로 보내고 응답은 백엔드가 클라이언트로 직접 보내는 방식. 응답이 큰 서비스에서 LB 대역폭을 아낀다.",
+    "link": "/network-protocols/notes/06-load-balancing-cdn"
+  },
+  {
+    "term": "Maglev 해싱",
+    "subject": "network-protocols",
+    "def": "백엔드마다 순열을 만들어 고정 크기 조회 테이블을 채우는 Google 의 일관 해싱. O(1) 조회, 균등 분포, 백엔드 변화 시 최소 재배치. Katran·Cilium 이 XDP 로 구현한다.",
+    "link": "/network-protocols/notes/06-load-balancing-cdn"
+  },
+  {
+    "term": "애니캐스트",
+    "subject": "network-protocols",
+    "def": "같은 IP 를 여러 위치가 BGP 로 동시에 광고해 라우팅이 사용자를 가장 가까운(BGP 경로상) 위치로 보내는 방식. DNS 리졸버·CDN 엣지가 쓴다.",
+    "link": "/network-protocols/notes/06-load-balancing-cdn"
+  },
+  {
+    "term": "연결 드레이닝",
+    "subject": "network-protocols",
+    "def": "빼려는 백엔드에 새 요청은 보내지 않고 진행 중인 요청은 끝내게 두는 절차. 쿠버네티스에서는 Endpoint 제거와 SIGTERM 이 동시에 일어나 preStop sleep 이 필요하다.",
+    "link": "/network-protocols/notes/06-load-balancing-cdn"
+  },
+  {
+    "term": "SSLKEYLOGFILE",
+    "subject": "network-protocols",
+    "def": "TLS 클라이언트(curl·브라우저·Node --tls-keylog)가 세션 키를 남기게 하는 환경 변수. Wireshark 가 이 파일로 TLS·QUIC 트래픽을 복호화한다. 운영에서 켜 두면 안 된다.",
+    "link": "/network-protocols/notes/07-observing-debugging"
+  },
+  {
+    "term": "qlog",
+    "subject": "network-protocols",
+    "def": "QUIC 구현이 남기는 표준 이벤트 로그(JSON). 패킷 송수신·손실 감지·혼잡 윈도 변화를 담아, 암호화로 tcpdump 가 무력한 QUIC 을 qvis 등으로 분석하게 한다.",
+    "link": "/network-protocols/notes/07-observing-debugging"
   }
 ]

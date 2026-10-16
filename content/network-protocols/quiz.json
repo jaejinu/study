@@ -1,1 +1,43 @@
-[]
+[
+  { "note": "01-http1-http2-http3", "q": "HTTP/1.1 이 리소스 50개를 받는 데 오래 걸리는 이유와 브라우저의 우회책은?", "a": "한 연결에서 요청을 하나씩만 주고받아 50 RTT 가 든다. 브라우저는 출처당 연결 6개를 열어 약 9 왕복으로 줄인다." },
+  { "note": "01-http1-http2-http3", "q": "HTTP/2 가 HTTP 수준의 머리 막힘을 없앤 방법은?", "a": "이진 프레이밍과 스트림 다중화로 한 TCP 연결 위에 여러 요청의 프레임을 섞어 보낸다. 느린 응답 하나가 다른 응답을 막지 않는다." },
+  { "note": "01-http1-http2-http3", "q": "HTTP/2 에 남은 머리 막힘은 무엇이고 왜 생기나?", "a": "TCP 수준 머리 막힘이다. 모든 스트림이 TCP 바이트 스트림 하나를 공유해, 패킷 하나가 손실되면 뒤에 도착한 다른 스트림 데이터도 재전송이 올 때까지 앱에 넘기지 않는다." },
+  { "note": "01-http1-http2-http3", "q": "실험 netp-h1-vs-h2 에서 1KB×50 과 20KB×50 의 승자가 바뀐 이유는?", "a": "1KB 는 요청 왕복이 지배해 HTTP/2 다중화가 이겼다(304 vs 576ms). 20KB(1MB)는 데이터량이 지배해 연결 하나의 혼잡 윈도가 슬로 스타트로 커지는 시간이 병목이 되고, 연결 6개는 초기 윈도가 6배라 이겼다." },
+  { "note": "01-http1-http2-http3", "q": "브라우저는 HTTP/3 을 쓸 수 있다는 것을 어떻게 아나?", "a": "HTTP/2 응답의 Alt-Svc 헤더(h3=\":443\")나 DNS HTTPS 레코드(alpn=\"h3,h2\")로 알고 다음 접속부터 QUIC 을 시도한다. UDP 가 막히면 TCP 로 폴백한다." },
+
+  { "note": "02-quic", "q": "QUIC 이 TCP 를 고치지 않고 UDP 위에 새로 만든 이유 두 가지는?", "a": "TCP 는 커널에 있어 새 기능 배포가 수년 걸리고, 미들박스가 TCP 헤더를 읽고 고쳐 새 옵션을 버리는 프로토콜 경직이 있다. UDP 위 유저 공간에 암호화된 헤더로 만들면 둘 다 피한다." },
+  { "note": "02-quic", "q": "QUIC 연결 수립이 TCP+TLS 1.3 보다 빠른 이유는?", "a": "전송 핸드셰이크와 TLS 1.3 핸드셰이크를 한 번에 합쳐 1 RTT 에 끝낸다. TCP+TLS 1.3 은 TCP 1 RTT + TLS 1 RTT 로 2 RTT 다. 재연결은 0-RTT 도 가능하다." },
+  { "note": "02-quic", "q": "0-RTT 에 비멱등 요청을 허용하면 안 되는 이유는?", "a": "0-RTT 데이터는 서버의 새 난수와 무관해 공격자가 복사해 다시 보내도(replay) 유효하다. 결제 같은 요청이 두 번 처리될 수 있다." },
+  { "note": "02-quic", "q": "QUIC 의 손실 복구가 TCP 보다 정확한 이유는?", "a": "재전송에 새 패킷 번호를 써서 ACK 가 원본 것인지 재전송 것인지 모호하지 않아 RTT 를 정확히 잰다. ACK 범위도 수백 개까지 담고 ACK 지연을 명시한다." },
+  { "note": "02-quic", "q": "연결 ID 가 연결 이전에서 하는 일과 로드밸런서에 주는 문제는?", "a": "IP 가 바뀌어도 연결 ID 로 같은 연결임을 알아봐 와이파이→LTE 전환에도 연결이 이어진다. 그러나 4-튜플로 해싱하는 L4 LB 는 바뀐 IP 의 패킷을 다른 서버로 보내므로 연결 ID 를 읽는 QUIC-LB 가 필요하다." },
+
+  { "note": "03-tls13-handshake", "q": "TLS 1.2 가 2 RTT, 1.3 이 1 RTT 인 핵심 이유는?", "a": "1.2 는 서버가 키 교환 방식을 고르기 전이라 클라이언트가 첫 메시지에 키를 못 보냈다. 1.3 은 ClientHello 에 key_share(예: X25519 공개값)를 미리 실어 1 RTT 에 공유 비밀을 만든다." },
+  { "note": "03-tls13-handshake", "q": "TLS 1.3 에서 인증서까지 암호화되는 것의 의미는?", "a": "ServerHello 이후 전부 암호화돼 엿보는 사람이 인증서로 어느 사이트인지 알 수 없다. SNI 는 여전히 평문이며 ECH 가 이를 암호화한다." },
+  { "note": "03-tls13-handshake", "q": "인증서 체인이 크면 왜 RTT 가 하나 더 들 수 있나?", "a": "첫 RTT 에 보낼 수 있는 양은 초기 혼잡 윈도(약 14KB)라 인증서·OCSP·SCT 가 이를 넘으면 나머지를 다음 RTT 에 보내야 한다. 중간 인증서만 보내고 작은 ECDSA 인증서를 쓰면 줄어든다." },
+  { "note": "03-tls13-handshake", "q": "curl -w 로 TLS 핸드셰이크 시간을 구하는 식은?", "a": "time_appconnect − time_connect. TCP 연결이 끝난 시각부터 TLS 핸드셰이크가 끝난 시각까지다. 1.3 은 약 1 RTT, 1.2 는 약 2 RTT 로 나온다." },
+  { "note": "03-tls13-handshake", "q": "TLS 지연에서 가장 큰 최적화는 무엇이고 예는?", "a": "핸드셰이크를 안 하는 것, 즉 연결 재사용이다. HTTP keep-alive·HTTP/2 단일 연결, 커넥션 풀(ioredis·pg·http.Agent keepAlive), 프록시 업스트림 keepalive, 메시 프록시 간 연결 재사용." },
+
+  { "note": "04-congestion-control", "q": "TCP 처리량을 정하는 두 윈도는 무엇이고 각각 무엇을 막나?", "a": "수신 윈도(rwnd)는 수신자 버퍼가 넘치는 것을, 혼잡 윈도(cwnd)는 네트워크(병목 큐)가 넘치는 것을 막는다. 처리량 ≈ min(cwnd, rwnd)/RTT." },
+  { "note": "04-congestion-control", "q": "슬로 스타트에서 1MB 를 보내는 데 몇 RTT 가 걸리고, 그 함의는?", "a": "초기 윈도 10 세그먼트(≈14KB)에서 RTT 마다 두 배라 5~6 RTT. 짧은 연결은 대역폭을 다 못 쓰고, 연결 여러 개는 초기 윈도가 여러 배라 유리하다." },
+  { "note": "04-congestion-control", "q": "Reno 가 고-BDP 경로를 채우지 못하는 이유와 CUBIC 의 개선은?", "a": "Reno 는 손실 후 RTT 당 1 세그먼트씩 선형으로 회복해 큰 윈도로 돌아가는 데 수백 RTT 가 걸린다. CUBIC 은 손실 직전 윈도를 기억하고 실제 시간의 3차 함수로 빠르게 돌아간다." },
+  { "note": "04-congestion-control", "q": "BBR 이 손실 기반 알고리즘과 다른 점은?", "a": "손실을 혼잡 신호로 쓰지 않고 측정한 병목 대역폭(BtlBw)과 최소 RTT(RTprop)로 보내는 속도와 비행량(BDP)을 정한다. 큐를 채우지 않아 지연이 낮고 무작위 손실에 둔감하다." },
+  { "note": "04-congestion-control", "q": "실험 netp-congestion-control 에서 회차별 결과가 크게 흔들린 것이 주는 교훈은?", "a": "같은 조건에서도 손실 시점에 따라 5초 궤적이 달라져 4.77~22.6 Mbit/s 로 흔들렸다. 혼잡 제어 비교는 여러 번 재 중앙값을 봐야 하고 한 번의 숫자는 의미가 거의 없다." },
+
+  { "note": "05-loss-latency-throughput", "q": "BDP 란 무엇이고 연결 하나의 처리량과 어떤 관계인가?", "a": "대역폭 × RTT, 파이프 안에 날아가는 중인 데이터 양이다. 윈도·소켓 버퍼가 BDP 보다 작으면 처리량은 버퍼/RTT 에서 멈춘다(예: 4MB/0.1s ≈ 320 Mbit/s)." },
+  { "note": "05-loss-latency-throughput", "q": "Mathis 공식과 그것이 말하는 두 가지 무서운 사실은?", "a": "처리량 ≲ MSS/RTT · 1.22/√p. 처리량이 RTT 에 반비례하고(장거리일수록 느림), 손실률의 제곱근에 반비례한다(손실 0.01%→1% 면 1/10)." },
+  { "note": "05-loss-latency-throughput", "q": "실험 netp-loss-throughput 에서 LAN(0ms) 행이 Mathis 예측과 맞지 않은 이유는?", "a": "RTT 가 0.1ms 수준이라 재전송이 거의 즉시 끝나 손실이 처리량 비용이 되지 않는다. Mathis 는 장거리 경로의 감각을 주는 공식이다." },
+  { "note": "05-loss-latency-throughput", "q": "버퍼블로트 실측(큐 1000 vs 20)이 보여 준 것은?", "a": "업로드 처리량은 9.45 vs 9.51 Mbit/s 로 같았는데 포화 중 RTT 는 183ms vs 48ms 였다. 깊은 큐는 처리량에 기여하지 않고 같은 링크의 모든 패킷 지연만 늘린다." },
+  { "note": "05-loss-latency-throughput", "q": "netem 실험에서 세그먼트 오프로드(TSO/GSO)를 꺼야 하는 이유는?", "a": "켜져 있으면 veth 가 64KB 슈퍼 패킷을 큐에 넣어 netem 의 limit 20 이 20 × 64KB 가 된다. 얕은 큐가 깊은 큐처럼 동작해 실험이 틀린다(실제로 342ms → 끄고 42ms)." },
+
+  { "note": "06-load-balancing-cdn", "q": "L4 와 L7 로드밸런싱의 분산 단위와 대표 차이는?", "a": "L4 는 연결 단위로 빠르지만 재시도·경로 라우팅이 불가하고, L7 은 요청 단위로 경로·헤더 라우팅·재시도·카나리가 가능하지만 TLS 종단·파싱으로 CPU 를 많이 쓴다." },
+  { "note": "06-load-balancing-cdn", "q": "gRPC 서비스를 kube-proxy 로 분산하면 한 Pod 에 쏠리는 이유와 해법은?", "a": "kube-proxy 는 연결을 만들 때 백엔드를 고르는데 gRPC 는 연결 하나에 모든 요청을 싣는다. 클라이언트 측 LB(헤드리스 서비스 + round_robin), L7 프록시, 서비스 메시로 요청 단위 분산을 한다." },
+  { "note": "06-load-balancing-cdn", "q": "쿠버네티스 롤링 배포 중 5xx 가 잠깐 튀는 흔한 원인과 대처는?", "a": "Endpoint 제거와 SIGTERM 이 동시에 일어나 아직 트래픽이 오는데 앱이 종료한다(드레이닝 부재). preStop 에 짧은 sleep 을 넣어 엔드포인트 전파를 기다린다." },
+  { "note": "06-load-balancing-cdn", "q": "애니캐스트의 원리와 장애 모드는?", "a": "같은 IP 를 여러 PoP 가 BGP 로 광고해 라우팅이 가장 가까운(BGP 경로상) PoP 로 보낸다. 경로가 바뀌면 TCP 연결이 끊기고, 잘못된 BGP 광고 하나가 전 세계 장애가 될 수 있다." },
+  { "note": "06-load-balancing-cdn", "q": "CDN 이 캐시 미스여도 원본 직결보다 빠를 수 있는 이유는?", "a": "사용자-엣지 RTT 가 짧아 핸드셰이크가 빠르고, 엣지-원본 사이에 미리 열어 둔(혼잡 윈도가 이미 커진) 연결을 재사용하기 때문이다." },
+
+  { "note": "07-observing-debugging", "q": "curl -w 로 느린 요청을 쪼갤 때 '서버 처리' 구간의 식과 의미는?", "a": "time_starttransfer − time_pretransfer. 요청을 다 보낸 뒤 첫 바이트가 올 때까지로, 여기가 길면 네트워크가 아니라 앱 문제다." },
+  { "note": "07-observing-debugging", "q": "ss -ti 출력에서 재전송과 처리량을 읽는 필드는?", "a": "retrans:현재/누적, bytes_retrans 로 재전송을, delivery_rate 로 실제 전달 속도를, cwnd·rtt 로 혼잡 상태를 본다. rwnd_limited·sndbuf_limited 는 무엇이 속도를 막았는지 알려 준다." },
+  { "note": "07-observing-debugging", "q": "Wireshark 에서 Zero Window 가 보이면 무엇을 의심하나?", "a": "수신자 소켓 버퍼가 가득 찼다는 뜻으로, 수신 앱이 데이터를 늦게 읽고 있다(앱 처리 지연). 네트워크가 아니라 수신 측 문제다." },
+  { "note": "07-observing-debugging", "q": "암호화된 TLS·QUIC 트래픽을 분석하는 방법은?", "a": "클라이언트에 SSLKEYLOGFILE(또는 node --tls-keylog)로 세션 키를 남기게 해 Wireshark 가 복호화하게 한다. QUIC 은 구현이 남기는 qlog 와 qvis 로 본다. 키 로그는 운영에서 켜 두면 안 된다." },
+  { "note": "07-observing-debugging", "q": "셸·도구가 없는 컨테이너의 네트워크를 디버깅하는 방법 두 가지는?", "a": "호스트에서 nsenter -t <PID> -n 으로 그 네트워크 네임스페이스에 들어가 ss·tcpdump 를 쓰거나, kubectl debug --target 으로 같은 네임스페이스를 공유하는 에페메럴 디버그 컨테이너(netshoot)를 붙인다." }
+]

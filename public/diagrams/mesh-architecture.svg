@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="470" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker>
+  <marker id="g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#22c55e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">서비스 메시 — 데이터 플레인은 요청을 나르고, 컨트롤 플레인은 설정·인증서를 내려준다</text>
+
+  <!-- control plane -->
+  <rect x="200" y="55" width="560" height="110" rx="10" fill="#161b22" stroke="#8b5cf6"/>
+  <text x="480" y="78" text-anchor="middle" fill="#8b5cf6" font-weight="600">컨트롤 플레인 (linkerd 네임스페이스)</text>
+  <rect x="220" y="92" width="160" height="58" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="300" y="114" text-anchor="middle" fill="#e6edf3">destination</text>
+  <text x="300" y="134" text-anchor="middle" fill="#8b949e" font-size="11">엔드포인트 · 정책 · HTTPRoute</text>
+  <rect x="400" y="92" width="160" height="58" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="480" y="114" text-anchor="middle" fill="#e6edf3">identity</text>
+  <text x="480" y="134" text-anchor="middle" fill="#8b949e" font-size="11">SA 토큰 → 24h 인증서</text>
+  <rect x="580" y="92" width="160" height="58" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="660" y="114" text-anchor="middle" fill="#e6edf3">proxy-injector</text>
+  <text x="660" y="134" text-anchor="middle" fill="#8b949e" font-size="11">어드미션 웹훅 · 주입</text>
+
+  <!-- pods -->
+  <rect x="60" y="225" width="360" height="150" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="240" y="248" text-anchor="middle" fill="#e6edf3" font-weight="600">Pod A (client-meshed, SA client-meshed)</text>
+  <rect x="80" y="265" width="120" height="90" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="140" y="300" text-anchor="middle" fill="#e6edf3">앱</text>
+  <text x="140" y="320" text-anchor="middle" fill="#8b949e" font-size="11">curl http://web/</text>
+  <rect x="230" y="265" width="170" height="90" rx="8" fill="#0d1117" stroke="#22c55e"/>
+  <text x="315" y="287" text-anchor="middle" fill="#22c55e">linkerd-proxy (outbound)</text>
+  <text x="315" y="307" text-anchor="middle" fill="#8b949e" font-size="11">P2C+EWMA · 재시도 · 타임아웃</text>
+  <text x="315" y="323" text-anchor="middle" fill="#8b949e" font-size="11">HTTPRoute 분할 · 장애 축적</text>
+  <text x="315" y="339" text-anchor="middle" fill="#8b949e" font-size="11">mTLS 시작</text>
+
+  <rect x="540" y="225" width="360" height="150" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="720" y="248" text-anchor="middle" fill="#e6edf3" font-weight="600">Pod B (web)</text>
+  <rect x="560" y="265" width="170" height="90" rx="8" fill="#0d1117" stroke="#22c55e"/>
+  <text x="645" y="287" text-anchor="middle" fill="#22c55e">linkerd-proxy (inbound)</text>
+  <text x="645" y="307" text-anchor="middle" fill="#8b949e" font-size="11">mTLS 종단 · client_id 확인</text>
+  <text x="645" y="323" text-anchor="middle" fill="#8b949e" font-size="11">AuthorizationPolicy (200/403)</text>
+  <text x="645" y="339" text-anchor="middle" fill="#8b949e" font-size="11">골든 시그널 메트릭 :4191</text>
+  <rect x="760" y="265" width="120" height="90" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="820" y="300" text-anchor="middle" fill="#e6edf3">앱</text>
+  <text x="820" y="320" text-anchor="middle" fill="#8b949e" font-size="11">평문 HTTP 수신</text>
+
+  <!-- flows -->
+  <line x1="200" y1="310" x2="228" y2="310" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="402" y1="310" x2="557" y2="310" stroke="#22c55e" stroke-width="3" marker-end="url(#g)"/>
+  <text x="480" y="300" text-anchor="middle" fill="#22c55e" font-size="12">mTLS (신원 = SA)</text>
+  <line x1="732" y1="310" x2="758" y2="310" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="214" y="298" text-anchor="middle" fill="#8b949e" font-size="10">iptables</text>
+  <text x="745" y="298" text-anchor="middle" fill="#8b949e" font-size="10">평문</text>
+
+  <!-- control flows -->
+  <line x1="300" y1="152" x2="315" y2="262" stroke="#8b5cf6" stroke-dasharray="5 4" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="480" y1="152" x2="330" y2="262" stroke="#8b5cf6" stroke-dasharray="5 4" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="480" y1="152" x2="630" y2="262" stroke="#8b5cf6" stroke-dasharray="5 4" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="300" y1="152" x2="645" y2="262" stroke="#8b5cf6" stroke-dasharray="5 4" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <rect x="60" y="395" width="840" height="58" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="80" y="418" fill="#f59e0b" font-weight="600">컨트롤 플레인이 죽어도</text>
+  <text x="80" y="440" fill="#e6edf3">이미 떠 있는 프록시는 마지막 설정으로 계속 트래픽을 나른다 — 새 Pod 의 인증서 발급·엔드포인트 변경 반영만 멈춘다.</text>
+</svg>

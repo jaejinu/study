@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="420" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">버퍼블로트 — 깊은 큐는 처리량을 늘리지 않고 지연만 늘린다</text>
+
+  <!-- deep queue -->
+  <text x="40" y="80" fill="#ef4444" font-weight="600">병목 큐 1000 패킷 (≈ 1.2초 분량)</text>
+  <rect x="40" y="92" width="120" height="44" rx="8" fill="#161b22" stroke="#30363d"/><text x="100" y="119" text-anchor="middle" fill="#e6edf3">송신 TCP</text>
+  <line x1="162" y1="114" x2="198" y2="114" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="200" y="96" width="460" height="36" rx="4" fill="#161b22" stroke="#ef4444"/>
+  <g fill="#ef4444" opacity="0.75">
+    <rect x="206" y="102" width="12" height="24"/><rect x="222" y="102" width="12" height="24"/><rect x="238" y="102" width="12" height="24"/><rect x="254" y="102" width="12" height="24"/><rect x="270" y="102" width="12" height="24"/><rect x="286" y="102" width="12" height="24"/><rect x="302" y="102" width="12" height="24"/><rect x="318" y="102" width="12" height="24"/><rect x="334" y="102" width="12" height="24"/><rect x="350" y="102" width="12" height="24"/><rect x="366" y="102" width="12" height="24"/><rect x="382" y="102" width="12" height="24"/><rect x="398" y="102" width="12" height="24"/><rect x="414" y="102" width="12" height="24"/><rect x="430" y="102" width="12" height="24"/><rect x="446" y="102" width="12" height="24"/><rect x="462" y="102" width="12" height="24"/><rect x="478" y="102" width="12" height="24"/><rect x="494" y="102" width="12" height="24"/><rect x="510" y="102" width="12" height="24"/><rect x="526" y="102" width="12" height="24"/><rect x="542" y="102" width="12" height="24"/><rect x="558" y="102" width="12" height="24"/><rect x="574" y="102" width="12" height="24"/><rect x="590" y="102" width="12" height="24"/><rect x="606" y="102" width="12" height="24"/><rect x="622" y="102" width="12" height="24"/><rect x="638" y="102" width="12" height="24"/>
+  </g>
+  <line x1="662" y1="114" x2="698" y2="114" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="700" y="92" width="220" height="44" rx="8" fill="#161b22" stroke="#30363d"/><text x="810" y="112" text-anchor="middle" fill="#e6edf3">10 Mbit/s 병목</text><text x="810" y="128" text-anchor="middle" fill="#8b949e" font-size="11">netem rate 10mbit limit 1000</text>
+  <text x="200" y="156" fill="#e6edf3" font-size="12">ping RTT: 유휴 0.91ms → 업로드 중 183ms · 업로드 9.45 Mbit/s</text>
+
+  <!-- shallow queue -->
+  <text x="40" y="210" fill="#22c55e" font-weight="600">병목 큐 20 패킷 (≈ 24ms 분량)</text>
+  <rect x="40" y="222" width="120" height="44" rx="8" fill="#161b22" stroke="#30363d"/><text x="100" y="249" text-anchor="middle" fill="#e6edf3">송신 TCP</text>
+  <line x1="162" y1="244" x2="198" y2="244" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="200" y="226" width="100" height="36" rx="4" fill="#161b22" stroke="#22c55e"/>
+  <g fill="#22c55e" opacity="0.75"><rect x="206" y="232" width="12" height="24"/><rect x="222" y="232" width="12" height="24"/><rect x="238" y="232" width="12" height="24"/><rect x="254" y="232" width="12" height="24"/><rect x="270" y="232" width="12" height="24"/></g>
+  <line x1="302" y1="244" x2="698" y2="244" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="700" y="222" width="220" height="44" rx="8" fill="#161b22" stroke="#30363d"/><text x="810" y="242" text-anchor="middle" fill="#e6edf3">10 Mbit/s 병목</text><text x="810" y="258" text-anchor="middle" fill="#8b949e" font-size="11">netem rate 10mbit limit 20</text>
+  <text x="200" y="286" fill="#e6edf3" font-size="12">ping RTT: 유휴 1.03ms → 업로드 중 47.8ms · 업로드 9.51 Mbit/s (거의 같음)</text>
+
+  <rect x="40" y="315" width="880" height="88" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="60" y="340" fill="#f59e0b" font-weight="600">왜 생기나 · 어떻게 막나</text>
+  <text x="60" y="362" fill="#e6edf3">손실 기반 TCP(Reno·CUBIC)는 큐가 넘칠 때까지 윈도를 키운다 → 큐가 깊을수록 같은 링크의 모든 패킷이 오래 기다린다.</text>
+  <text x="60" y="384" fill="#e6edf3">해법: AQM(fq_codel·CAKE)으로 오래 기다린 패킷을 일찍 버리거나 ECN 표시, BBR 로 큐를 채우지 않게 보내기. (실험 netp-congestion-control)</text>
+</svg>
