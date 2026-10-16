@@ -1,0 +1,43 @@
+# Alertmanager 라우팅 (관측성 노트 09). 모든 알림은 이 앱의 /api/alerts 웹훅으로 간다.
+# Slack 을 쓰려면 slack_configs 블록의 api_url 을 채우고 receiver 를 바꾼다.
+global:
+  resolve_timeout: 2m
+
+route:
+  receiver: study-app                   # 기본 수신자
+  group_by: [alertname, severity]
+  group_wait: 10s                       # 첫 알림을 묶기 위해 잠시 대기
+  group_interval: 30s                   # 같은 그룹의 새 알림을 묶어 보내는 간격
+  repeat_interval: 2h                   # 계속 firing 이면 재전송 간격
+  routes:
+    - matchers: [severity="critical"]   # page 계층: 즉시, 묶지 않음
+      receiver: study-app-critical
+      group_wait: 0s
+      repeat_interval: 30m
+    - matchers: [severity="warning"]    # ticket 계층
+      receiver: study-app
+    - matchers: [severity="info"]       # log 계층: 느슨하게
+      receiver: study-app
+      group_interval: 5m
+      repeat_interval: 24h
+
+inhibit_rules:
+  # critical 이 떠 있으면 같은 대상의 warning 은 숨긴다 (알림 폭주 방지)
+  - source_matchers: [severity="critical"]
+    target_matchers: [severity="warning"]
+    equal: [alertname_group]
+
+receivers:
+  - name: study-app
+    webhook_configs:
+      - url: http://host.docker.internal:3000/api/alerts
+        send_resolved: true
+  - name: study-app-critical
+    webhook_configs:
+      - url: http://host.docker.internal:3000/api/alerts
+        send_resolved: true
+    # slack_configs:
+    #   - api_url: https://hooks.slack.com/services/XXX/YYY/ZZZ
+    #     channel: "#alerts-critical"
+    #     title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+    #     text: '{{ range .Alerts }}{{ .Annotations.summary }} — {{ .Annotations.runbook_url }}{{ "\n" }}{{ end }}'

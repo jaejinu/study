@@ -1,12 +1,14 @@
 import { ensureConnected, getRedis } from "@/lib/redis";
 import { listNotes } from "@/lib/notes";
 import { subjects } from "@/lib/subjects";
+import { metrics } from "@/lib/metrics";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Prometheus 텍스트 포맷으로 이 앱의 메트릭을 노출한다 (관측성 노트 03).
- * observability/prometheus.yml 의 study-app job 이 5초마다 긁어 간다.
+ * Prometheus 텍스트 포맷 (관측성 노트 03).
+ *  - prom-client 레지스트리: 프로세스 기본 메트릭 + 실험·노트·콘솔·액션·LLM·알림 카운터/히스토그램
+ *  - 아래 게이지: Redis 에 저장된 학습 진행률을 매 스크레이프마다 읽어 노출
  */
 export async function GET() {
   const lines: string[] = [];
@@ -17,9 +19,6 @@ export async function GET() {
       lines.push(`${name}${l} ${r.value}`);
     }
   };
-  metric("process_uptime_seconds", "Node 프로세스 가동 시간", "gauge", [{ value: Math.round(process.uptime()) }]);
-  metric("process_resident_memory_bytes", "RSS", "gauge", [{ value: process.memoryUsage().rss }]);
-
   const notes = await Promise.all(subjects.map(async (s) => ({ subject: s.id, n: (await listNotes(s.id)).length })));
   metric("study_notes_total", "주제별 노트 수", "gauge", notes.map((x) => ({ labels: { subject: x.subject }, value: x.n })));
 
@@ -39,5 +38,6 @@ export async function GET() {
   metric("study_progress_read_total", "읽은 노트 수", "gauge", subjects.map((s) => ({ labels: { subject: s.id }, value: read[s.id] ?? 0 })));
   metric("study_progress_lab_total", "성공한 실험 수", "gauge", subjects.map((s) => ({ labels: { subject: s.id }, value: lab[s.id] ?? 0 })));
 
-  return new Response(lines.join("\n") + "\n", { headers: { "Content-Type": "text/plain; version=0.0.4; charset=utf-8" } });
+  const body = (await metrics.registry.metrics()) + "\n" + lines.join("\n") + "\n";
+  return new Response(body, { headers: { "Content-Type": "text/plain; version=0.0.4; charset=utf-8" } });
 }

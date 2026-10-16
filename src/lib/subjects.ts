@@ -128,6 +128,7 @@ export const subjects: Subject[] = [
       { href: "/observability", label: "대시보드", icon: "◉", desc: "수집 스택 점검" },
       { href: "/observability/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
       { href: "/observability/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/observability/lab", label: "실험실", icon: "⚗", desc: "알림 파이프라인 · 장애 관측" },
     ],
     setup: [
       { label: "스택", cmd: "pnpm obs:up" },

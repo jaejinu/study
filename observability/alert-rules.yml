@@ -1,0 +1,75 @@
+# Prometheus 알림 규칙 — 3계층 (critical=page, warning=ticket, info=log). 관측성 노트 09.
+groups:
+  - name: study.redis
+    rules:
+      - alert: RedisDown
+        expr: redis_up == 0 or absent(redis_up)
+        for: 30s
+        labels: { severity: critical, alertname_group: redis }
+        annotations:
+          summary: "Redis 에 연결할 수 없음 (redis_exporter 기준)"
+          description: "redis_up 이 30초 이상 0. pnpm redis:docker 상태와 docker logs study-redis 확인."
+          runbook_url: "http://localhost:3000/redis/notes/14-ops-commands"
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+        for: 2m
+        labels: { severity: warning, alertname_group: redis }
+        annotations:
+          summary: "Redis 메모리 사용률 80% 초과"
+          description: "maxmemory 대비 {{ $value | humanizePercentage }}. 축출(evicted_keys) 증가 여부 확인."
+          runbook_url: "http://localhost:3000/redis/notes/03-keys-expiration"
+      - alert: RedisEvictions
+        expr: rate(redis_evicted_keys_total[5m]) > 0
+        for: 1m
+        labels: { severity: warning, alertname_group: redis }
+        annotations: { summary: "Redis 가 키를 축출하고 있음", runbook_url: "http://localhost:3000/redis/notes/19-performance-tuning" }
+      - alert: RedisSlowCommands
+        expr: increase(redis_slowlog_length[5m]) > 5
+        for: 1m
+        labels: { severity: info, alertname_group: redis }
+        annotations: { summary: "최근 5분간 느린 명령 5건 이상", runbook_url: "http://localhost:3000/redis/notes/12-memory-performance" }
+      - alert: RedisConnectedClientsHigh
+        expr: redis_connected_clients > 500
+        for: 5m
+        labels: { severity: warning, alertname_group: redis }
+        annotations: { summary: "Redis 연결 500 초과 — 커넥션 누수?" }
+
+  - name: study.app
+    rules:
+      - alert: StudyAppDown
+        expr: up{job="study-app"} == 0
+        for: 1m
+        labels: { severity: critical, alertname_group: app }
+        annotations: { summary: "Study 앱 /api/metrics 응답 없음 (pnpm dev 꺼짐?)", runbook_url: "http://localhost:3000/observability/notes/09-alerting-pipeline" }
+      - alert: StudyAppRedisUnreachable
+        expr: study_redis_up == 0
+        for: 1m
+        labels: { severity: critical, alertname_group: app }
+        annotations: { summary: "앱이 Redis 에 연결하지 못함 (진행률·실험 불가)" }
+      - alert: StudyExperimentFailures
+        expr: sum(increase(study_experiment_runs_total{outcome="error"}[10m])) > 3
+        for: 0s
+        labels: { severity: warning, alertname_group: app }
+        annotations: { summary: "10분간 실험 실패 3회 초과", description: "실패 실험: 대시보드의 실험 패널 확인" }
+      - alert: StudyActionSlow
+        expr: histogram_quantile(0.95, sum by (le) (rate(study_action_duration_seconds_bucket[5m]))) > 5
+        for: 2m
+        labels: { severity: info, alertname_group: app }
+        annotations: { summary: "서버 액션 p95 가 5초 초과" }
+      - alert: StudyLLMCostBudget
+        expr: increase(study_llm_cost_usd_total[1h]) > 1
+        for: 0s
+        labels: { severity: warning, alertname_group: app }
+        annotations: { summary: "LLM 비용 시간당 $1 초과", runbook_url: "http://localhost:3000/ai-systems/notes/05-prompt-cache-cost-latency" }
+
+  - name: study.meta
+    rules:
+      - alert: Watchdog
+        expr: vector(1)
+        labels: { severity: info, alertname_group: meta }
+        annotations: { summary: "항상 firing — 알림 파이프라인 생존 확인 (dead man's switch)" }
+      - alert: PrometheusTargetMissing
+        expr: up == 0
+        for: 2m
+        labels: { severity: warning, alertname_group: meta }
+        annotations: { summary: "스크레이프 타깃 {{ $labels.job }} 다운" }
