@@ -67,6 +67,19 @@ jobs:
           exit-code: "0"
           skip-dirs: node_modules,.next
 
+  observability:
+    name: promtool · 알림·SLO 규칙 검사
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      # 설정·규칙 문법 + SLO 번레이트 알림 단위 테스트 (관측성 노트 11) — 로컬은 pnpm obs:check
+      - name: promtool check config · test rules
+        run: |
+          docker run --rm -v "$PWD/observability:/etc/prometheus" --entrypoint sh prom/prometheus:v3.2.1 \
+            -c "promtool check config /etc/prometheus/prometheus.yml && promtool test rules /etc/prometheus/tests/slo-rules.test.yml"
+
   image:
     name: docker build
     runs-on: ubuntu-latest

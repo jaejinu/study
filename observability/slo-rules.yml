@@ -1,0 +1,330 @@
+# 사이트 자체 SLO — Study 앱을 '서비스' 로 보고 SLI·에러 예산·번레이트 알림을 건다 (관측성 노트 11).
+#
+#  SLI 원천: study_http_request_duration_seconds (src/lib/request-metrics.ts — Next 루트 스팬에서 기록)
+#            study_action_duration_seconds   (src/lib/metrics.ts timed())
+#  규칙 이름: slo:sli_error:ratio_rate<창>{slo=...}  = 그 창에서 '나쁜 이벤트 비율'
+#            slo:error_budget:ratio{slo=...}       = 1 - 목표 (허용 에러 비율)
+#  알림: Google SRE Workbook 의 멀티 윈도우·멀티 번레이트 (긴 창 + 짧은 창이 둘 다 넘어야 발화)
+#    page   14.4x  1h & 5m   — 30일 예산의 2% 를 1시간에 태움
+#    page    6x    6h & 30m  — 예산의 5% 를 6시간에
+#    ticket  3x    1d & 2h   — 예산의 10% 를 하루에
+#    ticket  1x    3d & 6h   — 이대로면 30일 끝에 예산이 정확히 바닥
+#  요청이 없는 창은 분모가 비어 결과도 비어 있다 → 조용한 시간에는 알림이 나지 않는다.
+#  분자는 'or vector(0)' — 5xx 가 한 번도 없으면 시계열 자체가 없어 비율이 사라지는 것을 막는다.
+#  le=~"1(\\.0)?" — Prometheus 3 은 le 라벨을 "1.0" 으로 정규화한다 (2.x·promtool 입력은 "1").
+#  검사: pnpm obs:check  (promtool check config + test rules observability/tests/slo-rules.test.yml)
+groups:
+  - name: slo.availability.recording
+    # 가용성: 5xx 가 아닌 응답 비율 ≥ 99.5% (30일)
+    rules:
+      - record: slo:error_budget:ratio
+        expr: vector(1 - 0.995)
+        labels: { slo: availability }
+      - record: slo:objective:ratio
+        expr: vector(0.995)
+        labels: { slo: availability }
+      - record: slo:sli_error:ratio_rate5m
+        expr: |
+          (sum(rate(study_http_request_duration_seconds_count{code=~"5.."}[5m])) or vector(0))
+          /
+          (sum(rate(study_http_request_duration_seconds_count[5m])))
+        labels: { slo: availability }
+      - record: slo:sli_error:ratio_rate30m
+        expr: |
+          (sum(rate(study_http_request_duration_seconds_count{code=~"5.."}[30m])) or vector(0))
+          /
+          (sum(rate(study_http_request_duration_seconds_count[30m])))
+        labels: { slo: availability }
+      - record: slo:sli_error:ratio_rate1h
+        expr: |
+          (sum(rate(study_http_request_duration_seconds_count{code=~"5.."}[1h])) or vector(0))
+          /
+          (sum(rate(study_http_request_duration_seconds_count[1h])))
+        labels: { slo: availability }
+      - record: slo:sli_error:ratio_rate2h
+        expr: |
+          (sum(rate(study_http_request_duration_seconds_count{code=~"5.."}[2h])) or vector(0))
+          /
+          (sum(rate(study_http_request_duration_seconds_count[2h])))
+        labels: { slo: availability }
+      - record: slo:sli_error:ratio_rate6h
+        expr: |
+          (sum(rate(study_http_request_duration_seconds_count{code=~"5.."}[6h])) or vector(0))
+          /
+          (sum(rate(study_http_request_duration_seconds_count[6h])))
+        labels: { slo: availability }
+      - record: slo:sli_error:ratio_rate1d
+        expr: |
+          (sum(rate(study_http_request_duration_seconds_count{code=~"5.."}[1d])) or vector(0))
+          /
+          (sum(rate(study_http_request_duration_seconds_count[1d])))
+        labels: { slo: availability }
+      - record: slo:sli_error:ratio_rate3d
+        expr: |
+          (sum(rate(study_http_request_duration_seconds_count{code=~"5.."}[3d])) or vector(0))
+          /
+          (sum(rate(study_http_request_duration_seconds_count[3d])))
+        labels: { slo: availability }
+      - record: slo:sli_error:ratio_rate30d
+        expr: |
+          (sum(rate(study_http_request_duration_seconds_count{code=~"5.."}[30d])) or vector(0))
+          /
+          (sum(rate(study_http_request_duration_seconds_count[30d])))
+        labels: { slo: availability }
+  - name: slo.latency.recording
+    # 페이지 지연: 페이지·화면 전환(RSC) 요청의 95% 가 1초 안에 응답 (30일)
+    rules:
+      - record: slo:error_budget:ratio
+        expr: vector(1 - 0.95)
+        labels: { slo: latency }
+      - record: slo:objective:ratio
+        expr: vector(0.95)
+        labels: { slo: latency }
+      - record: slo:sli_error:ratio_rate5m
+        expr: |
+          1 - (
+            (sum(rate(study_http_request_duration_seconds_bucket{kind=~"page|rsc",le=~"1(\\.0)?"}[5m])))
+            /
+            (sum(rate(study_http_request_duration_seconds_count{kind=~"page|rsc"}[5m])))
+          )
+        labels: { slo: latency }
+      - record: slo:sli_error:ratio_rate30m
+        expr: |
+          1 - (
+            (sum(rate(study_http_request_duration_seconds_bucket{kind=~"page|rsc",le=~"1(\\.0)?"}[30m])))
+            /
+            (sum(rate(study_http_request_duration_seconds_count{kind=~"page|rsc"}[30m])))
+          )
+        labels: { slo: latency }
+      - record: slo:sli_error:ratio_rate1h
+        expr: |
+          1 - (
+            (sum(rate(study_http_request_duration_seconds_bucket{kind=~"page|rsc",le=~"1(\\.0)?"}[1h])))
+            /
+            (sum(rate(study_http_request_duration_seconds_count{kind=~"page|rsc"}[1h])))
+          )
+        labels: { slo: latency }
+      - record: slo:sli_error:ratio_rate2h
+        expr: |
+          1 - (
+            (sum(rate(study_http_request_duration_seconds_bucket{kind=~"page|rsc",le=~"1(\\.0)?"}[2h])))
+            /
+            (sum(rate(study_http_request_duration_seconds_count{kind=~"page|rsc"}[2h])))
+          )
+        labels: { slo: latency }
+      - record: slo:sli_error:ratio_rate6h
+        expr: |
+          1 - (
+            (sum(rate(study_http_request_duration_seconds_bucket{kind=~"page|rsc",le=~"1(\\.0)?"}[6h])))
+            /
+            (sum(rate(study_http_request_duration_seconds_count{kind=~"page|rsc"}[6h])))
+          )
+        labels: { slo: latency }
+      - record: slo:sli_error:ratio_rate1d
+        expr: |
+          1 - (
+            (sum(rate(study_http_request_duration_seconds_bucket{kind=~"page|rsc",le=~"1(\\.0)?"}[1d])))
+            /
+            (sum(rate(study_http_request_duration_seconds_count{kind=~"page|rsc"}[1d])))
+          )
+        labels: { slo: latency }
+      - record: slo:sli_error:ratio_rate3d
+        expr: |
+          1 - (
+            (sum(rate(study_http_request_duration_seconds_bucket{kind=~"page|rsc",le=~"1(\\.0)?"}[3d])))
+            /
+            (sum(rate(study_http_request_duration_seconds_count{kind=~"page|rsc"}[3d])))
+          )
+        labels: { slo: latency }
+      - record: slo:sli_error:ratio_rate30d
+        expr: |
+          1 - (
+            (sum(rate(study_http_request_duration_seconds_bucket{kind=~"page|rsc",le=~"1(\\.0)?"}[30d])))
+            /
+            (sum(rate(study_http_request_duration_seconds_count{kind=~"page|rsc"}[30d])))
+          )
+        labels: { slo: latency }
+  - name: slo.actions.recording
+    # 서버 액션: 서버 액션(진행률·퀴즈·실험 기록 등)의 99% 가 예외 없이 끝남 (30일)
+    rules:
+      - record: slo:error_budget:ratio
+        expr: vector(1 - 0.99)
+        labels: { slo: actions }
+      - record: slo:objective:ratio
+        expr: vector(0.99)
+        labels: { slo: actions }
+      - record: slo:sli_error:ratio_rate5m
+        expr: |
+          (sum(rate(study_action_duration_seconds_count{outcome="exception"}[5m])) or vector(0))
+          /
+          (sum(rate(study_action_duration_seconds_count[5m])))
+        labels: { slo: actions }
+      - record: slo:sli_error:ratio_rate30m
+        expr: |
+          (sum(rate(study_action_duration_seconds_count{outcome="exception"}[30m])) or vector(0))
+          /
+          (sum(rate(study_action_duration_seconds_count[30m])))
+        labels: { slo: actions }
+      - record: slo:sli_error:ratio_rate1h
+        expr: |
+          (sum(rate(study_action_duration_seconds_count{outcome="exception"}[1h])) or vector(0))
+          /
+          (sum(rate(study_action_duration_seconds_count[1h])))
+        labels: { slo: actions }
+      - record: slo:sli_error:ratio_rate2h
+        expr: |
+          (sum(rate(study_action_duration_seconds_count{outcome="exception"}[2h])) or vector(0))
+          /
+          (sum(rate(study_action_duration_seconds_count[2h])))
+        labels: { slo: actions }
+      - record: slo:sli_error:ratio_rate6h
+        expr: |
+          (sum(rate(study_action_duration_seconds_count{outcome="exception"}[6h])) or vector(0))
+          /
+          (sum(rate(study_action_duration_seconds_count[6h])))
+        labels: { slo: actions }
+      - record: slo:sli_error:ratio_rate1d
+        expr: |
+          (sum(rate(study_action_duration_seconds_count{outcome="exception"}[1d])) or vector(0))
+          /
+          (sum(rate(study_action_duration_seconds_count[1d])))
+        labels: { slo: actions }
+      - record: slo:sli_error:ratio_rate3d
+        expr: |
+          (sum(rate(study_action_duration_seconds_count{outcome="exception"}[3d])) or vector(0))
+          /
+          (sum(rate(study_action_duration_seconds_count[3d])))
+        labels: { slo: actions }
+      - record: slo:sli_error:ratio_rate30d
+        expr: |
+          (sum(rate(study_action_duration_seconds_count{outcome="exception"}[30d])) or vector(0))
+          /
+          (sum(rate(study_action_duration_seconds_count[30d])))
+        labels: { slo: actions }
+  - name: slo.budget
+    # 남은 에러 예산 (30일 창): 1 = 하나도 안 씀, 0 = 바닥, 음수 = 초과. 번레이트 = 오류 비율 / 허용 비율
+    rules:
+      - record: slo:error_budget_remaining:ratio
+        expr: 1 - (slo:sli_error:ratio_rate30d / on(slo) slo:error_budget:ratio)
+      - record: slo:burn_rate:1h
+        expr: slo:sli_error:ratio_rate1h / on(slo) slo:error_budget:ratio
+      - record: slo:burn_rate:6h
+        expr: slo:sli_error:ratio_rate6h / on(slo) slo:error_budget:ratio
+      - record: slo:burn_rate:1d
+        expr: slo:sli_error:ratio_rate1d / on(slo) slo:error_budget:ratio
+  - name: slo.alerts
+    rules:
+      - alert: StudySLOAvailabilityBurnFast
+        expr: |
+          (
+            slo:sli_error:ratio_rate1h{slo="availability"} > 14.4 * (1 - 0.995)
+            and
+            slo:sli_error:ratio_rate5m{slo="availability"} > 14.4 * (1 - 0.995)
+          )
+          or
+          (
+            slo:sli_error:ratio_rate6h{slo="availability"} > 6 * (1 - 0.995)
+            and
+            slo:sli_error:ratio_rate30m{slo="availability"} > 6 * (1 - 0.995)
+          )
+        for: 2m
+        labels: { severity: critical, alertname_group: slo, slo: availability, tier: page }
+        annotations:
+          summary: "[가용성 SLO] 에러 예산을 빠르게 태우는 중 (1h·6h 번레이트)"
+          description: "목표: 5xx 가 아닌 응답 비율 ≥ 99.5% (30일). 긴 창 오류 비율 {{ $value | humanizePercentage }}. Grafana 'Study 사이트 SLO' 대시보드에서 라우트별 분해를 확인."
+          runbook_url: "http://localhost:3000/observability/notes/11-slo-dashboard-burn-rate"
+      - alert: StudySLOAvailabilityBurnSlow
+        expr: |
+          (
+            slo:sli_error:ratio_rate1d{slo="availability"} > 3 * (1 - 0.995)
+            and
+            slo:sli_error:ratio_rate2h{slo="availability"} > 3 * (1 - 0.995)
+          )
+          or
+          (
+            slo:sli_error:ratio_rate3d{slo="availability"} > 1 * (1 - 0.995)
+            and
+            slo:sli_error:ratio_rate6h{slo="availability"} > 1 * (1 - 0.995)
+          )
+        for: 1h
+        labels: { severity: warning, alertname_group: slo, slo: availability, tier: ticket }
+        annotations:
+          summary: "[가용성 SLO] 에러 예산이 서서히 줄고 있음 (1d·3d 번레이트)"
+          description: "목표: 5xx 가 아닌 응답 비율 ≥ 99.5% (30일). 긴 창 오류 비율 {{ $value | humanizePercentage }}. Grafana 'Study 사이트 SLO' 대시보드에서 라우트별 분해를 확인."
+          runbook_url: "http://localhost:3000/observability/notes/11-slo-dashboard-burn-rate"
+      - alert: StudySLOLatencyBurnFast
+        expr: |
+          (
+            slo:sli_error:ratio_rate1h{slo="latency"} > 14.4 * (1 - 0.95)
+            and
+            slo:sli_error:ratio_rate5m{slo="latency"} > 14.4 * (1 - 0.95)
+          )
+          or
+          (
+            slo:sli_error:ratio_rate6h{slo="latency"} > 6 * (1 - 0.95)
+            and
+            slo:sli_error:ratio_rate30m{slo="latency"} > 6 * (1 - 0.95)
+          )
+        for: 2m
+        labels: { severity: critical, alertname_group: slo, slo: latency, tier: page }
+        annotations:
+          summary: "[페이지 지연 SLO] 에러 예산을 빠르게 태우는 중 (1h·6h 번레이트)"
+          description: "목표: 페이지·화면 전환(RSC) 요청의 95% 가 1초 안에 응답 (30일). 긴 창 오류 비율 {{ $value | humanizePercentage }}. Grafana 'Study 사이트 SLO' 대시보드에서 라우트별 분해를 확인."
+          runbook_url: "http://localhost:3000/observability/notes/11-slo-dashboard-burn-rate"
+      - alert: StudySLOLatencyBurnSlow
+        expr: |
+          (
+            slo:sli_error:ratio_rate1d{slo="latency"} > 3 * (1 - 0.95)
+            and
+            slo:sli_error:ratio_rate2h{slo="latency"} > 3 * (1 - 0.95)
+          )
+          or
+          (
+            slo:sli_error:ratio_rate3d{slo="latency"} > 1 * (1 - 0.95)
+            and
+            slo:sli_error:ratio_rate6h{slo="latency"} > 1 * (1 - 0.95)
+          )
+        for: 1h
+        labels: { severity: warning, alertname_group: slo, slo: latency, tier: ticket }
+        annotations:
+          summary: "[페이지 지연 SLO] 에러 예산이 서서히 줄고 있음 (1d·3d 번레이트)"
+          description: "목표: 페이지·화면 전환(RSC) 요청의 95% 가 1초 안에 응답 (30일). 긴 창 오류 비율 {{ $value | humanizePercentage }}. Grafana 'Study 사이트 SLO' 대시보드에서 라우트별 분해를 확인."
+          runbook_url: "http://localhost:3000/observability/notes/11-slo-dashboard-burn-rate"
+      - alert: StudySLOActionsBurnFast
+        expr: |
+          (
+            slo:sli_error:ratio_rate1h{slo="actions"} > 14.4 * (1 - 0.99)
+            and
+            slo:sli_error:ratio_rate5m{slo="actions"} > 14.4 * (1 - 0.99)
+          )
+          or
+          (
+            slo:sli_error:ratio_rate6h{slo="actions"} > 6 * (1 - 0.99)
+            and
+            slo:sli_error:ratio_rate30m{slo="actions"} > 6 * (1 - 0.99)
+          )
+        for: 2m
+        labels: { severity: critical, alertname_group: slo, slo: actions, tier: page }
+        annotations:
+          summary: "[서버 액션 SLO] 에러 예산을 빠르게 태우는 중 (1h·6h 번레이트)"
+          description: "목표: 서버 액션(진행률·퀴즈·실험 기록 등)의 99% 가 예외 없이 끝남 (30일). 긴 창 오류 비율 {{ $value | humanizePercentage }}. Grafana 'Study 사이트 SLO' 대시보드에서 라우트별 분해를 확인."
+          runbook_url: "http://localhost:3000/observability/notes/11-slo-dashboard-burn-rate"
+      - alert: StudySLOActionsBurnSlow
+        expr: |
+          (
+            slo:sli_error:ratio_rate1d{slo="actions"} > 3 * (1 - 0.99)
+            and
+            slo:sli_error:ratio_rate2h{slo="actions"} > 3 * (1 - 0.99)
+          )
+          or
+          (
+            slo:sli_error:ratio_rate3d{slo="actions"} > 1 * (1 - 0.99)
+            and
+            slo:sli_error:ratio_rate6h{slo="actions"} > 1 * (1 - 0.99)
+          )
+        for: 1h
+        labels: { severity: warning, alertname_group: slo, slo: actions, tier: ticket }
+        annotations:
+          summary: "[서버 액션 SLO] 에러 예산이 서서히 줄고 있음 (1d·3d 번레이트)"
+          description: "목표: 서버 액션(진행률·퀴즈·실험 기록 등)의 99% 가 예외 없이 끝남 (30일). 긴 창 오류 비율 {{ $value | humanizePercentage }}. Grafana 'Study 사이트 SLO' 대시보드에서 라우트별 분해를 확인."
+          runbook_url: "http://localhost:3000/observability/notes/11-slo-dashboard-burn-rate"

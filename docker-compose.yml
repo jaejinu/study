@@ -124,11 +124,13 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --web.enable-remote-write-receiver     # Tempo metrics-generator 가 span 메트릭을 밀어 넣는다
       - --enable-feature=exemplar-storage
+      - --storage.tsdb.retention.time=35d      # SLO 30일 창(slo:sli_error:ratio_rate30d)을 계산할 수 있게
     ports:
       - "127.0.0.1:19090:9090"
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./observability/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - ./observability/slo-rules.yml:/etc/prometheus/slo-rules.yml:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
   alertmanager:

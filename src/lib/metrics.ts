@@ -88,7 +88,15 @@ function build() {
     labelNames: ["alertname", "severity", "status"] as const,
     registers: [registry],
   });
-  return { registry, experimentRuns, experimentDuration, noteViews, quizAnswers, studySeconds, consoleCommands, actionDuration, llmTokens, llmCost, llmLatency, llmToolCalls, alertsReceived };
+  // 사이트 SLO 의 SLI 원천 (관측성 노트 12). Next.js 루트 스팬에서 기록 — src/lib/request-metrics.ts
+  const httpDuration = new client.Histogram({
+    name: "study_http_request_duration_seconds",
+    help: "HTTP 요청 처리 시간 (route=Next 라우트 패턴, kind=page|rsc|api|action, code=상태 코드)",
+    labelNames: ["route", "method", "kind", "code"] as const,
+    buckets: [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+    registers: [registry],
+  });
+  return { registry, httpDuration, experimentRuns, experimentDuration, noteViews, quizAnswers, studySeconds, consoleCommands, actionDuration, llmTokens, llmCost, llmLatency, llmToolCalls, alertsReceived };
 }
 
 export const metrics = globalThis.__studyMetrics ?? (globalThis.__studyMetrics = build());

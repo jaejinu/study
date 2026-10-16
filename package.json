@@ -34,6 +34,7 @@
     "pg:cli": "docker compose -p study exec postgres psql -U study -d study",
     "obs:up": "docker compose -p study --profile observability up -d prometheus alertmanager redis-exporter loki alloy tempo grafana",
     "obs:down": "docker compose -p study --profile observability stop prometheus alertmanager redis-exporter loki alloy tempo grafana",
+    "obs:check": "docker run --rm -v \"$PWD/observability:/etc/prometheus\" --entrypoint sh prom/prometheus:v3.2.1 -c \"promtool check config /etc/prometheus/prometheus.yml && promtool test rules /etc/prometheus/tests/slo-rules.test.yml\"",
     "nginx:up": "docker compose -p study --profile nginx up -d nginx",
     "nginx:down": "docker compose -p study --profile nginx stop nginx",
     "k8s:metrics": "kubectl apply -f k8s/addons/metrics-server.yaml && kubectl -n kube-system rollout status deploy/metrics-server --timeout=120s",

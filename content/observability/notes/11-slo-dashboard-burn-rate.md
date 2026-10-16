@@ -158,3 +158,107 @@ slos:
 - [ ] 번레이트 3개 윈도우를 로그 스케일 한 패널에 그리고 14.4·6·1 임계선을 추가
 - [ ] Redis 를 잠깐 멈춰(카오스 실험) 버짓 추이 선이 꺾이는 것을 어노테이션과 함께 확인
 - [ ] 같은 SLO 를 Sloth 정의로 쓰고 생성된 규칙을 손으로 쓴 것과 비교
+
+## 실전 — 이 사이트에 실제로 건 SLO
+
+위 "예시로 보기" 를 실제로 구현해 두었다. 파일은 세 개다.
+
+| 파일 | 내용 |
+| --- | --- |
+| `observability/slo-rules.yml` | SLO 3개의 레코딩 룰(창 8개씩)·남은 예산·번레이트·알림 6개 |
+| `observability/tests/slo-rules.test.yml` | promtool 단위 테스트 5개 — "나야 할 때만 나는가" |
+| `observability/grafana/dashboards/study-slo.json` | Grafana "Study 사이트 SLO" 대시보드 |
+
+### SLI 를 어디서 얻나 — 요청 메트릭이 없던 문제
+
+처음엔 이 앱에 **요청 단위 메트릭이 없었다**. 서버 액션 시간(`study_action_duration_seconds`)만 있었고, 페이지가 5xx 를 냈는지는 알 길이 없었다. App Router 에는 "모든 응답" 을 가로채는 훅이 없다. `proxy.ts` 는 요청 앞에서 돌기 때문에 응답 코드를 모른다.
+
+해법은 **트레이스를 메트릭으로 바꾸는 것**이다. Next.js 는 모든 요청을 `BaseServer.handleRequest` 루트 스팬으로 감싼다. 끝날 때 `http.status_code`·`next.route`(라우트 패턴)·`next.rsc` 를 붙인다. `src/lib/request-metrics.ts` 의 스팬 프로세서가 이 스팬이 끝날 때 히스토그램에 기록한다.
+
+```ts
+// instrumentation.ts — "auto" 는 기존 내보내기, 뒤의 것이 RED 메트릭 기록기
+registerOTel({ spanProcessors: ["auto", new RequestMetricsProcessor()], ... });
+```
+
+```text
+study_http_request_duration_seconds_bucket{route="/[subject]/notes/[slug]", method="GET", kind="page", code="200", le="1"}
+```
+
+- **route 는 URL 이 아니라 패턴**이다. 그래서 노트가 수백 편이어도 라벨 값은 수십 개로 묶인다(카디널리티 폭발 방지).
+- **kind** 로 요청을 나눈다. page 는 문서 요청, rsc 는 클라이언트 화면 전환, action 은 서버 액션 POST, api 는 `/api/*` 다.
+- `/api/metrics` 자체와 `/_next` 정적 자원은 뺀다. 그러지 않으면 5초마다 오는 스크레이프가 "성공한 요청" 으로 SLI 를 부풀린다.
+
+트레이스 익스포터가 없어도(Tempo 가 꺼져 있어도) 스팬 프로세서는 돌기 때문에 메트릭은 항상 나온다.
+
+### SLO 3개
+
+| SLO | SLI (좋은 이벤트 / 전체) | 목표 | 30일 예산 |
+| --- | --- | --- | --- |
+| 가용성 | 5xx 가 아닌 응답 | 99.5% | 0.5% |
+| 페이지 지연 | 1초 안에 끝난 page·rsc 요청 | 95% | 5% |
+| 서버 액션 | 예외 없이 끝난 액션 | 99% | 1% |
+
+지연 SLI 에서 API 를 뺀 이유가 있다. `/api/ask` 같은 LLM 스트리밍은 원래 수 초가 걸린다. 이것을 섞으면 "페이지가 느리다" 는 신호가 묻힌다. 성격이 다른 요청은 다른 SLO 로 다룬다.
+
+### 직접 부딪힌 함정 두 가지
+
+**① 5xx 가 한 번도 없으면 SLI 가 사라진다.** `sum(rate(x{code=~"5.."}[5m]))` 는 5xx 시계열이 아예 없으면 0 이 아니라 **빈 결과**다. 빈 것을 나누면 결과도 비어서, 대시보드에 "No data" 가 뜨고 알림 식도 평가되지 않는다. 분자에 `or vector(0)` 을 붙여 해결했다.
+
+```promql
+(sum(rate(study_http_request_duration_seconds_count{code=~"5.."}[5m])) or vector(0))
+  /
+sum(rate(study_http_request_duration_seconds_count[5m]))
+```
+
+분모는 그대로 둔다. 트래픽이 아예 없을 때 결과가 비어야 "조용한 밤에 깨우지 않는다".
+
+**② Prometheus 3 은 `le` 라벨을 정규화한다.** 앱은 `le="1"` 로 내보내지만 Prometheus 3.x 는 저장할 때 `le="1.0"` 으로 바꾼다. 그래서 `le="1"` 로 고르면 아무것도 안 잡힌다. promtool 단위 테스트는 입력을 그대로 써서 통과하므로 더 헷갈린다. 두 경우를 모두 잡도록 정규식을 썼다.
+
+```promql
+study_http_request_duration_seconds_bucket{kind=~"page|rsc", le=~"1(\\.0)?"}
+```
+
+### 알림 — 멀티 윈도우 · 멀티 번레이트
+
+| 계층 | 번레이트 | 긴 창 & 짧은 창 | 뜻 |
+| --- | --- | --- | --- |
+| page (critical) | 14.4 | 1h & 5m | 30일 예산의 2% 를 1시간에 태움 |
+| page (critical) | 6 | 6h & 30m | 예산의 5% 를 6시간에 |
+| ticket (warning) | 3 | 1d & 2h | 예산의 10% 를 하루에 |
+| ticket (warning) | 1 | 3d & 6h | 이대로면 30일 끝에 예산이 정확히 바닥 |
+
+임계값은 `14.4 * (1 - 0.995)` 처럼 **상수**로 쓴다. 레코딩 룰과 `on() group_left()` 로 곱하려 하면 스칼라와 벡터 사이의 매칭이라 문법 오류가 난다. 30일 창을 계산하려면 보존 기간도 30일보다 길어야 해서, compose 의 Prometheus 에 `--storage.tsdb.retention.time=35d` 를 줬다.
+
+### 규칙도 테스트한다 — promtool
+
+알림 규칙은 "평소엔 조용하고, 정말 나쁠 때만 울리는지" 를 **코드처럼 테스트**할 수 있다. `pnpm obs:check` 가 문법 검사와 단위 테스트 5개를 돌리고, CI 의 observability 잡도 같은 것을 돌린다.
+
+1. 요청의 10% 가 500 이면 → 70분 시점에 가용성 page 알림이 발화한다.
+2. 오류 0.2% 는 예산(0.5%) 안쪽이므로 → 3시간이 지나도 어떤 알림도 없다.
+3. 트래픽이 0 이면 → 알림이 없다.
+4. 페이지 20% 가 1초를 넘으면 → 3x(15%) 는 넘고 6x(30%) 는 안 넘으므로 ticket 만 발화한다.
+5. 서버 액션이 10분 동안만 폭주하면 → 5m 창은 14.4x 를 넘지만 1h 창이 못 넘어 page 가 나지 않는다. **짧은 창과 긴 창을 같이 보는 이유**가 이것이다.
+
+```yaml
+# 시계열 표기: '0+9x120' = 0 에서 1분마다 9 씩 120번 증가
+- series: 'study_http_request_duration_seconds_count{code="500", ...}'
+  values: '0+1x120'
+```
+
+### 대시보드에서 배운 것
+
+- **값이 없을 때를 디자인한다.** 서버 액션을 한 번도 안 부르면 SLI 는 0/0 이다. 기본 설정에선 "요청 없음" 이 빨간 배경으로 떠서 장애처럼 보였다. `(식) or on() vector(NaN)` 으로 빈 결과를 NaN 으로 채우고, NaN 을 회색 "—" 로 매핑했다.
+- `or vector(NaN)` 만 쓰면 **값이 있을 때도** NaN 이 따라붙는다. 라벨이 달라 둘 다 살아남기 때문이다. `or on()` 으로 "왼쪽이 비었을 때만" 이 되게 해야 한다.
+- 번레이트 패널의 점선(14.4·6·3·1)은 알림 임계값과 같은 숫자다. 알림이 왜 울렸는지 그래프에서 바로 읽힌다.
+
+### 따라 해 보기
+
+```bash
+pnpm obs:check                       # 규칙 문법 + 단위 테스트
+pnpm obs:up                          # Prometheus·Grafana (규칙·대시보드 자동 로드)
+# Grafana → Study 폴더 → "Study 사이트 SLO"
+```
+
+- [ ] `/api/metrics` 에서 `study_http_request_duration_seconds` 의 route 라벨이 패턴으로 묶이는지 확인
+- [ ] promtool 테스트 4번의 비율을 바꿔 page 알림이 나도록 만들어 보고, 테스트가 실패하는 것을 확인
+- [ ] 존재하지 않는 노트를 여러 번 열어 404 가 가용성 SLI 에 들어가지 않는 것(5xx 만 나쁜 이벤트)을 확인

@@ -5,6 +5,7 @@ global:
 
 rule_files:
   - /etc/prometheus/alert-rules.yml
+  - /etc/prometheus/slo-rules.yml      # 사이트 자체 SLO·번레이트 알림 (관측성 노트 11)
 
 alerting:
   alertmanagers:

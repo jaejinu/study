@@ -6,8 +6,11 @@ export async function register() {
   const { registerOTel, OTLPHttpJsonTraceExporter } = await import("@vercel/otel");
   const { IORedisInstrumentation } = await import("@opentelemetry/instrumentation-ioredis");
   const { PgInstrumentation } = await import("@opentelemetry/instrumentation-pg");
+  const { RequestMetricsProcessor } = await import("@/lib/request-metrics");
   const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
   registerOTel({
+    // "auto" = 기본 내보내기 프로세서, 그리고 요청 RED 메트릭(사이트 SLO 의 SLI) 기록기
+    spanProcessors: ["auto", new RequestMetricsProcessor()],
     serviceName: process.env.OTEL_SERVICE_NAME ?? "study-app",
     traceExporter: endpoint ? new OTLPHttpJsonTraceExporter({ url: `${endpoint.replace(/\/$/, "")}/v1/traces` }) : undefined,
     instrumentations: [new IORedisInstrumentation(), new PgInstrumentation()],

@@ -1,0 +1,109 @@
+# promtool 단위 테스트 — 사이트 SLO 규칙이 '나야 할 때만' 알림을 내는지 (pnpm obs:check)
+# 시계열 표기: '0+9x120' = 0 에서 시작해 1분마다 9 씩, 120번 증가 (평가 간격 1m)
+rule_files:
+  - ../slo-rules.yml
+evaluation_interval: 1m
+
+tests:
+  # 1) 가용성: 요청의 10% 가 500 → 1h·5m 창 모두 14.4x(7.2%) 초과 → page
+  - interval: 1m
+    input_series:
+      - series: 'study_http_request_duration_seconds_count{route="/",method="GET",kind="page",code="200"}'
+        values: '0+9x120'
+      - series: 'study_http_request_duration_seconds_count{route="/",method="GET",kind="page",code="500"}'
+        values: '0+1x120'
+    promql_expr_test:
+      - expr: slo:sli_error:ratio_rate5m{slo="availability"}
+        eval_time: 30m
+        exp_samples:
+          - labels: 'slo:sli_error:ratio_rate5m{slo="availability"}'
+            value: 0.1
+      - expr: round(slo:burn_rate:1h{slo="availability"}, 0.001)   # 번레이트 = 10% / 0.5% = 20배
+        eval_time: 70m
+        exp_samples:
+          - labels: '{slo="availability"}'
+            value: 20
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: StudySLOAvailabilityBurnFast
+        exp_alerts:
+          - exp_labels: { severity: critical, alertname_group: slo, slo: availability, tier: page }
+            exp_annotations:
+              summary: "[가용성 SLO] 에러 예산을 빠르게 태우는 중 (1h·6h 번레이트)"
+              description: "목표: 5xx 가 아닌 응답 비율 ≥ 99.5% (30일). 긴 창 오류 비율 10%. Grafana 'Study 사이트 SLO' 대시보드에서 라우트별 분해를 확인."
+              runbook_url: "http://localhost:3000/observability/notes/11-slo-dashboard-burn-rate"
+
+  # 2) 가용성: 오류 0.2% — 예산(0.5%) 안쪽이면 어떤 알림도 없어야 한다
+  - interval: 1m
+    input_series:
+      - series: 'study_http_request_duration_seconds_count{route="/",method="GET",kind="page",code="200"}'
+        values: '0+998x200'
+      - series: 'study_http_request_duration_seconds_count{route="/",method="GET",kind="page",code="503"}'
+        values: '0+2x200'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: StudySLOAvailabilityBurnFast
+        exp_alerts: []
+      - eval_time: 3h
+        alertname: StudySLOAvailabilityBurnSlow
+        exp_alerts: []
+
+  # 3) 트래픽이 아예 없으면 0/0 = NaN → 알림 없음 (조용한 밤에 깨우지 않는다)
+  - interval: 1m
+    input_series:
+      - series: 'study_http_request_duration_seconds_count{route="/",method="GET",kind="page",code="200"}'
+        values: '0x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: StudySLOAvailabilityBurnFast
+        exp_alerts: []
+
+  # 4) 지연: 페이지 요청의 20% 가 1초 초과 — 3x(15%)는 넘고 6x(30%)는 안 넘음 → ticket 만
+  - interval: 1m
+    input_series:
+      - series: 'study_http_request_duration_seconds_bucket{route="/[subject]",method="GET",kind="page",code="200",le="1"}'
+        values: '0+8x200'
+      - series: 'study_http_request_duration_seconds_count{route="/[subject]",method="GET",kind="page",code="200"}'
+        values: '0+10x200'
+      # API 요청은 지연 SLI 에 들어가지 않는다 (느려도 무시)
+      - series: 'study_http_request_duration_seconds_bucket{route="/api/ask",method="POST",kind="api",code="200",le="1"}'
+        values: '0x200'
+      - series: 'study_http_request_duration_seconds_count{route="/api/ask",method="POST",kind="api",code="200"}'
+        values: '0+50x200'
+    promql_expr_test:
+      - expr: round(slo:sli_error:ratio_rate1h{slo="latency"}, 0.001)
+        eval_time: 90m
+        exp_samples:
+          - labels: '{slo="latency"}'
+            value: 0.2
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: StudySLOLatencyBurnFast
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: StudySLOLatencyBurnSlow
+        exp_alerts:
+          - exp_labels: { severity: warning, alertname_group: slo, slo: latency, tier: ticket }
+            exp_annotations:
+              summary: "[페이지 지연 SLO] 에러 예산이 서서히 줄고 있음 (1d·3d 번레이트)"
+              description: "목표: 페이지·화면 전환(RSC) 요청의 95% 가 1초 안에 응답 (30일). 긴 창 오류 비율 20%. Grafana 'Study 사이트 SLO' 대시보드에서 라우트별 분해를 확인."
+              runbook_url: "http://localhost:3000/observability/notes/11-slo-dashboard-burn-rate"
+
+  # 5) 서버 액션: 짧은 폭주(10분)는 5m 창은 넘지만 1h 창이 14.4x 아래라 page 가 나지 않는다
+  #    — '짧은 창 + 긴 창' 을 같이 보는 이유
+  - interval: 1m
+    input_series:
+      - series: 'study_action_duration_seconds_count{action="toggleRead",outcome="ok"}'
+        values: '0+100x120'
+      - series: 'study_action_duration_seconds_count{action="toggleRead",outcome="exception"}'
+        values: '0x60 0+20x10 200x50'
+    promql_expr_test:
+      - expr: slo:sli_error:ratio_rate5m{slo="actions"} > 0.144
+        eval_time: 68m
+        exp_samples:
+          - labels: 'slo:sli_error:ratio_rate5m{slo="actions"}'
+            value: 0.16666666666666666
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: StudySLOActionsBurnFast
+        exp_alerts: []
