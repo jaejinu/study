@@ -1,1 +1,237 @@
-[]
+[
+  {
+    "note": "01-security-mindset-threat-modeling",
+    "q": "CIA 삼각형의 세 속성은?",
+    "a": "기밀성(허가된 주체만 읽음), 무결성(허가된 방식으로만 변경), 가용성(필요할 때 쓸 수 있음). 여기에 인증·부인 방지·책임 추적(감사 로그)을 더한다."
+  },
+  {
+    "note": "01-security-mindset-threat-modeling",
+    "q": "STRIDE 의 여섯 글자는?",
+    "a": "Spoofing(위장), Tampering(변조), Repudiation(부인), Information disclosure(정보 노출), Denial of service, Elevation of privilege(권한 상승)."
+  },
+  {
+    "note": "01-security-mindset-threat-modeling",
+    "q": "신뢰 경계란 무엇이고 검증은 어디서 하나?",
+    "a": "이 선을 넘는 데이터는 믿을 수 없다는 선(브라우저↔서버, 앱↔DB, 사용자 입력↔LLM 프롬프트). 검증은 내부 함수마다가 아니라 경계를 넘을 때 한 번 확실히 한다."
+  },
+  {
+    "note": "01-security-mindset-threat-modeling",
+    "q": "위협 완화의 네 전략은?",
+    "a": "제거(기능·데이터를 없앰), 완화(가능성·피해 축소), 전가(다른 주체에 책임), 수용(알고 감수하며 문서화)."
+  },
+  {
+    "note": "01-security-mindset-threat-modeling",
+    "q": "이 프로젝트의 위협 모델이 서 있는 전제는?",
+    "a": "공격자가 로컬 사용자 본인뿐인 1인 학습 도구라는 것. 인터넷에 노출하거나 팀과 공유하면 거의 모든 행이 완화 필요로 바뀐다."
+  },
+  {
+    "note": "02-tls-certificates",
+    "q": "TLS 가 보장하는 세 가지 중 왜 '인증' 이 핵심인가?",
+    "a": "암호화만 하면 누구와 통신하는지 모른다. MITM 이 서버인 척하면 공격자와 암호화된다. 인증서를 신뢰하는 CA 가 보증해 상대의 신원을 확정한다."
+  },
+  {
+    "note": "02-tls-certificates",
+    "q": "TLS 1.3 이 1-RTT 인 이유는?",
+    "a": "ClientHello 에 key_share(DH 공개값)를 미리 실어 보내 서버가 ServerHello 에서 바로 키를 합의하고 인증서를 암호화해 보내기 때문. 1.2 는 2-RTT."
+  },
+  {
+    "note": "02-tls-certificates",
+    "q": "클라이언트가 인증서를 검증할 때 보는 세 가지는?",
+    "a": "서명 체인이 신뢰 저장소의 루트까지 이어지는가, SAN 에 접속한 호스트가 있는가, 유효 기간 안인가(+폐기 여부·용도)."
+  },
+  {
+    "note": "02-tls-certificates",
+    "q": "CertificateVerify 메시지가 필요한 이유는?",
+    "a": "인증서는 공개 정보라 누구나 복사할 수 있다. 개인키로 이번 핸드셰이크 전사를 서명해야 인증서의 진짜 주인임이 증명된다."
+  },
+  {
+    "note": "02-tls-certificates",
+    "q": "mTLS 와 JWT 의 역할 차이는?",
+    "a": "mTLS 는 연결(서비스 신원)을 인증하고, JWT 는 요청/최종 사용자를 인증한다. 보통 둘을 함께 쓴다."
+  },
+  {
+    "note": "02-tls-certificates",
+    "q": "인증서 만료를 모니터링하는 방법은?",
+    "a": "blackbox_exporter 의 probe_ssl_earliest_cert_expiry 를 Prometheus 로 수집해 (만료-now)/86400 < 14 같은 규칙으로 알림. cert-manager 등으로 자동 갱신이 기본."
+  },
+  {
+    "note": "03-authn-authz",
+    "q": "401 과 403 의 차이는?",
+    "a": "401 은 인증 실패(누구인지 모름), 403 은 인가 실패(누구인지 알지만 권한 없음). 실험에서 SA 토큰으로 secrets 를 조회하면 403."
+  },
+  {
+    "note": "03-authn-authz",
+    "q": "JWT 의 가장 큰 단점과 대응은?",
+    "a": "exp 전에는 폐기가 어렵다. 액세스 토큰을 5~15분으로 짧게 하고 서버에 저장·회전·폐기 가능한 리프레시 토큰을 쓰거나 jti 블랙리스트를 둔다."
+  },
+  {
+    "note": "03-authn-authz",
+    "q": "토큰을 localStorage 에 두면 어떤 공격에 취약한가?",
+    "a": "XSS. JS 가 읽을 수 있어 탈취 = 계정 탈취. HttpOnly; Secure; SameSite 쿠키가 권장이며 CSRF 는 SameSite + Origin 검사 + 토큰으로 막는다."
+  },
+  {
+    "note": "03-authn-authz",
+    "q": "PKCE 는 무엇을 막나?",
+    "a": "공개 클라이언트(SPA·모바일)가 authorization code 를 가로채여도 code_verifier 없이는 토큰을 못 받게 한다. OAuth 2.1 은 모든 클라이언트에 권장."
+  },
+  {
+    "note": "03-authn-authz",
+    "q": "OAuth2 와 OIDC 의 관계는?",
+    "a": "OAuth2 는 접근 권한 위임 프레임워크이고 누구인지는 표준화하지 않는다. OIDC 는 그 위에 id_token(JWT)을 더해 로그인을 표준화한다."
+  },
+  {
+    "note": "03-authn-authz",
+    "q": "IDOR 를 구조적으로 막는 방법은?",
+    "a": "모든 조회에 소유자 조건을 넣고, PostgreSQL RLS 처럼 DB 가 행 수준 인가를 강제해 코드가 빠뜨려도 막히게 한다."
+  },
+  {
+    "note": "04-secrets-management",
+    "q": "환경 변수로 시크릿을 전달할 때의 문제는?",
+    "a": "자식 프로세스에 상속되고 /proc 로 읽히며 크래시 리포터가 수집하고 회전에 재시작이 필요하며 감사가 불가능하다. 파일 마운트(tmpfs)가 낫다."
+  },
+  {
+    "note": "04-secrets-management",
+    "q": "SOPS 의 장점과 위험은?",
+    "a": "값만 암호화해 git 에 두므로 diff 리뷰가 가능하다. 복호화 키(age/KMS)가 새면 전체 히스토리가 열린다."
+  },
+  {
+    "note": "04-secrets-management",
+    "q": "Vault 동적 시크릿의 핵심 아이디어는?",
+    "a": "정적 비밀번호를 나눠 주지 않고 요청 때마다 짧게 사는 자격 증명(예: 1시간 TTL 의 PG 사용자)을 만들어 준다. 유출 창이 짧고 인스턴스별 추적이 된다."
+  },
+  {
+    "note": "04-secrets-management",
+    "q": "Kubernetes Secret 은 암호화돼 있나?",
+    "a": "아니다. base64 인코딩일 뿐이며 etcd 에 평문이다. EncryptionConfiguration/KMS 로 etcd 암호화를 켜고 RBAC 로 secrets list 를 제한해야 한다."
+  },
+  {
+    "note": "04-secrets-management",
+    "q": "가장 안전한 시크릿은?",
+    "a": "없는 시크릿. 워크로드 신원(IRSA, Workload Identity, k8s projected SA 토큰, GitHub Actions OIDC)으로 플랫폼이 짧은 토큰을 발급하게 한다."
+  },
+  {
+    "note": "04-secrets-management",
+    "q": "키가 git 에 유출됐을 때 첫 조치는?",
+    "a": "지우는 것보다 먼저 즉시 폐기·회전. 봇은 분 단위로 긁어 간다. 이후 영향 범위 확인, 히스토리 정리, 재발 방지(gitleaks, push protection)."
+  },
+  {
+    "note": "05-container-supply-chain",
+    "q": "공급망 공격이 위험한 이유는?",
+    "a": "이미지의 99% 는 내 코드가 아닌 OS 패키지·의존성·빌드 도구·CI 액션이다. 공격자는 그 99% 를 노린다(SolarWinds, xz, event-stream)."
+  },
+  {
+    "note": "05-container-supply-chain",
+    "q": "trivy 의 --ignore-unfixed 를 CI 게이트에서 쓰는 이유는?",
+    "a": "수정판이 없는 취약점은 내가 할 수 있는 게 없다. 수정판이 있는 HIGH/CRITICAL 만 막아야 게이트가 지속 가능하다."
+  },
+  {
+    "note": "05-container-supply-chain",
+    "q": "베이스 이미지를 태그 대신 다이제스트로 고정하는 이유는?",
+    "a": "태그는 움직인다. 재현이 안 되고 공급망 변조 창이 된다. Renovate 가 다이제스트도 갱신해 준다."
+  },
+  {
+    "note": "05-container-supply-chain",
+    "q": "SBOM 은 언제 빛을 발하나?",
+    "a": "새 CVE(예: log4j)가 나왔을 때 이미지를 다시 풀지 않고 '누가 이 패키지를 쓰나' 를 수 초 안에 검색할 때. 라이선스·규제 대응에도."
+  },
+  {
+    "note": "05-container-supply-chain",
+    "q": "cosign 은 태그에 서명하나 다이제스트에 서명하나?",
+    "a": "다이제스트. 태그는 움직이므로 배포 매니페스트도 image@sha256 으로 쓴다. Kyverno verifyImages 로 서명 없는 이미지를 거부할 수 있다."
+  },
+  {
+    "note": "05-container-supply-chain",
+    "q": "Falco 는 무엇을 탐지하나?",
+    "a": "eBPF 로 커널 이벤트를 보고 '컨테이너 안에서 셸이 떴다', '/etc/shadow 를 읽었다', '예상 밖 아웃바운드 연결' 같은 런타임 이상을 규칙으로 알린다."
+  },
+  {
+    "note": "06-kubernetes-security",
+    "q": "API 서버 요청이 거치는 세 관문은?",
+    "a": "인증(누구? 인증서·SA 토큰·OIDC) → 인가(RBAC, 403) → 어드미션(Mutating → 검증 → Validating: PSS, Kyverno)."
+  },
+  {
+    "note": "06-kubernetes-security",
+    "q": "RBAC 에 거부 규칙이 없다는 것의 의미는?",
+    "a": "허용 목록만 있다. 안 쓴 것은 전부 거부이고 '모든 것 빼고 X' 는 못 쓰니 작은 Role 을 여러 개 만든다."
+  },
+  {
+    "note": "06-kubernetes-security",
+    "q": "secrets list 나 pods/exec 권한이 사실상 admin 인 이유는?",
+    "a": "네임스페이스의 모든 시크릿(SA 토큰 포함)을 읽거나 어떤 Pod 든 들어가 그 Pod 의 토큰을 얻어 다른 SA 로 위장할 수 있다."
+  },
+  {
+    "note": "06-kubernetes-security",
+    "q": "Pod Security Standards 의 restricted 가 요구하는 것은?",
+    "a": "runAsNonRoot, allowPrivilegeEscalation=false, capabilities drop ALL, seccomp 프로파일, 볼륨 타입 제한. warn/audit 로 시작해 enforce 로."
+  },
+  {
+    "note": "06-kubernetes-security",
+    "q": "NetworkPolicy 가 없으면 기본 동작은?",
+    "a": "모든 Pod 가 모든 Pod·외부와 통신한다. default-deny 를 먼저 두고 필요한 ingress/egress 만 허용. egress 제한이 측면 이동·데이터 반출을 막는다."
+  },
+  {
+    "note": "06-kubernetes-security",
+    "q": "Kyverno/Gatekeeper 는 RBAC 와 무엇이 다른가?",
+    "a": "RBAC 는 '누가 무엇을', 어드미션 정책은 '어떤 모양이어야'. 레지스트리 허용 목록, 서명 검증, limits 필수, latest 금지 등을 강제한다."
+  },
+  {
+    "note": "07-datastore-hardening",
+    "q": "인증 없는 Redis 가 봇의 표적이 되는 고전적 수법은?",
+    "a": "CONFIG SET dir/dbfilename 으로 RDB 를 cron 디렉터리나 authorized_keys 에 쓰게 해 코드 실행. 대응은 노출 차단, 인증, @dangerous 제거, non-root."
+  },
+  {
+    "note": "07-datastore-hardening",
+    "q": "Redis ACL 로 제한할 수 있는 세 가지는?",
+    "a": "비밀번호, 키 패턴(~cache:*), 명령/카테고리(+@read -@dangerous). 7.0+ 는 채널(&)과 셀렉터도."
+  },
+  {
+    "note": "07-datastore-hardening",
+    "q": "pg_hba.conf 규칙 순서가 중요한 이유는?",
+    "a": "위에서부터 첫 매치가 적용된다. 넓은 규칙을 위에 두면 아래 규칙은 무의미. trust 는 로컬 소켓 외 금지, scram-sha-256 사용."
+  },
+  {
+    "note": "07-datastore-hardening",
+    "q": "앱 역할이 테이블 소유자면 안 되는 이유는?",
+    "a": "SQL 인젝션 한 번에 DROP TABLE 이 가능하다. 소유자는 마이그레이션 전용, 앱은 DML 만, 읽기 전용 역할을 따로."
+  },
+  {
+    "note": "07-datastore-hardening",
+    "q": "RLS 는 무엇을 보장하나?",
+    "a": "정책 조건(user_id = current_setting(...))에 맞는 행만 보이고 쓸 수 있게 DB 가 강제한다. 코드가 where 를 빠뜨려도 IDOR 가 막힌다."
+  },
+  {
+    "note": "07-datastore-hardening",
+    "q": "Kafka 에서 컨슈머가 필요한 ACL 은?",
+    "a": "토픽 Read 와 컨슈머 그룹 Read. allow.everyone.if.no.acl.found=false 로 ACL 없으면 거부가 기본이어야 한다."
+  },
+  {
+    "note": "08-web-api-llm-security",
+    "q": "CORS 는 보안 기능인가?",
+    "a": "아니다. 브라우저가 다른 출처의 JS 가 응답을 읽는 것을 막을 뿐 요청은 이미 서버에 도달했다. 서버 측 인가는 별개로 필요하다."
+  },
+  {
+    "note": "08-web-api-llm-security",
+    "q": "입력 검증에서 허용 목록이 차단 목록보다 나은 이유는?",
+    "a": "'위험한 문자 제거' 는 항상 우회된다. '이 형식만 허용'(예: ^[a-z0-9-]+$) 은 ../ 도 ; 도 들어올 수 없다."
+  },
+  {
+    "note": "08-web-api-llm-security",
+    "q": "SSRF 란?",
+    "a": "서버가 공격자 대신 요청하게 만드는 것. 169.254.169.254 의 클라우드 자격 증명, 내부 Prometheus, gopher 로 Redis 명령 등. 허용 목록·사설 IP 차단·egress 프록시로 막는다."
+  },
+  {
+    "note": "08-web-api-llm-security",
+    "q": "프롬프트 인젝션에 대한 설계상의 완화는?",
+    "a": "모델 출력을 신뢰 경계 밖의 입력으로 취급하고, 실행 권한은 코드가 허용 목록·승인 버튼으로 게이트한다. 이 앱은 propose_experiment 가 제안만 하고 사람이 승인한다."
+  },
+  {
+    "note": "08-web-api-llm-security",
+    "q": "Next.js Server Action 이 공개 엔드포인트라는 말의 뜻은?",
+    "a": "버튼이 안 보여도 액션 ID 만 알면 누구나 호출할 수 있다. 액션 안에서 매번 인증·인가·검증을 해야 한다."
+  },
+  {
+    "note": "08-web-api-llm-security",
+    "q": "허니토큰이 좋은 탐지기인 이유는?",
+    "a": "정당한 용도가 없으므로 사용되면 100% 침해 신호. 오탐이 거의 0 이다."
+  }
+]

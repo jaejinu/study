@@ -8,6 +8,17 @@ async function has(bin: string, args: string[] = ["--version"]): Promise<boolean
   return (await exec(bin, args, { timeout: 8000 })).ok;
 }
 
+/** macOS 기본 openssl 은 LibreSSL(옵션 부족). brew 의 openssl@3 이 있으면 그것을 쓴다 */
+let OPENSSL: string | null = null;
+async function openssl(): Promise<string> {
+  if (OPENSSL) return OPENSSL;
+  for (const b of ["/opt/homebrew/opt/openssl@3/bin/openssl", "/usr/local/opt/openssl@3/bin/openssl", "openssl"]) {
+    const r = await exec(b, ["version"], { timeout: 5000 });
+    if (r.ok && /OpenSSL 3/.test(r.out)) return (OPENSSL = b);
+  }
+  return (OPENSSL = "openssl");
+}
+
 async function requiresDockerRedis(): Promise<string | null> {
   const r = await exec("docker", ["inspect", "-f", "{{.State.Status}}", "study-redis"], { timeout: 6000 });
   if (!r.ok || r.out !== "running") return "Docker 의 study-redis 컨테이너가 실행 중이어야 합니다 (`pnpm redis:docker`).";
@@ -37,43 +48,51 @@ openssl x509 -in srv.crt -noout -subject -issuer -dates -ext subjectAltName
 # 실제 사이트
 openssl s_client -connect github.com:443 -servername github.com </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
 openssl s_client -connect github.com:443 -servername github.com -brief </dev/null`,
-  requires: async () => ((await has("openssl", ["version"])) ? null : "openssl 이 필요합니다 (macOS 기본 내장, 또는 brew install openssl)."),
+  requires: async () => {
+    const b = await openssl();
+    if (!(await has(b, ["version"]))) return "openssl 이 필요합니다 (brew install openssl@3).";
+    if (b === "openssl" && /LibreSSL/.test((await exec("openssl", ["version"])).out)) return "macOS 기본 LibreSSL 은 이 실험의 옵션(-ext, -verify_hostname)을 지원하지 않습니다: brew install openssl@3";
+    return null;
+  },
   async run(ctx) {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "sec-tls-"));
     const f = (n: string) => path.join(dir, n);
+    const ssl = await openssl();
+    const sh = (args: string[], opts?: Parameters<typeof ctx.sh>[2]) => ctx.sh(ssl, args, { ...opts, label: opts?.label ?? `openssl ${args.map((a) => a.replace(dir + "/", "")).join(" ")}` });
     try {
-      ctx.note(`작업 디렉터리 ${dir} — 루트 CA → 서버 인증서 체인을 만든다`);
-      await ctx.sh("openssl", ["req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes", "-days", "3650", "-subj", "/CN=Study Root CA/O=study", "-keyout", f("ca.key"), "-out", f("ca.crt")]);
-      await ctx.sh("openssl", ["req", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes", "-subj", "/CN=study.local", "-addext", "subjectAltName=DNS:study.local,DNS:*.study.local", "-keyout", f("srv.key"), "-out", f("srv.csr")]);
-      await ctx.sh("openssl", ["x509", "-req", "-in", f("srv.csr"), "-CA", f("ca.crt"), "-CAkey", f("ca.key"), "-CAcreateserial", "-days", "90", "-copy_extensions", "copy", "-out", f("srv.crt")]);
-      const info = await ctx.sh("openssl", ["x509", "-in", f("srv.crt"), "-noout", "-subject", "-issuer", "-dates", "-ext", "subjectAltName"]);
+      ctx.note(`작업 디렉터리 ${dir} — 루트 CA → 서버 인증서 체인을 만든다 (${(await exec(ssl, ["version"])).out})`);
+      await fs.writeFile(f("san.ext"), "subjectAltName=DNS:study.local,DNS:*.study.local\nbasicConstraints=CA:FALSE\nextendedKeyUsage=serverAuth\n");
+      await sh(["req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes", "-days", "3650", "-subj", "/CN=Study Root CA/O=study", "-keyout", f("ca.key"), "-out", f("ca.crt")]);
+      await sh(["req", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes", "-subj", "/CN=study.local", "-keyout", f("srv.key"), "-out", f("srv.csr")]);
+      await sh(["x509", "-req", "-in", f("srv.csr"), "-CA", f("ca.crt"), "-CAkey", f("ca.key"), "-CAcreateserial", "-days", "90", "-extfile", f("san.ext"), "-out", f("srv.crt")]);
+      const info = await sh(["x509", "-in", f("srv.crt"), "-noout", "-subject", "-issuer", "-dates", "-ext", "subjectAltName"]);
       ctx.check("서버 인증서의 issuer 가 우리 루트 CA 다", /issuer=.*Study Root CA/.test(info.out), info.out.split("\n").find((l) => l.startsWith("issuer")));
       ctx.check("SAN 에 study.local 과 와일드카드가 들어 있다", /DNS:study\.local.*DNS:\*\.study\.local/.test(info.out));
 
-      const ok = await ctx.sh("openssl", ["verify", "-CAfile", f("ca.crt"), f("srv.crt")]);
+      const ok = await sh(["verify", "-CAfile", f("ca.crt"), f("srv.crt")]);
       ctx.check("체인 검증 OK (CA 가 서명했고 기간 안)", /: OK$/.test(ok.out));
-      const noCa = await ctx.sh("openssl", ["verify", f("srv.crt")], { allowFail: true, label: "openssl verify srv.crt   # CA 를 안 주면" });
+      const noCa = await sh(["verify", f("srv.crt")], { allowFail: true, label: "openssl verify srv.crt   # CA 를 안 주면" });
       ctx.check("신뢰 저장소에 없는 CA → 'unable to get local issuer certificate' (브라우저의 '안전하지 않음' 과 같은 이유)", !noCa.ok && /local issuer/.test(noCa.err + noCa.out));
-      const host = await ctx.sh("openssl", ["verify", "-CAfile", f("ca.crt"), "-verify_hostname", "api.other.com", f("srv.crt")], { allowFail: true });
+      const host = await sh(["verify", "-CAfile", f("ca.crt"), "-verify_hostname", "api.other.com", f("srv.crt")], { allowFail: true });
       ctx.check("호스트 이름이 SAN 과 다르면 실패 (hostname mismatch)", !host.ok && /hostname mismatch|Hostname mismatch/i.test(host.err + host.out));
-      const wild = await ctx.sh("openssl", ["verify", "-CAfile", f("ca.crt"), "-verify_hostname", "api.study.local", f("srv.crt")]);
+      const wild = await sh(["verify", "-CAfile", f("ca.crt"), "-verify_hostname", "api.study.local", f("srv.crt")]);
       ctx.check("*.study.local 와일드카드는 api.study.local 에 맞는다", /: OK$/.test(wild.out));
 
       ctx.note("만료 검증: 유효 기간이 '어제까지' 인 인증서를 발급해 본다");
-      await ctx.sh("openssl", ["x509", "-req", "-in", f("srv.csr"), "-CA", f("ca.crt"), "-CAkey", f("ca.key"), "-CAcreateserial", "-not_before", "20200101000000Z", "-not_after", "20200102000000Z", "-copy_extensions", "copy", "-out", f("expired.crt")], { allowFail: true });
-      const exp = await ctx.sh("openssl", ["verify", "-CAfile", f("ca.crt"), f("expired.crt")], { allowFail: true });
-      if (exp.ok || !/expired/.test(exp.err + exp.out)) ctx.note("(이 openssl 버전은 -not_after 를 지원하지 않아 만료 검증을 건너뜀 — LibreSSL 이면 brew install openssl@3)");
+      await sh(["x509", "-req", "-in", f("srv.csr"), "-CA", f("ca.crt"), "-CAkey", f("ca.key"), "-CAcreateserial", "-not_before", "20200101000000Z", "-not_after", "20200102000000Z", "-extfile", f("san.ext"), "-out", f("expired.crt")], { allowFail: true });
+      const exp = await sh(["verify", "-CAfile", f("ca.crt"), f("expired.crt")], { allowFail: true });
+      if (exp.ok || !/expired/.test(exp.err + exp.out)) ctx.note("(이 openssl 버전은 -not_after 를 지원하지 않아 만료 검증을 건너뜀 — openssl 3.4+ 필요)");
       else ctx.check("기간이 지난 인증서 → 'certificate has expired'", true, (exp.err + exp.out).split("\n").find((l) => /expired/.test(l)));
 
       ctx.note("실제 사이트: github.com 에 TLS 로 붙어 서버가 내민 체인을 읽는다 (네트워크 필요)");
-      const sc = await ctx.sh("openssl", ["s_client", "-connect", "github.com:443", "-servername", "github.com", "-showcerts"], { input: "", allowFail: true, timeout: 15000 });
+      const sc = await sh(["s_client", "-connect", "github.com:443", "-servername", "github.com", "-showcerts"], { input: "", allowFail: true, timeout: 15000 });
       if (!sc.ok && !/BEGIN CERTIFICATE/.test(sc.out)) {
         ctx.note("github.com 에 연결하지 못했습니다 (오프라인?). 외부 검사는 건너뜁니다.");
         return;
       }
       const leaf = sc.out.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
       await fs.writeFile(f("gh.crt"), leaf[0] ?? "");
-      const gh = await ctx.sh("openssl", ["x509", "-in", f("gh.crt"), "-noout", "-subject", "-issuer", "-enddate", "-ext", "subjectAltName"], { allowFail: true });
+      const gh = await sh(["x509", "-in", f("gh.crt"), "-noout", "-subject", "-issuer", "-enddate", "-ext", "subjectAltName"], { allowFail: true });
       const end = gh.out.match(/notAfter=(.*)/)?.[1];
       const days = end ? Math.round((new Date(end).getTime() - Date.now()) / 86400000) : NaN;
       ctx.table("github.com 리프 인증서", ["항목", "값"], [

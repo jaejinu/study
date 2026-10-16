@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="440" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">TLS 1.3 핸드셰이크 (1-RTT) 와 인증서 검증</text>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <rect x="40" y="60" width="160" height="40" rx="8" fill="#161b22" stroke="#3b82f6"/><text x="120" y="85" text-anchor="middle" fill="#3b82f6" font-weight="600">클라이언트</text>
+  <rect x="480" y="60" width="160" height="40" rx="8" fill="#161b22" stroke="#22c55e"/><text x="560" y="85" text-anchor="middle" fill="#22c55e" font-weight="600">서버</text>
+  <line x1="120" y1="100" x2="120" y2="400" stroke="#30363d" stroke-dasharray="4 4"/><line x1="560" y1="100" x2="560" y2="400" stroke="#30363d" stroke-dasharray="4 4"/>
+  <line x1="120" y1="135" x2="558" y2="135" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="340" y="127" text-anchor="middle" fill="#e6edf3">ClientHello: 버전 · 암호 스위트 · SNI(host) · key_share(X25519)</text>
+  <line x1="560" y1="190" x2="122" y2="190" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="340" y="170" text-anchor="middle" fill="#e6edf3">ServerHello + key_share → 여기서 핸드셰이크 키 합의</text>
+  <text x="340" y="207" text-anchor="middle" fill="#f59e0b" font-size="12">{Certificate 체인} {CertificateVerify: 개인키로 전사 서명} {Finished}  — 암호화됨</text>
+  <rect x="30" y="225" width="200" height="120" rx="8" fill="#161b22" stroke="#f59e0b"/>
+  <text x="130" y="247" text-anchor="middle" fill="#f59e0b" font-weight="600">인증서 검증 (클라이언트)</text>
+  <text x="45" y="270" fill="#e6edf3" font-size="12">① 서명 체인 → 신뢰 저장소의 루트</text>
+  <text x="45" y="290" fill="#e6edf3" font-size="12">② SAN 에 접속 호스트가 있나</text>
+  <text x="45" y="310" fill="#e6edf3" font-size="12">③ notBefore ≤ now ≤ notAfter</text>
+  <text x="45" y="330" fill="#8b949e" font-size="11">하나라도 실패 → 핸드셰이크 중단</text>
+  <line x1="120" y1="365" x2="558" y2="365" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="340" y="357" text-anchor="middle" fill="#e6edf3">{Finished}  → 이후 애플리케이션 데이터 (AES-GCM / ChaCha20)</text>
+  <text x="340" y="395" text-anchor="middle" fill="#22c55e" font-size="12">1 RTT 뒤 HTTP 시작 · 세션 키는 임시 DH → 전방 비밀성</text>
+  <rect x="680" y="120" width="250" height="200" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="805" y="145" text-anchor="middle" fill="#e6edf3" font-weight="600">PKI 체인</text>
+  <rect x="700" y="160" width="210" height="34" rx="6" fill="#0d1117" stroke="#8b5cf6"/><text x="805" y="182" text-anchor="middle" fill="#8b5cf6" font-size="12">루트 CA (자기 서명, 신뢰 저장소)</text>
+  <text x="805" y="208" text-anchor="middle" fill="#8b949e">▼ 서명</text>
+  <rect x="700" y="216" width="210" height="34" rx="6" fill="#0d1117" stroke="#30363d"/><text x="805" y="238" text-anchor="middle" fill="#e6edf3" font-size="12">중간 CA (온라인 발급)</text>
+  <text x="805" y="264" text-anchor="middle" fill="#8b949e">▼ 서명</text>
+  <rect x="700" y="272" width="210" height="34" rx="6" fill="#0d1117" stroke="#22c55e"/><text x="805" y="294" text-anchor="middle" fill="#22c55e" font-size="12">리프: github.com (서버가 내밈)</text>
+  <text x="805" y="345" text-anchor="middle" fill="#8b949e" font-size="11">mTLS: 클라이언트도 인증서를 내고</text>
+  <text x="805" y="362" text-anchor="middle" fill="#8b949e" font-size="11">서버가 같은 방식으로 검증 → 서비스 신원</text>
+  <text x="805" y="400" text-anchor="middle" fill="#8b949e" font-size="11">실험: sec-tls-inspect</text>
+</svg>

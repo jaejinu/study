@@ -1000,5 +1000,131 @@
     "subject": "performance",
     "def": "LLM 서빙 지표. TTFT 는 첫 토큰까지(prefill, 입력 길이 비례), TPOT 는 토큰 간 간격(decode). 총 지연 = TTFT + TPOT × 출력 토큰 수.",
     "link": "/performance/notes/08-tail-latency-at-scale"
+  },
+  {
+    "term": "STRIDE",
+    "subject": "security",
+    "def": "위협을 빠짐없이 떠올리는 체크리스트: Spoofing·Tampering·Repudiation·Information disclosure·DoS·Elevation of privilege. DFD 의 요소마다 여섯 글자를 묻는다.",
+    "link": "/security/notes/01-security-mindset-threat-modeling"
+  },
+  {
+    "term": "신뢰 경계 (trust boundary)",
+    "subject": "security",
+    "def": "이 선을 넘는 데이터는 믿을 수 없다는 선(브라우저↔서버, 앱↔DB, 입력↔LLM 프롬프트). 검증은 경계를 넘을 때 한 번 확실히.",
+    "link": "/security/notes/01-security-mindset-threat-modeling"
+  },
+  {
+    "term": "SAN (Subject Alternative Name)",
+    "subject": "security",
+    "def": "인증서가 유효한 호스트 이름 목록. 클라이언트는 CN 이 아니라 SAN 과 접속 호스트를 대조한다. 와일드카드는 한 단계만.",
+    "link": "/security/notes/02-tls-certificates"
+  },
+  {
+    "term": "mTLS",
+    "subject": "security",
+    "def": "클라이언트도 인증서를 내고 서버가 검증하는 양방향 TLS. 네트워크 수준의 서비스 신원이 되며 서비스 메시가 자동화한다.",
+    "link": "/security/notes/02-tls-certificates"
+  },
+  {
+    "term": "PKCE",
+    "subject": "security",
+    "def": "OAuth2 authorization code 플로우에서 code_verifier/challenge 로 코드 탈취를 막는 확장. 공개 클라이언트에 필수, OAuth 2.1 은 모두에 권장.",
+    "link": "/security/notes/03-authn-authz"
+  },
+  {
+    "term": "IDOR",
+    "subject": "security",
+    "def": "Insecure Direct Object Reference — 로그인만 확인하고 객체 수준 인가를 빠뜨려 타인의 /orders/123 을 열 수 있는 취약점. OWASP A01.",
+    "link": "/security/notes/03-authn-authz"
+  },
+  {
+    "term": "워크로드 신원 (workload identity)",
+    "subject": "security",
+    "def": "플랫폼(k8s SA 토큰, IRSA, GitHub OIDC)이 워크로드에 짧은 토큰을 발급해 장기 비밀을 배포하지 않는 방식. 가장 안전한 시크릿은 없는 시크릿.",
+    "link": "/security/notes/04-secrets-management"
+  },
+  {
+    "term": "SOPS",
+    "subject": "security",
+    "def": "YAML/JSON/env 의 값만 age/KMS 로 암호화해 git 에 두는 도구. diff 로 어떤 키가 바뀌었는지 보이며 Flux·Terraform 과 연동.",
+    "link": "/security/notes/04-secrets-management"
+  },
+  {
+    "term": "SBOM",
+    "subject": "security",
+    "def": "Software Bill of Materials — 이미지/아티팩트의 구성 요소 목록(CycloneDX/SPDX). 새 CVE 가 나왔을 때 영향 범위를 수 초 안에 검색.",
+    "link": "/security/notes/05-container-supply-chain"
+  },
+  {
+    "term": "cosign / Sigstore",
+    "subject": "security",
+    "def": "이미지 다이제스트에 keyless(OIDC 신원 + 투명성 로그) 서명·검증하는 도구. Kyverno verifyImages 로 클러스터에서 강제.",
+    "link": "/security/notes/05-container-supply-chain"
+  },
+  {
+    "term": "Falco",
+    "subject": "security",
+    "def": "eBPF 로 커널 이벤트를 보고 컨테이너 안 셸 실행·민감 파일 읽기·예상 밖 연결을 규칙으로 알리는 런타임 보안 도구. Loki/Prometheus 로 보낸다.",
+    "link": "/security/notes/05-container-supply-chain"
+  },
+  {
+    "term": "Pod Security Standards",
+    "subject": "security",
+    "def": "privileged/baseline/restricted 세 프로파일을 네임스페이스 레이블(enforce/warn/audit)로 적용하는 내장 어드미션. restricted 는 non-root·drop ALL·seccomp 필수.",
+    "link": "/security/notes/06-kubernetes-security"
+  },
+  {
+    "term": "허니토큰",
+    "subject": "security",
+    "def": "정당한 용도가 없는 가짜 키·계정을 심어 두고 사용되면 알림. 오탐이 거의 0 인 침해 탐지기.",
+    "link": "/security/notes/08-web-api-llm-security"
+  },
+  {
+    "term": "드리프트 (IaC)",
+    "subject": "iac",
+    "def": "코드(와 state)가 아는 상태와 실제 인프라가 달라진 것. plan 의 refresh 가 삭제·수정은 찾지만 코드에 없는 외부 생성은 못 본다.",
+    "link": "/iac/notes/06-drift-policy-testing"
+  },
+  {
+    "term": "state (Terraform)",
+    "subject": "iac",
+    "def": "코드 주소와 실제 리소스 ID 의 매핑과 모든 속성(비밀 포함)을 담은 JSON. 원격 백엔드·잠금·암호화·최소 권한이 필수.",
+    "link": "/iac/notes/05-state-management-deep"
+  },
+  {
+    "term": "plan / apply",
+    "subject": "iac",
+    "def": "plan 은 refresh 후 코드와 state 의 diff(+ ~ -/+ -)를 만들고, apply 는 그대로 프로바이더 API 를 호출해 state 를 갱신한다. -detailed-exitcode 2 = 변경 있음.",
+    "link": "/iac/notes/02-terraform-core-model"
+  },
+  {
+    "term": "for_each vs count",
+    "subject": "iac",
+    "def": "count 는 인덱스로 식별해 중간 삭제 시 연쇄 교체, for_each 는 키로 식별해 그 하나만 지운다. 리스트 변동 가능성이 있으면 for_each.",
+    "link": "/iac/notes/03-variables-expressions"
+  },
+  {
+    "term": "import / moved / removed 블록",
+    "subject": "iac",
+    "def": "선언형 state 수술: 기존 리소스 편입, 주소 변경(교체 없이), 관리 제외(실체 유지). PR 과 plan 에 보여 state mv/rm 보다 안전.",
+    "link": "/iac/notes/05-state-management-deep"
+  },
+  {
+    "term": "OPA / Conftest / Rego",
+    "subject": "iac",
+    "def": "plan JSON 이나 k8s 매니페스트를 Rego 정책으로 검사해 금지 사항(0.0.0.0/0 의 22, 태그 누락, 데이터 리소스 삭제)을 파이프라인에서 거부.",
+    "link": "/iac/notes/06-drift-policy-testing"
+  },
+  {
+    "term": "Crossplane",
+    "subject": "iac",
+    "def": "클라우드 리소스를 k8s CRD 로 선언하고 컨트롤러가 계속 조정해 드리프트를 자동 복구하는 도구. Composition 으로 추상 API 제공.",
+    "link": "/iac/notes/08-alternatives-design"
+  },
+  {
+    "term": "OpenTofu",
+    "subject": "iac",
+    "def": "2023 년 Terraform 라이선스 변경 후 Linux Foundation 이 만든 호환 포크. state 클라이언트 측 암호화 등 독자 기능. 이 프로젝트 실험은 tofu 를 쓴다.",
+    "link": "/iac/notes/01-why-iac"
   }
 ]

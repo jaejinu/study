@@ -214,12 +214,19 @@ docker ps --filter name=lab-iac-import`,
       await fs.writeFile(path.join(dir, "import.tf"), `import {\n  to = docker_container.legacy\n  id = "${id}"\n}\n`);
       ctx.note(`import.tf: import { to = docker_container.legacy, id = "${id.slice(0, 12)}…" }`);
       await tf(ctx, dir, ["init", "-no-color", "-input=false"], { timeout: 300_000 });
-      const gen = await tf(ctx, dir, ["plan", "-no-color", "-input=false", `-generate-config-out=${path.join(dir, "generated.tf")}`]);
-      ctx.check("plan: 1 to import (생성·변경 없음)", /1 to import, 0 to add/.test(gen.out), gen.out.match(/Plan: .*/)?.[0]);
-      const hcl = await fs.readFile(path.join(dir, "generated.tf"), "utf8");
-      ctx.check("generated.tf 에 resource \"docker_container\" \"legacy\" 가 실제 속성과 함께 생성됐다", /resource "docker_container" "legacy"/.test(hcl) && /name\s*=\s*"lab-iac-import"/.test(hcl), `${hcl.split("\n").length}줄 — 사람이 다듬어 필요한 속성만 남긴다`);
+      const gen = await tf(ctx, dir, ["plan", "-no-color", "-input=false", `-generate-config-out=${path.join(dir, "generated.tf")}`], { allowFail: true, label: "plan -generate-config-out=generated.tf   # 실제 속성으로 HCL 초안 생성" });
+      const hcl = await fs.readFile(path.join(dir, "generated.tf"), "utf8").catch(() => "");
+      ctx.check("generated.tf 에 resource \"docker_container\" \"legacy\" 초안이 실제 속성(command, entrypoint, image…)과 함께 생성됐다", /resource "docker_container" "legacy"/.test(hcl) && /name\s*=\s*"lab-iac-import"/.test(hcl), `${hcl.split("\n").length}줄`);
+      if (!gen.ok) ctx.note(`초안은 그대로 쓸 수 없다: ${(gen.err + gen.out).match(/Error: .*/)?.[0] ?? "검증 오류"} — 프로바이더가 빈 문자열/기본값까지 전부 뱉기 때문. 사람이 필요한 속성만 남기고 다듬는 것이 정상 절차`);
+      await fs.rm(path.join(dir, "generated.tf"));
+      await fs.writeFile(path.join(dir, "legacy.tf"), `resource "docker_container" "legacy" {\n  name       = "lab-iac-import"\n  image      = "nginx:1.27-alpine"\n  command    = ["nginx", "-g", "daemon off;"]\n  entrypoint = ["/docker-entrypoint.sh"]\n  env        = []\n}\n`);
+      ctx.note("legacy.tf: 초안에서 name·image·command·entrypoint·env 만 남겼다 (command/entrypoint/env 를 빼면 '(known after apply) # forces replacement' 로 재생성돼 버린다 — plan 을 꼭 읽어야 하는 이유)");
+      const plan = await tf(ctx, dir, ["plan", "-no-color", "-input=false"]);
+      ctx.check("plan: 1 to import, 0 to add, 0 to destroy (in-place 변경은 프로바이더 전용 속성의 기본값을 state 에 적는 것)", /1 to import, 0 to add, \d to change, 0 to destroy/.test(plan.out) && !/must be replaced/.test(plan.out), plan.out.match(/Plan: .*/)?.[0]);
       const ap = await tf(ctx, dir, ["apply", "-no-color", "-input=false", "-auto-approve"], { timeout: 300_000 });
-      ctx.check("apply: 1 imported", /1 imported/.test(ap.out));
+      ctx.check("apply: 1 imported, 0 destroyed — 컨테이너는 그대로", /1 imported/.test(ap.out) && /0 destroyed/.test(ap.out));
+      const sameId = (await ctx.sh("docker", ["inspect", "-f", "{{.Id}}", "lab-iac-import"])).out;
+      ctx.check("컨테이너 ID 가 import 전과 같다 (재생성되지 않음)", sameId === id);
       const st = await tf(ctx, dir, ["state", "list"]);
       ctx.check("state 에 docker_container.legacy 가 있다", /docker_container\.legacy/.test(st.out));
       const p = await tf(ctx, dir, ["plan", "-no-color", "-input=false", "-detailed-exitcode"], { allowFail: true });
@@ -230,7 +237,7 @@ docker ps --filter name=lab-iac-import`,
       ctx.check("state rm 뒤 state 는 비었지만 컨테이너는 살아 있다 (destroy 와의 결정적 차이)", !/legacy/.test(after.out) && /lab-iac-import/.test(alive.out), alive.out);
       await fs.rm(path.join(dir, "import.tf"));
       const p2 = await tf(ctx, dir, ["plan", "-no-color", "-input=false"]);
-      ctx.check("이제 코드에는 리소스가 있는데 state 에 없으니 plan 은 '1 to add' — 이름 충돌로 apply 는 실패할 것. 다시 import 하거나 코드를 지워야 한다", /1 to add/.test(p2.out));
+      ctx.check("이제 코드에는 리소스가 있는데 state 에 없으니 plan 은 '1 to add' — apply 하면 이름 충돌로 실패할 것. 다시 import 하거나 코드를 지워야 한다", /1 to add/.test(p2.out));
       await ctx.sh("docker", ["rm", "-f", "lab-iac-import"]);
     } finally {
       await fs.rm(dir, { recursive: true, force: true });

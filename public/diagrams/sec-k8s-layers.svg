@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="420" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">Kubernetes 보안 — 요청의 세 관문과 4C 계층</text>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <rect x="30" y="70" width="130" height="50" rx="8" fill="#161b22" stroke="#30363d"/><text x="95" y="92" text-anchor="middle" fill="#e6edf3">kubectl / SA 토큰</text><text x="95" y="108" text-anchor="middle" fill="#8b949e" font-size="11">컨트롤러 · CI</text>
+  <line x1="160" y1="95" x2="198" y2="95" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="200" y="65" width="150" height="60" rx="8" fill="#161b22" stroke="#3b82f6"/><text x="275" y="88" text-anchor="middle" fill="#3b82f6" font-weight="600">① 인증</text><text x="275" y="106" text-anchor="middle" fill="#8b949e" font-size="11">인증서 · SA JWT · OIDC</text><text x="275" y="120" text-anchor="middle" fill="#f59e0b" font-size="11">실패 → 401</text>
+  <line x1="350" y1="95" x2="388" y2="95" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="390" y="65" width="150" height="60" rx="8" fill="#161b22" stroke="#22c55e"/><text x="465" y="88" text-anchor="middle" fill="#22c55e" font-weight="600">② 인가 (RBAC)</text><text x="465" y="106" text-anchor="middle" fill="#8b949e" font-size="11">Role × Binding, 허용 목록만</text><text x="465" y="120" text-anchor="middle" fill="#f59e0b" font-size="11">실패 → 403</text>
+  <line x1="540" y1="95" x2="578" y2="95" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="580" y="65" width="170" height="60" rx="8" fill="#161b22" stroke="#8b5cf6"/><text x="665" y="88" text-anchor="middle" fill="#8b5cf6" font-weight="600">③ 어드미션</text><text x="665" y="106" text-anchor="middle" fill="#8b949e" font-size="11">Mutating → 검증 → Validating</text><text x="665" y="120" text-anchor="middle" fill="#8b949e" font-size="11">PSS · Kyverno · 서명 검증</text>
+  <line x1="750" y1="95" x2="788" y2="95" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="790" y="70" width="140" height="50" rx="8" fill="#161b22" stroke="#30363d"/><text x="860" y="92" text-anchor="middle" fill="#e6edf3">etcd</text><text x="860" y="108" text-anchor="middle" fill="#8b949e" font-size="11">Secret 은 평문 → 암호화 필요</text>
+  <text x="480" y="165" text-anchor="middle" fill="#e6edf3" font-weight="600">4C — 바깥이 뚫리면 안쪽은 무력, 안쪽이 뚫려도 바깥이 막아야</text>
+  <rect x="60" y="180" width="840" height="220" rx="12" fill="#161b22" stroke="#dc2626"/><text x="90" y="205" fill="#dc2626" font-weight="600">클라우드 / 호스트</text><text x="90" y="222" fill="#8b949e" font-size="11">노드 OS 최소화 · API 서버 비노출 · IAM · 메타데이터 차단 · kube-bench</text>
+  <rect x="100" y="235" width="760" height="155" rx="12" fill="#0d1117" stroke="#f59e0b"/><text x="130" y="260" fill="#f59e0b" font-weight="600">클러스터</text><text x="130" y="277" fill="#8b949e" font-size="11">RBAC 최소 권한 · PSS restricted · NetworkPolicy default-deny · Kyverno · etcd 암호화 · 감사 로그</text>
+  <rect x="140" y="290" width="680" height="90" rx="12" fill="#161b22" stroke="#22c55e"/><text x="170" y="315" fill="#22c55e" font-weight="600">컨테이너</text><text x="170" y="332" fill="#8b949e" font-size="11">이미지 스캔(trivy) · 서명(cosign) · non-root · readOnly · drop ALL · seccomp · Falco</text>
+  <rect x="180" y="345" width="600" height="28" rx="8" fill="#0d1117" stroke="#3b82f6"/><text x="480" y="364" text-anchor="middle" fill="#3b82f6" font-size="12">코드 — 입력 검증 · 의존성 · 시크릿 미포함 · 인가 검사</text>
+  <text x="480" y="412" text-anchor="middle" fill="#8b949e" font-size="11">실험: sec-k8s-rbac (401/403), sec-image-scan</text>
+</svg>
