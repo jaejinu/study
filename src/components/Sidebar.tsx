@@ -23,7 +23,7 @@ export function Sidebar() {
         ☰
       </button>
       <aside
-        className={`fixed inset-y-0 left-0 z-20 w-64 shrink-0 border-r border-border bg-surface transition-transform md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-20 w-64 shrink-0 border-r border-border bg-surface transition-transform md:sticky md:top-0 md:h-screen md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -50,7 +50,7 @@ export function Sidebar() {
           >
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="검색…  (노트·실험)" className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs outline-none focus:border-muted" />
           </form>
-          <nav className="flex-1 space-y-0.5 px-3 py-3">
+          <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
             {subject ? (
               <>
                 {subject.nav.map((n) => (
@@ -77,7 +77,7 @@ export function Sidebar() {
                         key={s.id}
                         href={`/${s.id}`}
                         onClick={() => setOpen(false)}
-                        className={`flex items-center gap-2.5 rounded-md px-3 py-1 text-[13px] ${s.id === subject.id ? "text-foreground" : "text-muted hover:bg-surface-2 hover:text-foreground"}`}
+                        className={`flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] ${s.id === subject.id ? "text-foreground" : "text-muted hover:bg-surface-2 hover:text-foreground"}`}
                       >
                         <span className={`grid h-4.5 w-4.5 place-items-center rounded text-[9px] font-bold text-white ${s.color}`}>{s.mark}</span>
                         {s.name}
@@ -94,7 +94,7 @@ export function Sidebar() {
                 <div key={track.id}>
                   <div className="px-3 pb-0.5 pt-3 text-[11px] font-semibold tracking-wide text-muted">{track.name}</div>
                   {list.map((s) => (
-                    <Link key={s.id} href={`/${s.id}`} onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-md px-3 py-1 text-[13px] text-muted hover:bg-surface-2 hover:text-foreground">
+                    <Link key={s.id} href={`/${s.id}`} onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] text-muted hover:bg-surface-2 hover:text-foreground">
                       <span className={`grid h-4.5 w-4.5 place-items-center rounded text-[9px] font-bold text-white ${s.color}`}>{s.mark}</span>
                       <span className="text-foreground/90">{s.name}</span>
                     </Link>

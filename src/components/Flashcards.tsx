@@ -103,7 +103,7 @@ export function Flashcards({ cards, subject, stats: initialStats = {}, defaultMo
 
   return (
     <div>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[13px] text-muted">
         <span>
           {idx + 1} / {order.length}
           {mode === "review" && dueCount > 0 && <span className="ml-2 text-warn">복습 기한 지난 카드 {dueCount}장</span>}

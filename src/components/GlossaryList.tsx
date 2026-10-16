@@ -50,7 +50,7 @@ export function GlossaryList({ entries, subjects }: { entries: Entry[]; subjects
               .map((e) => (
                 <div key={e.term} className="grid gap-1 px-4 py-2.5 sm:grid-cols-[220px_1fr]">
                   <dt className="font-medium">{e.link ? <Link href={e.link} className="hover:underline">{e.term}</Link> : e.term}</dt>
-                  <dd className="text-sm text-muted">{e.def}</dd>
+                  <dd className="text-[14px] leading-relaxed text-foreground/85">{e.def}</dd>
                 </div>
               ))}
           </dl>

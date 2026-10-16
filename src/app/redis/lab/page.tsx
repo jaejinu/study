@@ -30,8 +30,8 @@ export default async function LabPage() {
                       {progress.labDone.includes(e.id) && <span className="mr-1 text-ok">✓</span>}
                       {e.title}
                     </div>
-                    <div className="mt-1 text-xs text-muted">{e.summary}</div>
-                    <div className="mt-2">
+                    <div className="clamp-3 mt-1.5 text-[13px] leading-relaxed text-foreground/75">{e.summary}</div>
+                    <div className="mt-2 opacity-60">
                       <Badge>{e.id}</Badge>
                     </div>
                   </Link>

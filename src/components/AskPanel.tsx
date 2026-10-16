@@ -120,14 +120,17 @@ export function AskPanel() {
   const isNote = /^\/[a-z0-9-]+\/notes\/[a-z0-9-]+/.test(pathname);
   return (
     <>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        title="AI 에게 묻기 (⌘/)"
-        className={`fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium shadow-lg shadow-black/40 transition-all ${open ? "border-border bg-surface text-muted" : "border-accent/40 bg-accent text-white hover:bg-accent/90"}`}
-      >
-        <span>✦</span>
-        <span className="hidden sm:inline">{open ? "닫기" : "AI 에게 묻기"}</span>
-      </button>
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          title="AI 에게 묻기 (⌘/)"
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-accent/40 bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-black/40 transition-all hover:bg-accent/90"
+        >
+          <span>✦</span>
+          <span className="hidden sm:inline">AI 에게 묻기</span>
+          <kbd className="hidden rounded bg-white/20 px-1 text-[10px] sm:inline">⌘/</kbd>
+        </button>
+      )}
       {open && (
         <aside className="fixed inset-y-0 right-0 z-30 flex w-full max-w-[420px] flex-col border-l border-border bg-surface shadow-2xl shadow-black/50" role="dialog" aria-label="AI 에게 묻기">
           <header className="flex items-center gap-2 border-b border-border px-4 py-3">

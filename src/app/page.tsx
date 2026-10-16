@@ -47,7 +47,7 @@ export default async function Home() {
               const read = readCounts[s.id] ?? 0;
               const pct = c.notes ? Math.round((read / c.notes) * 100) : 0;
               return (
-                <Link key={s.id} href={`/${s.id}`} className="group flex flex-col rounded-xl border border-border bg-surface p-5 transition-all hover:-translate-y-0.5 hover:border-muted hover:shadow-lg hover:shadow-black/30">
+                <Link key={s.id} href={`/${s.id}`} className={`group flex flex-col rounded-xl border border-border bg-surface p-5 transition-all hover:-translate-y-0.5 hover:border-muted hover:shadow-lg hover:shadow-black/30 ${c.notes === 0 ? "opacity-60" : ""}`}>
                   <div className="flex items-center gap-3">
                     <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg text-base font-bold text-white ${s.color}`}>{s.mark}</span>
                     <div className="min-w-0">
@@ -61,10 +61,14 @@ export default async function Home() {
                       <div className="h-full rounded bg-ok" style={{ width: `${pct}%` }} />
                     </div>
                     <div className="mt-2 flex items-center gap-3 text-[12px] text-muted">
-                      <span>
-                        노트 <span className="font-mono text-foreground">{c.notes}</span>
-                        {read > 0 && <span className="text-ok"> · {read} 읽음</span>}
-                      </span>
+                      {c.notes === 0 ? (
+                        <span className="rounded border border-border bg-surface-2 px-1.5 py-0.5 text-[11px]">준비 중</span>
+                      ) : (
+                        <span>
+                          노트 <span className="font-mono text-foreground">{c.notes}</span>
+                          {read > 0 && <span className="text-ok"> · {read} 읽음</span>}
+                        </span>
+                      )}
                       {c.experiments > 0 && (
                         <span>
                           실험 <span className="font-mono text-foreground">{c.experiments}</span>

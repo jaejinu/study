@@ -58,14 +58,16 @@ export default async function NotePage({ params }: Props) {
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-muted">
           <span>읽는 데 약 {readMinutes}분</span>
           {note.experiments.length > 0 && <span>⚗ 실험 {note.experiments.length}개</span>}
-          <span className="flex flex-wrap gap-1.5">
-            {note.tags.map((t) => (
-              <span key={t} className="rounded bg-surface-2 px-1.5 py-0.5 text-[11px]">#{t}</span>
-            ))}
-          </span>
+          {cards.length > 0 && <span>? 퀴즈 {cards.length}장</span>}
         </div>
         <div className="mt-6">
           <Markdown content={note.content} checklist={{ subject: subject.id, slug, checked }} />
+        </div>
+
+        <div className="mt-8 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3">
+          <span className="text-sm text-muted">이 노트를 다 읽었다면</span>
+          <ReadToggle subject={subject.id} slug={slug} initial={read} />
+          <span className="ml-auto"><StudyTimer subject={subject.id} slug={slug} initialSeconds={studySeconds} /></span>
         </div>
 
         {cards.length > 0 && (
@@ -76,12 +78,6 @@ export default async function NotePage({ params }: Props) {
             <Flashcards cards={cards} subject={subject.id} stats={stats} defaultMode="order" />
           </section>
         )}
-
-        <div className="mt-8 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3">
-          <span className="text-sm text-muted">이 노트를 다 읽었다면</span>
-          <ReadToggle subject={subject.id} slug={slug} initial={read} />
-          <span className="ml-auto"><StudyTimer subject={subject.id} slug={slug} initialSeconds={studySeconds} /></span>
-        </div>
 
         {related.length > 0 && (
           <section className="mt-10 rounded-lg border border-accent/30 bg-accent-soft/40 p-4">
