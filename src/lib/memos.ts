@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { ensureConnected, getRedis } from "./redis";
+import { assertWritable } from "./read-only";
 
 /** 노트 메모·하이라이트 — Redis Hash `memo:<subject>/<slug>` (필드 = 메모 id, 값 = JSON) */
 export interface Memo {
@@ -44,6 +45,7 @@ export async function listAllMemos(): Promise<Memo[]> {
 }
 
 export async function addMemo(subject: string, slug: string, quote: string, text: string): Promise<Memo> {
+  assertWritable("메모");
   const r = getRedis();
   await ensureConnected(r);
   const memo: Memo = { id: randomUUID().slice(0, 8), subject, slug, quote: quote.slice(0, 500), text: text.slice(0, 4000), at: Date.now() };
@@ -52,6 +54,7 @@ export async function addMemo(subject: string, slug: string, quote: string, text
 }
 
 export async function deleteMemo(subject: string, slug: string, id: string): Promise<void> {
+  assertWritable("메모");
   const r = getRedis();
   await ensureConnected(r);
   await r.hdel(key(subject, slug), id);

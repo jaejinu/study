@@ -2,11 +2,20 @@ import Link from "next/link";
 import { listAllMemos } from "@/lib/memos";
 import { listNotes } from "@/lib/notes";
 import { getSubject } from "@/lib/subjects";
+import { isReadOnly } from "@/lib/read-only";
+import { ReadOnlyPageNotice } from "@/components/ReadOnlyNotice";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "내 메모" };
 
 export default async function MemosPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  if (isReadOnly())
+    return (
+      <div className="mx-auto max-w-3xl">
+        <h1 className="mb-4 text-2xl font-bold tracking-tight">내 메모</h1>
+        <ReadOnlyPageNotice title="메모는 로컬에서만 저장됩니다">읽기 전용 공개판에서는 노트 메모·하이라이트를 서버에 저장하지 않습니다.</ReadOnlyPageNotice>
+      </div>
+    );
   const { q = "" } = await searchParams;
   const all = await listAllMemos();
   const term = q.trim().toLowerCase();

@@ -9,6 +9,7 @@
 import { embed } from "./embed";
 import { INDEX, os, readIndexMeta, type IndexMeta } from "./store";
 import { groupByNote, noteKeyOf, rrfFuse } from "./rrf";
+import { isAiEnabled } from "@/lib/read-only";
 
 /** 청크 목록 → 노트 키별 순위 (첫 등장 순서) */
 function noteRankMap(ids: string[]): Map<string, number> {
@@ -138,6 +139,7 @@ export interface SemanticOptions {
 export async function semanticSearch(query: string, opts: SemanticOptions = {}): Promise<SemanticResult | null> {
   const q = query.trim().slice(0, 300);
   if (!q || Date.now() < downUntil) return null;
+  if (!isAiEnabled()) return null; // 공개판: 임베딩·OpenSearch 호출 없이 키워드 검색(searchSmart)으로
   const t0 = performance.now();
   const ctrl = new AbortController();
   const budget = opts.timeoutMs ?? 1500;

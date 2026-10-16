@@ -15,6 +15,7 @@ import { getProgress, getReadKeys } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { loadQuiz } from "@/lib/quiz";
 import { cardKey, fmtDuration, getQuizStats, getSubjectStudySeconds, summarizeReview } from "@/lib/study";
+import { isReadOnly } from "@/lib/read-only";
 
 export const dynamic = "force-dynamic";
 
@@ -63,9 +64,16 @@ export default async function SubjectHome({ params }: Props) {
         </div>
       )}
 
-      <Suspense fallback={<Card className="p-4 text-sm text-muted">환경 확인 중…</Card>}>
-        {subject.id === "redis" ? <RedisStatusCard /> : subject.id === "docker" ? <DockerStatusCard /> : subject.id === "kubernetes" ? <KubeStatusCard /> : <EnvStatusCard subject={subject.id} />}
-      </Suspense>
+      {isReadOnly() ? (
+        // 공개판: docker·kubectl·로컬 서비스 확인(프로세스 실행·내부망 접속)을 하지 않는다
+        <Card className="p-4 text-sm text-muted">
+          🔒 읽기 전용 공개판 — 실습 환경 상태는 로컬에서 <code>pnpm dev</code> 로 띄우면 여기에 보입니다. 노트·퀴즈·실험 설명은 그대로 볼 수 있습니다.
+        </Card>
+      ) : (
+        <Suspense fallback={<Card className="p-4 text-sm text-muted">환경 확인 중…</Card>}>
+          {subject.id === "redis" ? <RedisStatusCard /> : subject.id === "docker" ? <DockerStatusCard /> : subject.id === "kubernetes" ? <KubeStatusCard /> : <EnvStatusCard subject={subject.id} />}
+        </Suspense>
+      )}
 
       <section className="mt-8">
         <div className="mb-3 flex items-baseline justify-between">

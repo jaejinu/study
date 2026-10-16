@@ -4,6 +4,7 @@ import { executeTool, SYSTEM_PROMPT, toolDefinitions } from "@/lib/assistant/too
 import { DEFAULT_MODEL, estimateCost, MODELS } from "@/lib/assistant/pricing";
 import { logger } from "@/lib/log";
 import { metrics } from "@/lib/metrics";
+import { aiDisabledResponse, isAiEnabled } from "@/lib/read-only";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -18,6 +19,8 @@ type ClientMessage = { role: "user" | "assistant"; content: string };
  *  - 관측: span 속성(gen_ai.*), 토큰·비용·TTFT 메트릭, 구조화 로그
  */
 export async function POST(req: Request) {
+  const disabled = aiDisabledResponse();
+  if (disabled) return disabled;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return Response.json({ error: "ANTHROPIC_API_KEY 가 설정되어 있지 않습니다. `ANTHROPIC_API_KEY=sk-ant-... pnpm dev` 로 실행하세요." }, { status: 400 });
@@ -127,5 +130,5 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  return Response.json({ configured: !!process.env.ANTHROPIC_API_KEY, model: DEFAULT_MODEL, models: MODELS });
+  return Response.json({ configured: isAiEnabled() && !!process.env.ANTHROPIC_API_KEY, disabled: !isAiEnabled(), model: DEFAULT_MODEL, models: MODELS });
 }

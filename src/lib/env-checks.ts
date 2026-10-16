@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { kafkaClient, KAFKA_BROKERS } from "@/code-lab/kafka";
 import { PG_URL, pgClient } from "@/code-lab/postgres";
+import { isReadOnly } from "./read-only";
 
 export interface EnvStatus {
   ok: boolean;
@@ -358,6 +359,7 @@ export async function checkConcurrency(): Promise<EnvStatus> {
 }
 
 export async function checkEnv(subject: string): Promise<EnvStatus> {
+  if (isReadOnly()) return { ok: false, title: "읽기 전용 공개판 — 로컬 환경 확인 안 함", lines: [], hint: "pnpm dev  # 로컬에서 띄우면 이 주제의 실습 환경 상태가 여기 보입니다" };
   switch (subject) {
     case "nodejs": return checkNodejs();
     case "java": return checkJava();

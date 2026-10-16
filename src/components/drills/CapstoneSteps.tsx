@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { restartCapstoneAction, savePostmortemAction, verifyStepAction } from "@/app/capstone/actions";
 import { Button } from "@/components/ui";
+import { ReadOnlyHint, useReadOnly } from "../ReadOnly";
 
 export interface StepView {
   id: string;
@@ -33,6 +34,7 @@ const TEMPLATE = `## 영향
 `;
 
 function Step({ projectId, step, postmortem }: { projectId: string; step: StepView; postmortem: string }) {
+  const { readOnly } = useReadOnly();
   const [last, setLast] = useState(step.last);
   const [pending, start] = useTransition();
   const [text, setText] = useState(postmortem || TEMPLATE);
@@ -53,12 +55,14 @@ function Step({ projectId, step, postmortem }: { projectId: string; step: StepVi
           <h2 className="font-semibold">{step.title}</h2>
           <p className="mt-0.5 text-sm text-muted">{step.goal}</p>
         </div>
-        <Button onClick={verify} disabled={pending} variant={last?.ok ? "ghost" : "primary"} data-step={step.id}>
-          {pending ? "검증 중…" : "검증"}
-        </Button>
+        {!readOnly && (
+          <Button onClick={verify} disabled={pending} variant={last?.ok ? "ghost" : "primary"} data-step={step.id}>
+            {pending ? "검증 중…" : "검증"}
+          </Button>
+        )}
       </div>
       <pre className="mt-3 overflow-x-auto rounded bg-background p-3 text-[12.5px] leading-relaxed">{step.actions.join("\n")}</pre>
-      {step.input === "postmortem" && (
+      {step.input === "postmortem" && !readOnly && (
         <div className="mt-3">
           <textarea
             aria-label="포스트모템 본문"
@@ -109,6 +113,7 @@ function Step({ projectId, step, postmortem }: { projectId: string; step: StepVi
 
 export function CapstoneSteps({ projectId, steps, startedAt, baseline, postmortem }: { projectId: string; steps: StepView[]; startedAt: number | null; baseline: Record<string, string>; postmortem: string }) {
   const [pending, start] = useTransition();
+  const { readOnly } = useReadOnly();
   const done = steps.filter((s) => s.last?.ok).length;
   return (
     <div className="mt-5">
@@ -120,10 +125,13 @@ export function CapstoneSteps({ projectId, steps, startedAt, baseline, postmorte
           {startedAt ? `시작 ${new Date(startedAt).toLocaleString("ko-KR")}` : "아직 시작 전 — 첫 검증 때 시작 시각과 기준 스냅샷을 잡는다"}
           {Object.keys(baseline).length > 0 && ` · 기준 ${Object.entries(baseline).map(([k, v]) => `${k}=${v}`).join(" ")}`}
         </span>
-        <Button variant="ghost" className="ml-auto" disabled={pending} onClick={() => start(async () => void (await restartCapstoneAction(projectId), location.reload()))}>
-          처음부터 다시
-        </Button>
+        {!readOnly && (
+          <Button variant="ghost" className="ml-auto" disabled={pending} onClick={() => start(async () => void (await restartCapstoneAction(projectId), location.reload()))}>
+            처음부터 다시
+          </Button>
+        )}
       </div>
+      <ReadOnlyHint className="mb-3">읽기 전용 공개판에서는 단계 검증(클러스터·Prometheus 조회)을 실행하지 않습니다. 각 단계의 조치와 연결된 노트·실험을 읽고, 검증은 로컬에서 하세요.</ReadOnlyHint>
       <ol className="space-y-3">
         {steps.map((s) => (
           <Step key={s.id} projectId={projectId} step={s} postmortem={postmortem} />

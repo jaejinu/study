@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { ensureConnected, getRedis } from "./redis";
+import { assertWritable, isReadOnly } from "./read-only";
 
 /**
  * 학습 기록 백업·복원. 진행률·퀴즈 기록·학습 시간·실험 이력은 이 앱의 Redis 에만 있으므로
@@ -57,6 +58,7 @@ export function summarize(b: Backup): Record<string, number> {
 
 /** mode=merge: 기존 기록과 합친다(Set 합집합, Hash·String 은 백업 값 우선, Stream 은 없는 ID 만 추가). replace: 백업 대상 키를 지우고 백업으로 덮는다 */
 export async function importBackup(b: Backup, mode: "merge" | "replace" = "merge"): Promise<{ keys: number }> {
+  assertWritable("백업 가져오기");
   if (b?.app !== "study" || b.version !== 1 || !Array.isArray(b.keys)) throw new Error("study 백업 파일이 아닙니다");
   const r = getRedis();
   await ensureConnected(r);
@@ -87,6 +89,7 @@ export async function importBackup(b: Backup, mode: "merge" | "replace" = "merge
 
 /** backups/study-YYYYMMDD-HHMM.json 으로 저장하고 오래된 것은 keep 개만 남긴다 */
 export async function writeBackupFile(keep = 14): Promise<{ file: string; keys: number }> {
+  assertWritable("백업 파일 쓰기");
   const b = await exportBackup();
   await fs.mkdir(BACKUP_DIR, { recursive: true });
   const d = new Date(b.exportedAt);
@@ -113,6 +116,7 @@ export async function listBackupFiles(): Promise<{ name: string; size: number; m
 
 /** 서버가 켜져 있는 동안 하루 한 번 자동 백업 (instrumentation 에서 시작) */
 export function startAutoBackup(intervalMs = 6 * 3600_000) {
+  if (isReadOnly()) return; // 공개판: Redis 도 없고 디스크에 쓰지도 않는다
   const tick = async () => {
     try {
       const latest = (await listBackupFiles())[0];

@@ -1,4 +1,5 @@
 import { createRedis, ensureConnected } from "./redis";
+import { assertWritable } from "./read-only";
 
 /** Alertmanager 웹훅 페이로드 (v4) 의 알림 하나 */
 export interface ReceivedAlert {
@@ -34,6 +35,7 @@ function storeClient() {
 }
 
 export async function storeAlerts(alerts: ReceivedAlert[]): Promise<{ redis: boolean }> {
+  assertWritable("알림 저장");
   memory.unshift(...alerts);
   memory.splice(MAX);
   try {

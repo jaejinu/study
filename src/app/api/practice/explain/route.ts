@@ -5,6 +5,7 @@ import { EXPLAIN_SYSTEM, explainUser, JSON_RETRY } from "@/lib/practice/prompts"
 import { getExplainHistory, saveExplain } from "@/lib/practice/store";
 import type { OpenAIMessage } from "@/lib/assistant/openai";
 import { logger } from "@/lib/log";
+import { aiDisabledResponse } from "@/lib/read-only";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -13,6 +14,8 @@ const ID = /^[a-z0-9-]+$/;
 
 /** 설명해 보기: 학습자의 설명을 노트와 비교해 구조화된 피드백(JSON)을 돌려준다 */
 export async function POST(req: Request) {
+  const disabled = aiDisabledResponse();
+  if (disabled) return disabled;
   if (!openaiConfigured()) return Response.json({ error: NO_KEY_MESSAGE }, { status: 400 });
   let body: { subject?: string; slug?: string; section?: string; explanation?: string };
   try {

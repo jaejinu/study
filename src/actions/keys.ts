@@ -1,6 +1,7 @@
 "use server";
 
 import { ensureConnected, getRedis } from "@/lib/redis";
+import { isReadOnly, READ_ONLY_MESSAGE } from "@/lib/read-only";
 
 export interface KeyInfo {
   key: string;
@@ -19,6 +20,8 @@ export interface ScanResult {
 }
 
 export async function scanKeysAction(pattern: string, cursor = "0", count = 50): Promise<ScanResult> {
+  // 공개판: 서버 Redis 의 키 목록 자체를 노출하지 않는다
+  if (isReadOnly()) return { ok: false, error: READ_ONLY_MESSAGE, cursor: "0", keys: [], total: 0 };
   const client = getRedis();
   try {
     await ensureConnected(client);
@@ -62,6 +65,7 @@ const LIMIT = 200;
 export async function inspectKeyAction(key: string): Promise<KeyValue> {
   const client = getRedis();
   const base = { key, type: "none", ttl: -2, value: null, truncated: false };
+  if (isReadOnly()) return { ok: false, error: READ_ONLY_MESSAGE, ...base };
   try {
     await ensureConnected(client);
     const type = await client.type(key);
@@ -115,6 +119,7 @@ export async function inspectKeyAction(key: string): Promise<KeyValue> {
 }
 
 export async function deleteKeyAction(key: string): Promise<{ ok: boolean; error?: string }> {
+  if (isReadOnly()) return { ok: false, error: READ_ONLY_MESSAGE };
   try {
     const client = getRedis();
     await ensureConnected(client);

@@ -172,6 +172,42 @@ compose 를 다른 폴더(워크트리)에서 직접 쓸 때는 항상 `docker c
 
 Redis 를 멈추거나 설정을 바꾸는 실험은 주입 직전에 `src/lib/deadman.ts` 의 데드맨 스위치를 장전한다. 실험과 수명이 독립된 분리 프로세스가 N 초 뒤 원복을 실행하므로, 실험이 중간에 끊겨도 Redis·Kafka·설정이 그대로 남지 않는다. 정상 종료하면 해제된다. 장애 대응 훈련도 같은 장치로 원복한다(시간 초과·포기·창 닫기 모두).
 
+## 읽기 전용 공개판
+
+이 사이트는 로컬 개인용이라 서버 액션이 Redis 에 쓰고, 실험실은 docker·kubectl·셸 명령을 실행하고, 콘솔은 임의 Redis 명령을 받는다. 그대로 인터넷에 올리지 말고 **읽기 전용 모드**로 올린다.
+
+| 환경 변수 | 뜻 |
+| --- | --- |
+| `STUDY_READ_ONLY=1` | 읽기 전용 공개판. **빌드와 실행 모두**에 설정한다(정적으로 미리 렌더하는 페이지의 배너·메뉴가 빌드 시점 값을 쓴다. 서버 차단은 실행 시점 값으로 동작) |
+| `STUDY_READ_ONLY_AI=1` | 읽기 전용에서도 AI 기능(/api/ask·/api/assistant·/practice·의미 검색 임베딩)을 켠다. 기본 꺼짐 — 모델 비용·키·남용 위험 |
+
+막히는 것 (서버 진입점에서 거부 — UI 숨김만이 아니다. 공통 가드는 `src/lib/read-only.ts` 의 `isReadOnly()`·`assertWritable()`):
+
+- 실험 실행(Redis 실험·셸 실험·코드 실험), Redis 콘솔, 키 브라우저(목록·값·삭제), 모니터(INFO·SLOWLOG), 벤치마크, 브라우저에서 vitest 실행
+- 장애 훈련(`/api/drills/*` POST → 403)·캡스톤 검증·포스트모템 저장, 데드맨 스위치 장전, 셸 `exec`
+- 진행 기록 쓰기(읽음·체크리스트·퀴즈 채점·학습 시간·메모·실험 이력·연습 기록), 백업 내보내기·가져오기(`/api/backup` → 403), 자동 백업
+- 주제 첫 화면의 docker·kubectl·로컬 서비스 상태 확인
+- AI: `/api/ask`·`/api/assistant`·`/api/practice/*` → 403, 검색은 임베딩·OpenSearch 를 건너뛰고 키워드 검색(searchSmart)
+- 내부 엔드포인트 `/api/metrics`·`/api/alerts` → 404
+- Redis 에 아예 연결하지 않는다(`getRedis()` 가 연결하지 않는 클라이언트를 돌려준다). 진행률·퀴즈 통계·학습 시간·메모·실험 기록을 읽는 함수는 즉시 빈 값을 돌려주므로 Redis 가 없는 배포에서도 타임아웃 없이 뜬다
+
+되는 것: 노트, 퀴즈 카드(채점은 그 화면에서만 유지되고 저장되지 않음), 체크리스트(화면에서만), 용어집, 노트 연결 지도, 학습 경로, 약점 지도(빈 기록 기준), 검색·⌘K, 실험 설명(코드·설명·연결 노트 — 실행 버튼 대신 로컬에서 실행하는 명령), 훈련·캡스톤 설명(시작·검증 버튼 없음).
+
+화면: 상단에 얇은 배너, 사이드바·⌘K 에서 콘솔·키 브라우저·모니터·벤치마크·메모·백업(AI 꺼짐이면 AI 메뉴도)은 숨기고 장애 훈련은 "로컬 전용" 으로 표시한다. 그 주소로 직접 들어오면 안내만 보인다.
+
+로컬에서 확인하기 (Redis 가 없는 상태 — 빈 포트를 `REDIS_URL` 로 준다):
+
+```bash
+STUDY_READ_ONLY=1 REDIS_URL=redis://127.0.0.1:1 pnpm build
+PORT=3320 STUDY_READ_ONLY=1 REDIS_URL=redis://127.0.0.1:1 pnpm start   # 또는 node .next/standalone/server.js
+curl -s -o /dev/null -w "%{http_code}\n" localhost:3320/redis/lab/strings-basics           # 200 (실행 버튼 대신 안내)
+curl -s -X POST -w " %{http_code}\n" localhost:3320/api/drills/redis-oom/start            # 403
+curl -s -o /dev/null -w "%{http_code}\n" localhost:3320/api/metrics                       # 404
+pnpm exec vitest run tests/read-only.test.ts                                                # 가드 단위 테스트
+```
+
+`next dev` 가 같은 폴더에서 떠 있어도 `next build` 는 `.next`, 개발 서버는 `.next/dev` 를 써서 함께 돌릴 수 있다. robots(검색 엔진 노출)는 따로 정하지 않았다 — 필요하면 `src/app/robots.ts` 를 추가한다.
+
 ## CI
 
 `.github/workflows/ci.yml` 이 push 마다 실행한다.

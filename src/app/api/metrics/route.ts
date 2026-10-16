@@ -2,6 +2,7 @@ import { ensureConnected, getRedis } from "@/lib/redis";
 import { listNotes } from "@/lib/notes";
 import { subjects } from "@/lib/subjects";
 import { metrics } from "@/lib/metrics";
+import { hiddenInReadOnly } from "@/lib/read-only";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,9 @@ export const dynamic = "force-dynamic";
  *  - 아래 게이지: Redis 에 저장된 학습 진행률을 매 스크레이프마다 읽어 노출
  */
 export async function GET() {
+  // 공개판: 내부 메트릭(프로세스·요청·LLM 비용 등)은 노출하지 않는다
+  const hidden = hiddenInReadOnly();
+  if (hidden) return hidden;
   const lines: string[] = [];
   const metric = (name: string, help: string, type: string, rows: { labels?: Record<string, string>; value: number }[]) => {
     lines.push(`# HELP ${name} ${help}`, `# TYPE ${name} ${type}`);

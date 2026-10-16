@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { isReadOnly, READ_ONLY_MESSAGE } from "./read-only";
 
 export interface DockerStatus {
   installed: boolean;
@@ -19,6 +20,7 @@ function run(args: string[], timeout = 4000): Promise<{ ok: boolean; out: string
 
 /** 로컬 docker CLI / 데몬 상태를 확인한다 (없어도 에러 없이 안내용 정보 반환) */
 export async function getDockerStatus(): Promise<DockerStatus> {
+  if (isReadOnly()) return { installed: false, daemonRunning: false, error: READ_ONLY_MESSAGE };
   const client = await run(["version", "--format", "{{.Client.Version}}"]);
   if (!client.ok) {
     const missing = /ENOENT|not found/i.test(client.out);

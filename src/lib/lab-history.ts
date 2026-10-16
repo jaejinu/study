@@ -1,4 +1,5 @@
 import { ensureConnected, getRedis } from "./redis";
+import { isReadOnly } from "./read-only";
 
 /**
  * 실험 실행 이력 — Redis Stream `lab:runs:<subject>/<id>` (최근 50회).
@@ -18,6 +19,7 @@ export interface LabRun {
 const key = (subject: string, id: string) => `lab:runs:${subject}/${id}`;
 
 export async function recordLabRun(subject: string, id: string, run: Omit<LabRun, "at">): Promise<void> {
+  if (isReadOnly()) return;
   const r = getRedis();
   try {
     await ensureConnected(r);

@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { addMemo, deleteMemo, type Memo } from "@/lib/memos";
+import { isReadOnly, READ_ONLY_MESSAGE } from "@/lib/read-only";
 
 const ID = /^[a-z0-9-]+$/;
 
 export async function addMemoAction(subject: string, slug: string, quote: string, text: string): Promise<{ ok: boolean; memo?: Memo; error?: string }> {
+  if (isReadOnly()) return { ok: false, error: READ_ONLY_MESSAGE };
   if (!ID.test(subject) || !ID.test(slug)) return { ok: false, error: "잘못된 식별자" };
   if (!text.trim() && !quote.trim()) return { ok: false, error: "내용이 없습니다" };
   try {
@@ -17,7 +19,8 @@ export async function addMemoAction(subject: string, slug: string, quote: string
   }
 }
 
-export async function deleteMemoAction(subject: string, slug: string, id: string): Promise<{ ok: boolean }> {
+export async function deleteMemoAction(subject: string, slug: string, id: string): Promise<{ ok: boolean; error?: string }> {
+  if (isReadOnly()) return { ok: false, error: READ_ONLY_MESSAGE };
   if (!ID.test(subject) || !ID.test(slug) || !/^[a-z0-9-]+$/i.test(id)) return { ok: false };
   try {
     await deleteMemo(subject, slug, id);

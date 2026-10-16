@@ -7,6 +7,7 @@ import { searchHybrid } from "@/lib/search";
 import { getSubject } from "@/lib/subjects";
 import { logger } from "@/lib/log";
 import { metrics } from "@/lib/metrics";
+import { aiDisabledResponse, isAiEnabled } from "@/lib/read-only";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -51,6 +52,8 @@ async function pageContext(ctx: PageContext, question: string): Promise<{ text: 
 }
 
 export async function POST(req: Request) {
+  const disabled = aiDisabledResponse();
+  if (disabled) return disabled;
   if (!openaiConfigured()) {
     return Response.json({ error: "OPENAI_API_KEY 가 설정되어 있지 않습니다. `OPENAI_API_KEY=sk-... pnpm dev` 로 실행하거나, Ollama 를 쓰려면 `OPENAI_API_KEY=ollama OPENAI_BASE_URL=http://localhost:11434/v1 OPENAI_MODEL=qwen2.5:0.5b`." }, { status: 400 });
   }
@@ -170,5 +173,6 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
+  if (!isAiEnabled()) return Response.json({ configured: false, disabled: true, model: OPENAI_MODEL, models: [], baseUrl: null });
   return Response.json({ configured: openaiConfigured(), model: OPENAI_MODEL, models: OPENAI_MODELS, baseUrl: process.env.OPENAI_BASE_URL ?? null });
 }

@@ -7,11 +7,14 @@ import { getSubject, subjects } from "@/lib/subjects";
 import { extractConcepts, splitSections } from "@/lib/practice/core";
 import { openaiConfigured, NO_KEY_MESSAGE } from "@/lib/practice/llm";
 import { getExplainHistory } from "@/lib/practice/store";
+import { isAiEnabled } from "@/lib/read-only";
+import { AiDisabledPage } from "@/components/ReadOnlyNotice";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "설명해 보기" };
 
 export default async function ExplainPage({ searchParams }: { searchParams: Promise<{ subject?: string; slug?: string }> }) {
+  if (!isAiEnabled()) return <AiDisabledPage title="설명해 보기" />;
   const { subject: sid, slug } = await searchParams;
   const configured = openaiConfigured();
   const subject = sid ? getSubject(sid) : undefined;

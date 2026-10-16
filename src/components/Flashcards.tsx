@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { recordQuizAction } from "@/actions/study";
-import { GRADE_LABEL, previewIntervals, retrievability, type Grade, type QuizStat } from "@/lib/study-shared";
+import { GRADE_LABEL, previewIntervals, retrievability, schedule, type Grade, type QuizStat } from "@/lib/study-shared";
+import { ReadOnlyHint, useReadOnly } from "./ReadOnly";
 import { Button } from "./ui";
 
 export interface Card {
@@ -48,6 +49,7 @@ export function Flashcards({ cards, subject, stats: initialStats = {}, defaultMo
   const [missed, setMissed] = useState<number[]>([]);
   const [done, setDone] = useState(false);
   const [saveErr, setSaveErr] = useState(false);
+  const { readOnly } = useReadOnly();
   const card = cards[order[idx]];
   const stat = card?.key ? stats[card.key] : undefined;
   const dueCount = useMemo(() => cards.filter((c) => c.key && stats[c.key] && stats[c.key].due <= now).length, [cards, stats, now]);
@@ -56,7 +58,11 @@ export function Flashcards({ cards, subject, stats: initialStats = {}, defaultMo
     const right = grade >= 2;
     setScore((s) => ({ right: s.right + (right ? 1 : 0), wrong: s.wrong + (right ? 0 : 1) }));
     if (!right) setMissed((m) => [...m, order[idx]]);
-    if (card.key) {
+    if (card.key && readOnly) {
+      // 공개판: 서버에 기록하지 않고 이 화면 안에서만 간격 반복 상태를 갱신한다
+      const key = card.key;
+      setStats((s) => ({ ...s, [key]: schedule(s[key], grade) }));
+    } else if (card.key) {
       const key = card.key;
       void recordQuizAction(card.subject ?? subject, key, grade).then((r) => {
         if (r.ok && r.stat) setStats((s) => ({ ...s, [key]: r.stat! }));
@@ -105,6 +111,7 @@ export function Flashcards({ cards, subject, stats: initialStats = {}, defaultMo
         </div>
         <p className="mt-1 text-sm text-muted">맞음 {score.right} · 다시 볼 것 {score.wrong}</p>
         {saveErr && <p className="mt-1 text-xs text-accent">기록 저장 실패 — Redis 가 켜져 있어야 복습 일정이 저장됩니다</p>}
+        <ReadOnlyHint className="mt-1">읽기 전용 공개판에서는 채점 결과가 저장되지 않습니다 (이 화면에서만 유지).</ReadOnlyHint>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           {missed.length > 0 && <Button onClick={() => restart(missed)}>틀린 {missed.length}장만 다시</Button>}
           <Button variant={missed.length ? "ghost" : "primary"} onClick={() => restart(buildOrder(cards, stats, mode, Date.now()))}>처음부터</Button>
@@ -149,6 +156,7 @@ export function Flashcards({ cards, subject, stats: initialStats = {}, defaultMo
           </div>
         )}
       </button>
+      <ReadOnlyHint className="mt-2">읽기 전용 공개판에서는 채점 결과가 저장되지 않습니다 (이 화면에서만 유지).</ReadOnlyHint>
       <div className="mt-3 flex gap-2">
         {!flipped ? (
           <Button variant="ghost" onClick={() => setFlipped(true)}>답 보기</Button>

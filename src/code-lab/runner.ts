@@ -1,9 +1,11 @@
 import { createRecorder } from "@/lib/trace";
 import type { CodeExperiment, CodeResult } from "./types";
+import { isReadOnly, READ_ONLY_MESSAGE } from "@/lib/read-only";
 
 export async function runCodeExperiment(exp: CodeExperiment | undefined, id: string): Promise<CodeResult> {
   const ranAt = new Date().toISOString();
   if (!exp) return { id, ok: false, steps: [], durationMs: 0, error: `실험을 찾을 수 없음: ${id}`, ranAt };
+  if (isReadOnly()) return { id, ok: false, steps: [], durationMs: 0, error: READ_ONLY_MESSAGE, ranAt };
   const rec = createRecorder();
   const t0 = performance.now();
   try {

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Badge, Button, Card } from "@/components/ui";
 import { fmtMs, type ActiveDrill, type DrillRun, type DrillView } from "@/lib/drills/view";
 import { RunBars } from "./RunBars";
+import { useReadOnly } from "../ReadOnly";
 
 type Phase = "idle" | "starting" | "running" | "checking" | "resetting" | "passed" | "gaveUp";
 
@@ -28,6 +29,7 @@ export function DrillRunner({
   best: number | null;
 }) {
   const router = useRouter();
+  const { readOnly } = useReadOnly();
   const [phase, setPhase] = useState<Phase>(initialActive ? "running" : "idle");
   const [active, setActive] = useState<ActiveDrill | null>(initialActive);
   const [hints, setHints] = useState<string[]>(initialHints);
@@ -124,7 +126,12 @@ export function DrillRunner({
 
       <Card className={`p-4 ${active ? "border-warn/50" : ""}`}>
         <div className="flex flex-wrap items-center gap-2">
-          {!active && !busy && (
+          {readOnly && (
+            <p className="text-sm text-muted">
+              🔒 읽기 전용 공개판에서는 고장을 주입하지 않습니다. 로컬에서 <code>pnpm dev</code> 로 띄운 뒤 <code>/drills/{drill.id}</code> 에서 훈련하세요. 위의 증상과 명령으로 어떤 장애인지 미리 볼 수 있습니다.
+            </p>
+          )}
+          {!readOnly && !active && !busy && (
             <Button id="drill-start" onClick={start}>
               {finished ? "다시 도전" : "훈련 시작 (고장 주입)"}
             </Button>

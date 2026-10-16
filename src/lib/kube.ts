@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { isReadOnly, READ_ONLY_MESSAGE } from "./read-only";
 
 export interface KubeStatus {
   installed: boolean;
@@ -30,6 +31,7 @@ interface PodList {
 
 /** kubectl / 현재 컨텍스트 / 노드·Pod 상태 (클러스터가 없어도 안내용 정보 반환) */
 export async function getKubeStatus(): Promise<KubeStatus> {
+  if (isReadOnly()) return { installed: false, connected: false, error: READ_ONLY_MESSAGE };
   const client = await run(["version", "--client", "-o", "json"]);
   if (!client.ok) {
     const missing = /ENOENT|not found/i.test(client.out);

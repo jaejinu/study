@@ -16,6 +16,9 @@ export async function register() {
     instrumentations: [new IORedisInstrumentation(), new PgInstrumentation()],
   });
   // 학습 기록 자동 백업 (하루 한 번, backups/ 에 최근 14개)
+  // 읽기 전용 공개판(STUDY_READ_ONLY=1)에서는 켜지 않는다
+  const { isReadOnly } = await import("@/lib/read-only");
+  if (isReadOnly()) return;
   const { startAutoBackup } = await import("@/lib/backup");
   startAutoBackup();
 }

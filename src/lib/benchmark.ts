@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { REDIS_URL } from "./redis";
+import { isReadOnly, READ_ONLY_MESSAGE } from "./read-only";
 
 export interface BenchRow {
   test: string;
@@ -49,6 +50,7 @@ function run(args: string[]): Promise<string> {
 export async function runBenchmark(requests = 20_000, clients = 20): Promise<BenchResult> {
   const [host, port] = hostPort();
   const ranAt = new Date().toISOString();
+  if (isReadOnly()) return { ok: false, error: READ_ONLY_MESSAGE, requests, clients, series: [], ranAt };
   try {
     const series = [];
     for (const pipeline of [1, 16]) {

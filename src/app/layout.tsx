@@ -7,6 +7,9 @@ import { subjects } from "@/lib/subjects";
 import { listNotes } from "@/lib/notes";
 import { CommandPalette } from "@/components/shell/CommandPalette";
 import { AskPanel } from "@/components/AskPanel";
+import { ReadOnlyProvider } from "@/components/ReadOnly";
+import { ReadOnlyBanner } from "@/components/ReadOnlyNotice";
+import { isAiEnabled, isReadOnly } from "@/lib/read-only";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({
@@ -37,6 +40,7 @@ export default async function RootLayout({
       ]),
     ),
   );
+  const flags = { readOnly: isReadOnly(), ai: isAiEnabled() };
   return (
     <html
       lang="ko"
@@ -56,9 +60,12 @@ export default async function RootLayout({
         />
       </head>
       <body className="min-h-full">
-        <AppShell notes={notes}>{children}</AppShell>
-        <CommandPalette />
-        <AskPanel />
+        <ReadOnlyProvider value={flags}>
+          {flags.readOnly && <ReadOnlyBanner />}
+          <AppShell notes={notes}>{children}</AppShell>
+          <CommandPalette />
+          {flags.ai && <AskPanel />}
+        </ReadOnlyProvider>
       </body>
     </html>
   );

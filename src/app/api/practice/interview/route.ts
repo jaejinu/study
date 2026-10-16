@@ -7,6 +7,7 @@ import { answerTurn, INTERVIEW_FINISH, interviewStart, interviewSystem } from "@
 import { saveInterview } from "@/lib/practice/store";
 import type { OpenAIMessage } from "@/lib/assistant/openai";
 import { logger } from "@/lib/log";
+import { aiDisabledResponse } from "@/lib/read-only";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -40,6 +41,8 @@ async function pickContext(subject: string, level: Level, seed: number) {
 }
 
 export async function POST(req: Request) {
+  const disabled = aiDisabledResponse();
+  if (disabled) return disabled;
   if (!openaiConfigured()) return Response.json({ error: NO_KEY_MESSAGE }, { status: 400 });
   let body: { subject?: string; level?: string; seed?: number; action?: "start" | "answer" | "finish"; messages?: Msg[] };
   try {

@@ -1,9 +1,12 @@
 import { execFile } from "node:child_process";
 import type { ShellCtx, ShellExperiment, ShellResult, ShellStep, ShResult } from "./types";
+import { isReadOnly, READ_ONLY_MESSAGE } from "@/lib/read-only";
 
 const MAX_OUT = 6000;
 
 export function exec(bin: string, args: string[], opts: { timeout?: number; input?: string } = {}): Promise<ShResult> {
+  // 공개판: 셸 명령은 어떤 경로로도 띄우지 않는다
+  if (isReadOnly()) return Promise.resolve({ ok: false, code: 126, out: "", err: READ_ONLY_MESSAGE });
   return new Promise((resolve) => {
     const child = execFile(
       bin,
@@ -81,6 +84,7 @@ export function createShellCtx(steps: ShellStep[]): ShellCtx {
 export async function runShellExperiment(exp: ShellExperiment | undefined, id: string): Promise<ShellResult> {
   const ranAt = new Date().toISOString();
   if (!exp) return { id, ok: false, steps: [], durationMs: 0, error: `실험을 찾을 수 없음: ${id}`, ranAt };
+  if (isReadOnly()) return { id, ok: false, steps: [], durationMs: 0, error: READ_ONLY_MESSAGE, ranAt };
   const steps: ShellStep[] = [];
   const ctx = createShellCtx(steps);
   const t0 = performance.now();

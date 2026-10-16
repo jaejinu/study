@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { storeAlerts, type ReceivedAlert } from "@/lib/alerts";
 import { logger } from "@/lib/log";
 import { metrics } from "@/lib/metrics";
+import { hiddenInReadOnly } from "@/lib/read-only";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,9 @@ interface AmPayload {
  * 알림을 Redis 에 저장하고, 로그·메트릭으로도 남긴다 (관측성 노트 09).
  */
 export async function POST(req: Request) {
+  // 공개판: Alertmanager 웹훅은 내부 전용
+  const hidden = hiddenInReadOnly();
+  if (hidden) return hidden;
   let payload: AmPayload;
   try {
     payload = (await req.json()) as AmPayload;
@@ -49,6 +53,8 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
+  const hidden = hiddenInReadOnly();
+  if (hidden) return hidden;
   const { recentAlerts } = await import("@/lib/alerts");
   return Response.json(await recentAlerts(50));
 }

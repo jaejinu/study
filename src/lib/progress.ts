@@ -1,4 +1,5 @@
 import { ensureConnected, getRedis } from "./redis";
+import { assertWritable, isReadOnly } from "./read-only";
 
 /**
  * 학습 진행률은 이 앱의 Redis 에 저장한다 (Redis 자료구조 활용 예).
@@ -96,6 +97,7 @@ export async function isRead(subject: string, slug: string): Promise<boolean> {
 }
 
 export async function setRead(subject: string, slug: string, on: boolean): Promise<void> {
+  assertWritable("진행 기록");
   const r = getRedis();
   await ensureConnected(r);
   if (on) await r.sadd("progress:read", `${subject}/${slug}`);
@@ -103,6 +105,7 @@ export async function setRead(subject: string, slug: string, on: boolean): Promi
 }
 
 export async function setCheck(subject: string, slug: string, line: number, on: boolean): Promise<void> {
+  assertWritable("진행 기록");
   const r = getRedis();
   await ensureConnected(r);
   const key = `progress:checks:${subject}/${slug}`;
@@ -111,6 +114,7 @@ export async function setCheck(subject: string, slug: string, line: number, on: 
 }
 
 export async function markLabDone(subject: string, id: string): Promise<void> {
+  if (isReadOnly()) return;
   const r = getRedis();
   try {
     await ensureConnected(r);

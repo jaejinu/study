@@ -4,6 +4,7 @@ import { createRecorder } from "@/lib/trace";
 import { markLabDone } from "@/lib/progress";
 import { getExperiment } from "./index";
 import type { ExperimentResult } from "./types";
+import { isReadOnly, READ_ONLY_MESSAGE } from "@/lib/read-only";
 
 export const LAB_PREFIX = "lab:";
 
@@ -22,6 +23,7 @@ export async function runExperiment(id: string): Promise<ExperimentResult> {
   const exp = getExperiment(id);
   const ranAt = new Date().toISOString();
   if (!exp) return { id, ok: false, steps: [], durationMs: 0, error: `실험을 찾을 수 없음: ${id}`, ranAt };
+  if (isReadOnly()) return { id, ok: false, steps: [], durationMs: 0, error: READ_ONLY_MESSAGE, ranAt };
 
   const rec = createRecorder();
   const base = getRedis();

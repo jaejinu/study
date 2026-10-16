@@ -5,6 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { REPORT_PATH, readLastReport, type TestReport } from "@/lib/report";
+import { isReadOnly, READ_ONLY_MESSAGE } from "@/lib/read-only";
 
 export interface RunTestsResult {
   ok: boolean;
@@ -15,6 +16,7 @@ export interface RunTestsResult {
 
 /** 브라우저에서 vitest 를 실행하고 JSON 리포트를 갱신한다 */
 export async function runTestsAction(): Promise<RunTestsResult> {
+  if (isReadOnly()) return { ok: false, report: null, output: "", error: READ_ONLY_MESSAGE };
   await fs.mkdir(path.dirname(REPORT_PATH), { recursive: true });
   const cwd = process.cwd();
   const output = await new Promise<string>((resolve) => {

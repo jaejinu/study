@@ -1,5 +1,7 @@
 import { exportBackup, listBackupFiles, summarize } from "@/lib/backup";
 import { RecordsActions } from "./RecordsActions";
+import { isReadOnly } from "@/lib/read-only";
+import { ReadOnlyPageNotice } from "@/components/ReadOnlyNotice";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "학습 기록" };
@@ -7,6 +9,15 @@ export const metadata = { title: "학습 기록" };
 const LABEL: Record<string, string> = { "progress:read": "읽은 노트", "progress:checks": "체크리스트", "progress:lab": "통과한 실험", "quiz:stats": "퀴즈 기록(주제)", "study:time": "노트별 학습 시간", "study:day": "일별 학습 시간", "lab:runs": "실험 실행 이력", memo: "노트 메모" };
 
 export default async function RecordsPage() {
+  if (isReadOnly())
+    return (
+      <div className="mx-auto max-w-3xl">
+        <h1 className="mb-4 text-2xl font-bold tracking-tight">학습 기록</h1>
+        <ReadOnlyPageNotice title="학습 기록·백업은 로컬에서만 동작합니다" commands={"pnpm backup                              # 로컬 Redis 의 기록을 backups/ 로 내보내기\npnpm backup:restore backups/파일.json   # 가져오기"}>
+          읽기 전용 공개판은 진행 기록을 서버에 저장하지 않으므로 내보내거나 가져올 기록이 없습니다.
+        </ReadOnlyPageNotice>
+      </div>
+    );
   let summary: Record<string, number> = {};
   let error = "";
   try {

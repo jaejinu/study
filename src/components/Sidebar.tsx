@@ -2,7 +2,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getSubject } from "@/lib/subjects";
+import { navState } from "@/lib/read-only";
 import type { NavigationNotes } from "./AppShell";
+import { useReadOnly } from "./ReadOnly";
 export function Sidebar({
   notes,
   onNavigate,
@@ -13,17 +15,27 @@ export function Sidebar({
   const pathname = usePathname();
   const subject = getSubject(pathname.split("/")[1]);
   const currentNotes = subject ? (notes[subject.id] ?? []) : [];
-  const nav = (href: string, label: string) => (
-    <Link
-      key={href}
-      href={href}
-      onClick={onNavigate}
-      aria-current={pathname === href ? "page" : undefined}
-      className={`nav-item ${pathname === href ? "active" : ""}`}
-    >
-      {label}
-    </Link>
-  );
+  const flags = useReadOnly();
+  // 읽기 전용 공개판: 실행형 메뉴(콘솔·키 브라우저·모니터·벤치마크·메모·백업, AI 꺼짐이면 AI)는 숨기고 훈련은 '로컬 전용' 표시
+  const visible = (href: string) => navState(href, flags) !== "hidden";
+  const nav = (href: string, label: string) => {
+    const state = navState(href, flags);
+    if (state === "hidden") return null;
+    return (
+      <Link
+        key={href}
+        href={href}
+        onClick={onNavigate}
+        aria-current={pathname === href ? "page" : undefined}
+        className={`nav-item ${pathname === href ? "active" : ""} ${state === "local" ? "opacity-60" : ""}`}
+        title={state === "local" ? "읽기 전용 공개판에서는 설명만 볼 수 있습니다 (실행은 로컬에서)" : undefined}
+      >
+        {label}
+        {state === "local" && " · 로컬 전용"}
+      </Link>
+    );
+  };
+  const subjectNav = subject ? subject.nav.filter((n) => visible(n.href)) : [];
   return (
     <aside className="study-sidebar">
       <nav aria-label="학습 탐색">
@@ -33,7 +45,7 @@ export function Sidebar({
         <div className="nav-group">
           {nav("/", subject ? "← 학습 홈" : "오늘의 학습")}
           {subject ? (
-            subject.nav.slice(0, 4).map((n) => nav(n.href, n.label))
+            subjectNav.slice(0, 4).map((n) => nav(n.href, n.label))
           ) : (
             <>
               {nav("/subjects", "전체 주제")}
@@ -60,10 +72,10 @@ export function Sidebar({
             )}
           </div>
         ) : null}
-        {subject && subject.nav.length > 4 && (
+        {subject && subjectNav.length > 4 && (
           <details className="nav-group">
             <summary className="nav-label cursor-pointer">실습 도구</summary>
-            {subject.nav.slice(4).map((n) => nav(n.href, n.label))}
+            {subjectNav.slice(4).map((n) => nav(n.href, n.label))}
           </details>
         )}
         <div className="nav-group nav-secondary">

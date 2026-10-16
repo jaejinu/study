@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toggleCheckAction, toggleReadAction } from "@/actions/progress";
 import { Button } from "./ui";
+import { useReadOnly } from "./ReadOnly";
 
 export function ReadToggle({ subject, slug, initial }: { subject: string; slug: string; initial: boolean }) {
   const [read, setRead] = useState(initial);
@@ -37,17 +38,21 @@ export function ReadToggle({ subject, slug, initial }: { subject: string; slug: 
 export function TaskCheckbox({ subject, slug, line, initial, label }: { subject: string; slug: string; line: number; initial: boolean; label?: string }) {
   const [on, setOn] = useState(initial);
   const [pending, start] = useTransition();
+  const { readOnly } = useReadOnly();
   return (
     <input
       type="checkbox"
       aria-label={label ? `체크리스트: ${label}` : "체크리스트 항목"}
       checked={on}
       disabled={pending}
+      title={readOnly ? "읽기 전용 공개판: 이 화면에서만 표시되고 저장되지 않습니다" : undefined}
       onChange={() =>
-        start(async () => {
-          const r = await toggleCheckAction(subject, slug, line, !on);
-          if (r.ok) setOn(!on);
-        })
+        readOnly
+          ? setOn(!on) // 공개판: 서버에 저장하지 않고 화면에서만
+          : start(async () => {
+              const r = await toggleCheckAction(subject, slug, line, !on);
+              if (r.ok) setOn(!on);
+            })
       }
       className="mr-1.5 h-4 w-4 cursor-pointer accent-[var(--ok)] align-middle"
     />

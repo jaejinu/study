@@ -2,6 +2,7 @@ import { armDeadman } from "@/lib/deadman";
 import { ensureConnected, getRedis } from "@/lib/redis";
 import { getDrill } from "./catalog";
 import type { Drill } from "./types";
+import { assertWritable } from "@/lib/read-only";
 
 /**
  * 훈련 진행 상태 — Redis
@@ -50,6 +51,7 @@ export async function getActive(id: string): Promise<ActiveDrill | null> {
 }
 
 export async function startDrill(id: string): Promise<{ ok: boolean; error?: string; active?: ActiveDrill }> {
+  assertWritable("장애 훈련");
   const d = getDrill(id);
   if (!d) return { ok: false, error: "없는 훈련" };
   const why = await d.requires();
@@ -78,6 +80,7 @@ export async function startDrill(id: string): Promise<{ ok: boolean; error?: str
 }
 
 export async function takeHint(id: string): Promise<{ ok: boolean; hint?: string; index?: number; error?: string }> {
+  assertWritable("장애 훈련");
   const d = getDrill(id);
   const a = await getActive(id);
   if (!d || !a) return { ok: false, error: "진행 중인 훈련이 아닙니다" };
@@ -98,6 +101,7 @@ async function finish(d: Drill, a: ActiveDrill, ok: boolean, gaveUp: boolean) {
 }
 
 export async function checkDrill(id: string): Promise<{ ok: boolean; passed?: boolean; detail?: string; ms?: number; error?: string }> {
+  assertWritable("장애 훈련");
   const d = getDrill(id);
   const a = await getActive(id);
   if (!d || !a) return { ok: false, error: "진행 중인 훈련이 아닙니다" };
@@ -108,6 +112,7 @@ export async function checkDrill(id: string): Promise<{ ok: boolean; passed?: bo
 }
 
 export async function giveUp(id: string): Promise<{ ok: boolean; error?: string }> {
+  assertWritable("장애 훈련");
   const d = getDrill(id);
   if (!d) return { ok: false, error: "없는 훈련" };
   const a = await getActive(id);

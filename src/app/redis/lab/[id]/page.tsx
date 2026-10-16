@@ -7,6 +7,8 @@ import { Markdown } from "@/components/Markdown";
 import { Badge, Card } from "@/components/ui";
 import { experiments, getExperiment } from "@/experiments";
 import { listNotes } from "@/lib/notes";
+import { isReadOnly } from "@/lib/read-only";
+import { LocalRunGuide } from "@/components/ReadOnlyNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -65,12 +67,12 @@ export default async function ExperimentPage({ params }: Props) {
 
       <section className="mt-6 rounded-xl border border-border bg-surface p-6">
         <h2 className="mb-3 text-lg font-semibold">실행 결과</h2>
-        <ExperimentRunner id={exp.id} />
+        {isReadOnly() ? <LocalRunGuide kind="redis" subject="redis" id={exp.id} /> : <ExperimentRunner id={exp.id} />}
       </section>
 
       <section className="mt-6 rounded-xl border border-border bg-surface p-6">
         <h2 className="mb-3 text-lg font-semibold">실행 이력</h2>
-        <LabHistory subject="redis" id={exp.id} />
+        {isReadOnly() ? <p className="text-[13px] text-muted">공개판에는 실행 이력이 없습니다. 로컬에서 실행하면 결과가 Redis Stream 에 쌓여 추이로 보입니다.</p> : <LabHistory subject="redis" id={exp.id} />}
       </section>
 
       <nav className="mt-10 flex justify-between border-t border-border pt-4 text-sm">

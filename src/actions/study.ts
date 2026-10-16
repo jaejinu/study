@@ -4,11 +4,13 @@ import { logger } from "@/lib/log";
 import { metrics } from "@/lib/metrics";
 import { addStudyTime, recordQuiz } from "@/lib/study";
 import type { Grade, QuizStat } from "@/lib/study-shared";
+import { isReadOnly, READ_ONLY_MESSAGE } from "@/lib/read-only";
 
 const ID = /^[a-z0-9-]+$/;
 const KEY = /^[a-f0-9]{12}$/;
 
 export async function recordQuizAction(subject: string, key: string, answer: Grade | boolean): Promise<{ ok: boolean; stat?: QuizStat; error?: string }> {
+  if (isReadOnly()) return { ok: false, error: READ_ONLY_MESSAGE };
   if (!ID.test(subject) || !KEY.test(key)) return { ok: false, error: "잘못된 식별자" };
   const grade: Grade = typeof answer === "boolean" ? (answer ? 3 : 1) : answer;
   if (![1, 2, 3, 4].includes(grade)) return { ok: false, error: "잘못된 평가" };
@@ -24,7 +26,8 @@ export async function recordQuizAction(subject: string, key: string, answer: Gra
 }
 
 /** 노트를 읽는 동안 클라이언트가 30초마다 호출한다 (탭이 보이고 활동이 있을 때만) */
-export async function studyHeartbeatAction(subject: string, slug: string, seconds: number): Promise<{ ok: boolean; total?: number }> {
+export async function studyHeartbeatAction(subject: string, slug: string, seconds: number): Promise<{ ok: boolean; total?: number; error?: string }> {
+  if (isReadOnly()) return { ok: false, error: READ_ONLY_MESSAGE };
   if (!ID.test(subject) || !ID.test(slug) || !Number.isInteger(seconds) || seconds <= 0 || seconds > 120) return { ok: false };
   try {
     const total = await addStudyTime(subject, slug, seconds);

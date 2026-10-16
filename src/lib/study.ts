@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { ensureConnected, getRedis } from "./redis";
 import { schedule, type Grade, type QuizStat } from "./study-shared";
+import { assertWritable } from "./read-only";
 
 export { fmtDuration, type QuizStat } from "./study-shared";
 
@@ -60,6 +61,7 @@ export async function getQuizStatsMany(subjects: string[]): Promise<Record<strin
 }
 
 export async function recordQuiz(subject: string, key: string, grade: Grade): Promise<QuizStat> {
+  assertWritable("퀴즈 기록");
   const r = getRedis();
   await ensureConnected(r);
   const field = `quiz:stats:${subject}`;
@@ -98,6 +100,7 @@ function day(ts = Date.now()): string {
 }
 
 export async function addStudyTime(subject: string, slug: string, seconds: number): Promise<number> {
+  assertWritable("학습 시간");
   const r = getRedis();
   await ensureConnected(r);
   const dayKey = `study:day:${day()}`;

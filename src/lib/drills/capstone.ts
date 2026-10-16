@@ -3,6 +3,7 @@ import { exec, runShellExperiment } from "@/shell-lab/runner";
 import { countChecks, getLabRuns, recordLabRun } from "@/lib/lab-history";
 import { recentAlerts } from "@/lib/alerts";
 import { ensureConnected, getRedis } from "@/lib/redis";
+import { assertWritable } from "@/lib/read-only";
 
 /**
  * 종합 과제(캡스톤) — 여러 주제를 하나의 운영 시나리오로 엮는다.
@@ -393,6 +394,7 @@ export async function getCapstoneState(id: string): Promise<CapstoneState> {
 }
 
 export async function startCapstone(id: string, force = false): Promise<void> {
+  assertWritable("캡스톤");
   const p = getCapstone(id);
   if (!p) return;
   const r = getRedis();
@@ -404,6 +406,7 @@ export async function startCapstone(id: string, force = false): Promise<void> {
 }
 
 export async function verifyCapstoneStep(id: string, stepId: string): Promise<StepResult> {
+  assertWritable("캡스톤 검증");
   const p = getCapstone(id);
   const step = p?.steps.find((s) => s.id === stepId);
   if (!p || !step) return { ok: false, detail: "없는 단계" };
@@ -421,6 +424,7 @@ export async function verifyCapstoneStep(id: string, stepId: string): Promise<St
 }
 
 export async function savePostmortem(id: string, text: string): Promise<void> {
+  assertWritable("캡스톤");
   if (!getCapstone(id)) return;
   await startCapstone(id);
   await getRedis().hset(key(id), "postmortem", text.slice(0, 20_000));

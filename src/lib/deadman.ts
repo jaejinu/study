@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { assertWritable } from "./read-only";
 
 /**
  * 데드맨 스위치 — 장애 주입 실험의 안전장치.
@@ -23,6 +24,7 @@ function shellQuote(s: string): string {
 }
 
 export function armDeadman(restoreCommand: string, seconds: number): Deadman {
+  assertWritable("데드맨 스위치");
   const child = spawn("sh", ["-c", `sleep ${Math.max(1, Math.round(seconds))}; ${restoreCommand} >/dev/null 2>&1`], { detached: true, stdio: "ignore" });
   child.unref();
   const pid = child.pid;

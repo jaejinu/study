@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { paletteSearchAction, type PaletteHit } from "@/actions/search";
+import { navState } from "@/lib/read-only";
 import { subjects } from "@/lib/subjects";
+import { useReadOnly } from "../ReadOnly";
 
 type Item = { kind: "page" | "subject" | PaletteHit["kind"]; title: string; href: string; hint?: string; subject?: string };
 
@@ -46,6 +48,7 @@ export function CommandPalette() {
   const [cursor, setCursor] = useState(0);
   const router = useRouter();
   const seq = useRef(0);
+  const flags = useReadOnly();
 
   const show = useCallback(() => {
     setQ("");
@@ -90,10 +93,13 @@ export function CommandPalette() {
       .filter((s) => !lower || s.name.toLowerCase().includes(lower) || s.id.includes(lower) || s.tagline.toLowerCase().includes(lower))
       .slice(0, lower ? 4 : 8)
       .map<Item>((s) => ({ kind: "subject", title: s.name, href: `/${s.id}`, hint: s.tagline, subject: s.id }));
-    const pages = PAGES.filter((p) => !lower || p.title.toLowerCase().includes(lower));
+    // 읽기 전용 공개판: 실행형 페이지는 숨기고, 훈련은 '로컬 전용' 표시
+    const pages = PAGES.filter((p) => navState(p.href, flags) !== "hidden")
+      .map((p) => (navState(p.href, flags) === "local" ? { ...p, title: `${p.title} · 로컬 전용`, hint: "공개판에서는 설명만 볼 수 있습니다" } : p))
+      .filter((p) => !lower || p.title.toLowerCase().includes(lower));
     const remote = hits.map<Item>((h) => ({ kind: h.kind, title: h.title, href: h.href, hint: h.snippet, subject: h.subject }));
     return [...remote, ...subj, ...pages];
-  }, [q, hits]);
+  }, [q, hits, flags]);
 
   const go = useCallback(
     (href: string) => {

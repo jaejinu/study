@@ -1,6 +1,7 @@
 import { TestRunner } from "@/components/TestRunner";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { readLastReport } from "@/lib/report";
+import { isReadOnly } from "@/lib/read-only";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "테스트" };
@@ -10,7 +11,7 @@ export default async function TestsPage() {
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader title="테스트 리포트" subtitle="실험실의 모든 실험은 vitest 테스트이기도 합니다. 실험 안의 ✓ 검증이 하나라도 실패하면 테스트가 실패합니다." />
-      <TestRunner />
+      {!isReadOnly() && <TestRunner />}
       <div className="mt-6">
         {!report ? (
           <Card className="p-4 text-sm text-muted">

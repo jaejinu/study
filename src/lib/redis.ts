@@ -1,4 +1,5 @@
 import Redis, { type RedisOptions } from "ioredis";
+import { isReadOnly, ReadOnlyError } from "./read-only";
 
 export const REDIS_URL = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
 
@@ -13,10 +14,24 @@ const baseOptions: RedisOptions = {
 declare global {
   // Next.js dev 모드의 HMR 에서도 커넥션이 중복 생성되지 않도록 global 에 보관한다.
   var __redisClient: Redis | undefined;
+  var __redisDisabledClient: Redis | undefined;
+}
+
+/**
+ * 읽기 전용 공개판(STUDY_READ_ONLY=1)용: 절대 연결하지 않는 클라이언트.
+ * connect() 가 즉시 실패하므로 명령은 enableOfflineQueue=false 에 따라 바로 거절되고, 소켓·타임아웃 대기가 없다.
+ * 읽는 함수들은 이미 실패 시 빈 값을 돌려주도록 되어 있어 Redis 없는 배포에서도 페이지가 빠르게 뜬다.
+ */
+function disabledClient(): Redis {
+  const client = new Redis(REDIS_URL, { ...baseOptions, lazyConnect: true, enableOfflineQueue: false, retryStrategy: () => null });
+  client.connect = () => Promise.reject(new ReadOnlyError("Redis 연결 안 함"));
+  client.on("error", () => {});
+  return client;
 }
 
 /** 애플리케이션 전역에서 공유하는 단일 커넥션 */
 export function getRedis(): Redis {
+  if (isReadOnly()) return (globalThis.__redisDisabledClient ??= disabledClient());
   if (!globalThis.__redisClient) {
     const client = new Redis(REDIS_URL, baseOptions);
     client.on("error", () => {
@@ -29,6 +44,7 @@ export function getRedis(): Redis {
 
 /** Pub/Sub, 블로킹 명령, WATCH 경쟁 재현 등을 위해 별도 커넥션이 필요할 때 사용 */
 export function createRedis(overrides: RedisOptions = {}): Redis {
+  if (isReadOnly()) return disabledClient();
   // host/port/sentinels 를 직접 지정하면 REDIS_URL 대신 그 옵션으로 접속한다
   const client = overrides.host || overrides.port || overrides.sentinels ? new Redis({ ...baseOptions, ...overrides }) : new Redis(REDIS_URL, { ...baseOptions, ...overrides });
   client.on("error", () => {});
@@ -36,6 +52,7 @@ export function createRedis(overrides: RedisOptions = {}): Redis {
 }
 
 export async function ensureConnected(client: Redis): Promise<void> {
+  if (isReadOnly()) throw new ReadOnlyError("Redis 연결 안 함");
   if (client.status === "ready") return;
   if (client.status === "wait" || client.status === "end") {
     await client.connect();

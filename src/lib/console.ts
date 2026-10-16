@@ -1,5 +1,6 @@
 import type Redis from "ioredis";
 import { createRedis, ensureConnected } from "./redis";
+import { isReadOnly, READ_ONLY_MESSAGE } from "./read-only";
 
 declare global {
   var __redisConsole: Redis | undefined;
@@ -61,6 +62,7 @@ export interface ConsoleResult {
 }
 
 export async function execLine(line: string): Promise<ConsoleResult> {
+  if (isReadOnly()) return { ok: false, cmd: "", error: READ_ONLY_MESSAGE, ms: 0 };
   const t0 = performance.now();
   const tokens = tokenize(line.trim());
   const cmd = tokens.join(" ");

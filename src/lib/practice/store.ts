@@ -1,4 +1,5 @@
 import { ensureConnected, getRedis } from "@/lib/redis";
+import { isReadOnly } from "@/lib/read-only";
 
 /**
  * 연습 기록 (이 앱의 Redis)
@@ -19,6 +20,7 @@ export interface InterviewRecord {
 }
 
 async function push(key: string, value: unknown, keep: number) {
+  if (isReadOnly()) return; // 공개판: 연습 기록을 서버에 남기지 않는다
   const r = getRedis();
   await ensureConnected(r);
   await r.multi().lpush(key, JSON.stringify(value)).ltrim(key, 0, keep - 1).exec();

@@ -5,6 +5,8 @@ import { openaiConfigured, PRACTICE_MODEL, NO_KEY_MESSAGE } from "@/lib/practice
 import { recentPractice } from "@/lib/practice/store";
 import { readEvalReport } from "@/lib/practice/eval";
 import { listNotes } from "@/lib/notes";
+import { isAiEnabled } from "@/lib/read-only";
+import { AiDisabledPage } from "@/components/ReadOnlyNotice";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "AI 학습 모드" };
@@ -18,6 +20,7 @@ const MODES = [
 const fmtTime = (at: number) => new Date(at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
 export default async function PracticePage() {
+  if (!isAiEnabled()) return <AiDisabledPage title="AI 학습 모드" />;
   const configured = openaiConfigured();
   const [recent, report] = await Promise.all([recentPractice(8), readEvalReport()]);
   const titles = new Map<string, string>();

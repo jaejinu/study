@@ -18,6 +18,7 @@ import { listNoteMemos } from "@/lib/memos";
 import { logger } from "@/lib/log";
 import { metrics } from "@/lib/metrics";
 import { getSubject } from "@/lib/subjects";
+import { isReadOnly } from "@/lib/read-only";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,7 @@ export default async function NotePage({ params }: Props) {
     : [];
   const readKeys = prereqNotes.length ? await getReadKeys() : new Set<string>();
   const memos = await listNoteMemos(subject.id, slug);
+  const readOnly = isReadOnly();
   const prev = all[idx - 1];
   const next = all[idx + 1];
   const base = `/${subject.id}/notes`;
@@ -135,16 +137,24 @@ export default async function NotePage({ params }: Props) {
           <Markdown content={note.content} checklist={{ subject: subject.id, slug, checked }} />
         </div>
 
-        <NoteMemos subject={subject.id} slug={slug} initial={memos} />
+        {readOnly ? (
+          <div className="mt-8 rounded-lg border border-border bg-surface px-4 py-3 text-[13px] text-muted">
+            🔒 읽기 전용 공개판에서는 진행 기록(읽음 표시·메모·학습 시간)이 저장되지 않습니다. 체크리스트와 아래 퀴즈는 이 화면에서만 표시되고 사라집니다.
+          </div>
+        ) : (
+          <>
+            <NoteMemos subject={subject.id} slug={slug} initial={memos} />
 
-        <div className="mt-8 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3">
-          <span className="text-sm text-muted">이 노트를 다 읽었다면</span>
-          <ReadToggle subject={subject.id} slug={slug} initial={read} />
-          <span className="ml-auto">
-            <StudyTimer subject={subject.id} slug={slug} initialSeconds={studySeconds} />
-          </span>
-          <span className="w-full text-[12.5px] text-muted">말로 꺼내 보기: <Link href={`/practice/explain?subject=${subject.id}&slug=${slug}`} className="text-info hover:underline">이 노트로 설명해 보기</Link> · <Link href={`/practice/interview?subject=${subject.id}`} className="text-info hover:underline">{subject.name} 면접 연습</Link></span>
-        </div>
+            <div className="mt-8 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3">
+              <span className="text-sm text-muted">이 노트를 다 읽었다면</span>
+              <ReadToggle subject={subject.id} slug={slug} initial={read} />
+              <span className="ml-auto">
+                <StudyTimer subject={subject.id} slug={slug} initialSeconds={studySeconds} />
+              </span>
+              <span className="w-full text-[12.5px] text-muted">말로 꺼내 보기: <Link href={`/practice/explain?subject=${subject.id}&slug=${slug}`} className="text-info hover:underline">이 노트로 설명해 보기</Link> · <Link href={`/practice/interview?subject=${subject.id}`} className="text-info hover:underline">{subject.name} 면접 연습</Link></span>
+            </div>
+          </>
+        )}
 
         {(related.length > 0 || cards.length > 0) && (
           <section id="note-practice" className="mt-8 scroll-mt-16 rounded-xl border border-border bg-surface p-5">
