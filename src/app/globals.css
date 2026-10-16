@@ -940,3 +940,6 @@ html[data-focus="true"] .mobile-toc {
 .code-surface{background:var(--code);color:var(--foreground)}
 .clamp-1{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 html[data-focus="true"] .reader-mobile-toc{display:none}
+
+/* 내 메모 하이라이트 */
+.memo-mark { background: color-mix(in srgb, var(--warn) 30%, transparent); color: inherit; border-radius: 2px; padding: 0 1px; cursor: help; }

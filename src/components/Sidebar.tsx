@@ -71,6 +71,7 @@ export function Sidebar({
           {nav("/review", "오늘의 복습")}
           {nav("/path", "학습 경로")}
           {nav("/mastery", "약점 지도")}
+          {nav("/memos", "내 메모")}
           {nav("/records", "학습 기록·백업")}
           {nav("/assistant", "AI 도우미")}
           {nav("/glossary", "용어집")}

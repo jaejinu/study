@@ -6,7 +6,7 @@ import { ensureConnected, getRedis } from "./redis";
  * 학습 기록 백업·복원. 진행률·퀴즈 기록·학습 시간·실험 이력은 이 앱의 Redis 에만 있으므로
  * JSON 으로 내보내고 가져온다. 자료구조(Set·Hash·String·Stream)와 TTL 을 그대로 보존한다.
  */
-export const BACKUP_PATTERNS = ["progress:*", "quiz:stats:*", "study:*", "lab:runs:*"] as const;
+export const BACKUP_PATTERNS = ["progress:*", "quiz:stats:*", "study:*", "lab:runs:*", "memo:*"] as const;
 export const BACKUP_DIR = path.join(process.cwd(), "backups");
 
 type Entry =

@@ -13,6 +13,8 @@ import { StudyTimer } from "@/components/StudyTimer";
 import { Toc, TocPanel } from "@/components/Toc";
 import { RecentTracker } from "@/components/shell/recent";
 import { NoteReader } from "@/components/NoteReader";
+import { NoteMemos } from "@/components/NoteMemos";
+import { listNoteMemos } from "@/lib/memos";
 import { logger } from "@/lib/log";
 import { metrics } from "@/lib/metrics";
 import { getSubject } from "@/lib/subjects";
@@ -57,6 +59,7 @@ export default async function NotePage({ params }: Props) {
       ).then((xs) => xs.filter((x): x is NonNullable<typeof x> => x !== null))
     : [];
   const readKeys = prereqNotes.length ? await getReadKeys() : new Set<string>();
+  const memos = await listNoteMemos(subject.id, slug);
   const prev = all[idx - 1];
   const next = all[idx + 1];
   const base = `/${subject.id}/notes`;
@@ -131,6 +134,8 @@ export default async function NotePage({ params }: Props) {
         <div className="mt-6">
           <Markdown content={note.content} checklist={{ subject: subject.id, slug, checked }} />
         </div>
+
+        <NoteMemos subject={subject.id} slug={slug} initial={memos} />
 
         <div className="mt-8 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3">
           <span className="text-sm text-muted">이 노트를 다 읽었다면</span>

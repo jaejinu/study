@@ -4,7 +4,7 @@ import { RecordsActions } from "./RecordsActions";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "학습 기록" };
 
-const LABEL: Record<string, string> = { "progress:read": "읽은 노트", "progress:checks": "체크리스트", "progress:lab": "통과한 실험", "quiz:stats": "퀴즈 기록(주제)", "study:time": "노트별 학습 시간", "study:day": "일별 학습 시간", "lab:runs": "실험 실행 이력" };
+const LABEL: Record<string, string> = { "progress:read": "읽은 노트", "progress:checks": "체크리스트", "progress:lab": "통과한 실험", "quiz:stats": "퀴즈 기록(주제)", "study:time": "노트별 학습 시간", "study:day": "일별 학습 시간", "lab:runs": "실험 실행 이력", memo: "노트 메모" };
 
 export default async function RecordsPage() {
   let summary: Record<string, number> = {};
