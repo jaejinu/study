@@ -43,5 +43,55 @@
   "note": "08-ops-debugging",
   "q": "셸이 없는 distroless 컨테이너를 디버깅하는 방법은?",
   "a": "kubectl debug -it pod --image=netshoot --target=container 로 디버그 컨테이너를 같은 네임스페이스에 붙인다."
+ },
+ {
+  "note": "11-operators-crds",
+  "q": "컨트롤러가 '레벨 기반' 이라는 말의 의미는?",
+  "a": "이벤트가 아니라 현재 상태를 보고 조정한다. 이벤트를 놓쳐도 다음 reconcile 에서 맞춘다."
+ },
+ {
+  "note": "11-operators-crds",
+  "q": "CRD 만 만들면 무슨 일이 일어나나?",
+  "a": "저장·조회·스키마 검증·출력 컬럼은 되지만 동작은 없다. Operator(컨트롤러) 가 붙어야 reconcile 된다."
+ },
+ {
+  "note": "11-operators-crds",
+  "q": "finalizer 는 언제 필요한가?",
+  "a": "외부 자원(클라우드 디스크, DNS) 을 정리해야 할 때. finalizer 가 제거될 때까지 실제 삭제가 보류된다."
+ },
+ {
+  "note": "12-network-policy-mesh",
+  "q": "NetworkPolicy 로 기본 거부를 걸었는데 모든 통신이 깨지는 흔한 원인은?",
+  "a": "DNS(kube-system 53/UDP) egress 를 열지 않았다. 거부 규칙은 없고 허용의 합집합이므로 DNS 허용 정책이 필요."
+ },
+ {
+  "note": "12-network-policy-mesh",
+  "q": "Gateway API 가 Ingress 보다 나은 점은?",
+  "a": "표준 리소스로 역할(인프라/플랫폼/앱)을 분리하고 가중치·헤더 매칭·리다이렉트를 어노테이션 없이 선언한다."
+ },
+ {
+  "note": "13-gitops-progressive-delivery",
+  "q": "GitOps 의 pull 모델이 push 모델보다 안전한 이유는?",
+  "a": "클러스터 안 에이전트가 git 을 당겨 적용하므로 CI 에 클러스터 자격 증명이 필요 없고, 드리프트를 자동 복구한다."
+ },
+ {
+  "note": "13-gitops-progressive-delivery",
+  "q": "Argo Rollouts 의 AnalysisTemplate 은 무엇을 하나?",
+  "a": "카나리 단계에서 Prometheus 질의(성공률 등)를 평가해 자동 승격 또는 롤백한다."
+ },
+ {
+  "note": "14-scheduling-autoscaling-deep",
+  "q": "스케줄러가 쓰는 '화폐' 는 requests 인가 limits 인가?",
+  "a": "requests. limits 는 스케줄링에 쓰이지 않는다. requests 없이 배포하면 한 노드에 몰린다."
+ },
+ {
+  "note": "14-scheduling-autoscaling-deep",
+  "q": "PDB minAvailable: 1 에 복제본 1 이면 어떤 문제가 생기나?",
+  "a": "노드 drain 이 영원히 막힌다. 복제본을 2 이상으로 둔다."
+ },
+ {
+  "note": "14-scheduling-autoscaling-deep",
+  "q": "KEDA 가 HPA 와 다른 점은?",
+  "a": "외부 이벤트 소스(Kafka LAG, Redis 길이, cron 등)로 스케일하고 0 으로 줄일 수 있다."
  }
 ]

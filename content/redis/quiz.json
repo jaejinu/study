@@ -78,5 +78,50 @@
   "note": "13-probabilistic",
   "q": "HyperLogLog 로 할 수 없는 질문은?",
   "a": "특정 멤버가 포함되어 있는지(멤버십). 카디널리티(고유 개수)만 근사한다."
+ },
+ {
+  "note": "16-internals-deep-dive",
+  "q": "I/O 스레드를 켜도 '느린 명령 = 전체 정지' 인 이유는?",
+  "a": "I/O 스레드는 읽기·파싱·쓰기만 나눈다. 명령 실행은 여전히 메인 스레드 하나에서 순차 실행된다."
+ },
+ {
+  "note": "16-internals-deep-dive",
+  "q": "dict 리해싱이 수억 개 키에서도 서버를 멈추지 않는 이유는?",
+  "a": "점진적 리해싱: 명령마다 버킷 몇 개, serverCron 에서 1ms 씩 옮긴다. 그동안 두 테이블을 모두 조회해 SCAN 이 중복을 줄 수 있다."
+ },
+ {
+  "note": "16-internals-deep-dive",
+  "q": "큰 해시에서 필드를 지워 작아지면 listpack 으로 돌아가나?",
+  "a": "아니다. 인코딩 전환은 작→큼 한 방향이다."
+ },
+ {
+  "note": "17-client-design",
+  "q": "ioredis 에서 commandTimeout 을 꼭 설정해야 하는 이유는?",
+  "a": "기본이 무제한이라 네트워크 블랙홀 시 요청이 영원히 걸려 이벤트 루프/커넥션을 점유한다."
+ },
+ {
+  "note": "17-client-design",
+  "q": "캐시 용도의 클라이언트에 enableOfflineQueue: false 가 적합한 이유는?",
+  "a": "Redis 가 죽었을 때 명령을 큐에 쌓지 않고 즉시 실패해 DB 로 폴백(fail-open)하고 메모리 폭발을 막는다."
+ },
+ {
+  "note": "18-design-recipes",
+  "q": "지연 큐를 ZSET 으로 만들 때 score 와 claim 방법은?",
+  "a": "score = 실행 시각(ms). ZRANGEBYSCORE 로 후보를 뽑고 ZREM 반환값 1 로 내가 가져감을 원자적으로 확정(또는 Lua)."
+ },
+ {
+  "note": "18-design-recipes",
+  "q": "1억 멤버 리더보드가 단일 ZSET 이면 생기는 문제와 해법은?",
+  "a": "약 10GB 빅 키·핫 키. uid % N 으로 샤딩하고 상위 100 은 샤드별 top-100 병합, 전역 순위는 구간 카운트로 근사."
+ },
+ {
+  "note": "19-performance-tuning",
+  "q": "LATENCY LATEST 에 fork 이벤트가 뜨면 무엇을 의심하나?",
+  "a": "BGSAVE/AOF rewrite 의 fork 지연. 큰 인스턴스, THP 켜짐, 메모리 부족. 인스턴스 축소·THP 끄기·rewrite 시간대 조정."
+ },
+ {
+  "note": "19-performance-tuning",
+  "q": "CLIENT TRACKING 이 TTL 기반 로컬 캐시보다 나은 점은?",
+  "a": "서버가 내가 읽은 키의 변경을 푸시해 정확한 시점에 무효화한다. RESP3 필요, BCAST 모드로 서버 메모리 절약."
  }
 ]

@@ -38,5 +38,35 @@
   "note": "06-optimization-security",
   "q": "이미지에 ENV API_KEY=... 를 넣으면 안 되는 이유는?",
   "a": "레이어 메타데이터에 영구히 남아 docker history 로 보인다. 런타임 주입이나 --mount=type=secret 사용."
+ },
+ {
+  "note": "08-internals-namespaces-cgroups",
+  "q": "CPU limit 이 '느려짐' 이 아니라 '멈춤' 으로 나타나는 이유는?",
+  "a": "cgroup 의 cpu.max 는 주기(100ms) 안 할당량을 다 쓰면 남은 시간 동안 throttling 한다. nr_throttled 로 확인."
+ },
+ {
+  "note": "08-internals-namespaces-cgroups",
+  "q": "컨테이너 안 nproc 이 호스트 코어 수를 보여주는 이유는?",
+  "a": "CPU 는 namespace 가 아니라 cgroup 으로 제한되어 가시성은 그대로다. 런타임이 cgroup 을 읽게 설정해야 한다."
+ },
+ {
+  "note": "09-buildkit-multiplatform",
+  "q": "RUN --mount=type=cache 와 레이어 캐시의 차이는?",
+  "a": "캐시 마운트는 패키지 매니저 캐시를 빌드 간 유지하되 레이어에 남기지 않는다. 레이어 캐시는 명령 결과 자체의 재사용."
+ },
+ {
+  "note": "09-buildkit-multiplatform",
+  "q": "멀티플랫폼 이미지를 pull 하면 어떻게 자기 플랫폼 이미지를 받나?",
+  "a": "태그가 매니페스트 리스트를 가리키고, 클라이언트가 자기 OS/arch 에 맞는 다이제스트를 골라 받는다."
+ },
+ {
+  "note": "10-security-hardening",
+  "q": "docker.sock 을 :ro 로 마운트해도 위험한 이유는?",
+  "a": "읽기 전용 마운트라도 API 호출로 컨테이너 생성이 가능해 사실상 호스트 root 와 같다. 소켓 프록시나 파일 경로 마운트로 대체."
+ },
+ {
+  "note": "10-security-hardening",
+  "q": "Redis 컨테이너에 --cap-drop ALL 을 해도 되는 이유는?",
+  "a": "비특권 포트에서 동작하고 특별한 capability 가 필요 없다. 80 포트 바인딩 같은 경우만 NET_BIND_SERVICE 추가."
  }
 ]

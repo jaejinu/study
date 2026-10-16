@@ -13,7 +13,7 @@
 | 대시보드 | `/<subject>` | 환경 점검 카드(Redis INFO, Docker, kind 클러스터, Kafka 브로커, PostgreSQL, Prometheus/Grafana, gh run list, Nginx, 내 네트워크), 학습 로드맵·진행률 |
 | 학습 노트 | `/<subject>/notes` | `content/<subject>/notes/*.md` 를 목차 순으로 렌더링. 노트별 TOC |
 | 실험실 | `/<subject>/lab` | Redis 명령 / docker / kubectl / kafkajs / pg / 네트워크 도구 / Redis 벡터 검색을 실제로 실행하고 단계·응답·시간·검증(✓/✗)을 표시 |
-| 검색 · 용어집 · 퀴즈 · 그래프 | `/search`, `/glossary`, `/<subject>/quiz`, `/graph` | 전문 검색, 용어 98개, 플래시카드, 노트↔실험 링크 그래프 |
+| 검색 · 용어집 · 퀴즈 · 그래프 | `/search`, `/glossary`, `/<subject>/quiz`, `/graph` | 전문 검색, 용어 128개, 플래시카드 150+장, 노트↔실험 링크 그래프 |
 | 모니터 · 벤치마크 | `/redis/monitor`, `/redis/benchmark` | INFO·SLOWLOG 실시간, redis-benchmark 차트 |
 | 콘솔 | `/redis/console` | 브라우저 redis-cli. 위험 명령(FLUSHALL, CONFIG SET 등)은 차단 |
 | 키 브라우저 | `/redis/keys` | SCAN 으로 키 순회, 타입·인코딩·TTL·메모리, 값 미리보기, 삭제 |
@@ -88,7 +88,9 @@ Redis 가 없다면 `brew install redis`. 다른 주소를 쓰려면 `.env.local
 6. 이미지 최적화와 보안
 7. 운영 명령과 디버깅
 
-### Kafka (4) · PostgreSQL (5) · 관측성 (8) · GitHub Actions (3) · Nginx (3) · Linux 네트워크 (5) · AI 시스템 설계 (6) · 시스템 아키텍처 (7)
+### Redis (19) · Docker (10) · Kubernetes (14) · Kafka (7) · PostgreSQL (8) · 관측성 (8) · GitHub Actions (4) · Nginx (4) · Linux 네트워크 (6) · AI 시스템 설계 (6) · 시스템 아키텍처 (7)
+
+총 93편. 각 주제는 기초 → 중급 → **심화**(내부 구조·운영·튜닝·보안) 순서이고, 심화 노트는 실제 명령·설정·코드 예시와 다이어그램을 포함한다.
 
 각 주제 페이지의 목차를 참고. 모든 노트는 `content/<subject>/notes/` 에 있다.
 

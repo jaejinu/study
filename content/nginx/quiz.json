@@ -28,5 +28,20 @@
   "note": "03-cache-tls-ratelimit",
   "q": "add_header 의 흔한 함정은?",
   "a": "하위 블록에 add_header 가 하나라도 있으면 상위 블록의 add_header 를 상속하지 않는다."
+ },
+ {
+  "note": "04-internals-performance-openresty",
+  "q": "limit_req 가 auth_request 보다 먼저 거절하는 이유는?",
+  "a": "phase 순서: limit_req 는 PREACCESS, auth_request 는 ACCESS 단계다."
+ },
+ {
+  "note": "04-internals-performance-openresty",
+  "q": "업스트림 keepalive 가 없을 때 생기는 증상은?",
+  "a": "요청마다 앱에 새 TCP 연결 → TIME_WAIT 폭증, 지연 증가. proxy_http_version 1.1 + Connection \"\" 필요."
+ },
+ {
+  "note": "04-internals-performance-openresty",
+  "q": "OpenResty Lua 에서 블로킹 라이브러리를 쓰면?",
+  "a": "워커의 이벤트 루프가 멈춰 그 워커의 모든 연결이 지연된다. cosocket 기반 논블로킹 API 만 사용."
  }
 ]

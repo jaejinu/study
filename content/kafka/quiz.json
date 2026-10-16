@@ -33,5 +33,40 @@
   "note": "04-delivery-guarantees",
   "q": "DB 쓰기와 Kafka 발행을 원자적으로 묶는 패턴은?",
   "a": "Outbox: 같은 DB 트랜잭션에 outbox 테이블로 이벤트를 쓰고 별도 프로세스/CDC 가 Kafka 로 전달."
+ },
+ {
+  "note": "05-internals-storage-replication",
+  "q": "retention.ms 를 짧게 했는데 데이터가 안 지워지는 이유는?",
+  "a": "삭제는 세그먼트 단위이고 활성 세그먼트는 지우지 않는다. segment.ms/segment.bytes 로 롤되어야 삭제 대상이 된다."
+ },
+ {
+  "note": "05-internals-storage-replication",
+  "q": "High Watermark 가 소비자를 보호하는 방식은?",
+  "a": "ISR 전체가 복제한 오프셋까지만 읽게 해, 리더 교체 시 '읽었는데 사라지는' 메시지를 막는다."
+ },
+ {
+  "note": "05-internals-storage-replication",
+  "q": "브로커 JVM 힙을 작게 두는 이유는?",
+  "a": "Kafka 는 자체 캐시 대신 OS 페이지 캐시에 의존하므로 RAM 을 페이지 캐시에 남겨야 소비가 디스크를 안 거친다."
+ },
+ {
+  "note": "06-streams-connect-schema",
+  "q": "KStream 과 KTable 의 의미 차이는?",
+  "a": "KStream 은 이벤트 흐름(insert), KTable 은 키별 최신 값(upsert). 컴팩션 토픽이 KTable 에 대응."
+ },
+ {
+  "note": "06-streams-connect-schema",
+  "q": "Schema Registry 의 BACKWARD 호환성에서 허용되는 변경과 배포 순서는?",
+  "a": "필드 삭제, 기본값 있는 필드 추가. 소비자를 먼저 배포한다."
+ },
+ {
+  "note": "07-operations-tuning",
+  "q": "리밸런스 폭풍을 줄이는 세 가지 방법은?",
+  "a": "순차 배포, static membership(group.instance.id), CooperativeStickyAssignor. 처리 시간은 max.poll.interval.ms 안에."
+ },
+ {
+  "note": "07-operations-tuning",
+  "q": "UnderReplicatedPartitions > 0 이 뜻하는 것은?",
+  "a": "ISR 이 복제 계수보다 작다. 브로커·디스크·네트워크 문제로 팔로워가 못 따라오고 있다."
  }
 ]

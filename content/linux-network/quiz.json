@@ -38,5 +38,20 @@
   "note": "05-tools",
   "q": "ECONNREFUSED 와 타임아웃의 차이는?",
   "a": "거부는 포트에 아무도 안 들음(RST 응답). 타임아웃은 방화벽/보안그룹이 SYN 을 버림."
+ },
+ {
+  "note": "06-kernel-stack-ebpf-performance",
+  "q": "BDP 가 처리량에 미치는 영향은?",
+  "a": "대역폭×RTT 만큼 윈도우가 필요하다. 소켓 버퍼 상한이 작으면 처리량이 RTT 에 반비례해 떨어진다."
+ },
+ {
+  "note": "06-kernel-stack-ebpf-performance",
+  "q": "nf_conntrack: table full 이 뜨면?",
+  "a": "연결 추적 테이블이 가득 차 패킷이 조용히 버려진다. nf_conntrack_max 를 늘리고 TIME_WAIT 타임아웃을 줄인다."
+ },
+ {
+  "note": "06-kernel-stack-ebpf-performance",
+  "q": "XDP 가 iptables 보다 DDoS 방어에 유리한 이유는?",
+  "a": "드라이버 수신 직후 sk_buff 생성 전에 패킷을 드롭해 커널 스택 비용을 아예 쓰지 않는다."
  }
 ]

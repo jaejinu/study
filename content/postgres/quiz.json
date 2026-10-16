@@ -38,5 +38,40 @@
   "note": "05-operations",
   "q": "pg_dump 와 PITR 의 차이는?",
   "a": "pg_dump 는 특정 시점 논리 백업. PITR 은 베이스 백업 + WAL 아카이브로 임의 시점(예: 실수 직전)으로 복구한다."
+ },
+ {
+  "note": "06-partitioning-scale",
+  "q": "파티션 프루닝이 안 되는 WHERE 조건의 예는?",
+  "a": "파티션 키에 함수를 적용한 조건(date_trunc(created_at)). 키를 상수/파라미터와 직접 비교해야 한다."
+ },
+ {
+  "note": "06-partitioning-scale",
+  "q": "오래된 데이터 삭제에 DELETE 대신 무엇을 쓰나?",
+  "a": "DETACH PARTITION … CONCURRENTLY 후 DROP TABLE. 수 ms, 잠금 최소, VACUUM 불필요."
+ },
+ {
+  "note": "07-query-optimization-deep",
+  "q": "OFFSET 페이지네이션이 느린 이유와 대안은?",
+  "a": "앞 N 행을 읽고 버린다. (created_at, id) < ($1,$2) 조건의 keyset 페이지네이션 + 해당 인덱스."
+ },
+ {
+  "note": "07-query-optimization-deep",
+  "q": "Hash Join 에서 'Batches: 8' 이 보이면?",
+  "a": "work_mem 이 부족해 해시 테이블을 디스크로 나눴다. 세션에서 work_mem 을 올린다."
+ },
+ {
+  "note": "07-query-optimization-deep",
+  "q": "SSD 에서 random_page_cost 를 낮추는 이유는?",
+  "a": "기본 4 는 HDD 가정. 1.1 로 낮추면 플래너가 인덱스 스캔을 더 올바르게 선호한다."
+ },
+ {
+  "note": "08-jsonb-fulltext-pgvector",
+  "q": "attrs->>'brand' = 'x' 가 GIN 인덱스를 못 타는 이유는?",
+  "a": "GIN 은 @>, ? 연산자용이다. 특정 키 등호 조회는 표현식 B-tree 인덱스를 따로 만든다."
+ },
+ {
+  "note": "08-jsonb-fulltext-pgvector",
+  "q": "pgvector 에서 WHERE 필터 + ORDER BY 거리 조합의 함정은?",
+  "a": "필터가 선택적이면 플래너가 HNSW 를 버리고 전수 비교할 수 있다. 파티셔닝이나 반복 스캔 옵션으로 대응."
  }
 ]

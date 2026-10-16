@@ -586,5 +586,185 @@
   "subject": "architecture",
   "def": "새 버전에 트래픽을 1%→10%→100% 점진 전환하며 메트릭으로 판정하는 배포 전략.",
   "link": "/architecture/notes/07-operations-architecture"
+ },
+ {
+  "term": "점진적 리해싱",
+  "subject": "redis",
+  "def": "dict 확장 시 버킷을 조금씩 옮겨 서버 정지를 피하는 방식. SCAN 중복의 원인.",
+  "link": "/redis/notes/16-internals-deep-dive"
+ },
+ {
+  "term": "RESP3",
+  "subject": "redis",
+  "def": "타입이 있는 응답과 클라이언트 측 캐싱 푸시(CLIENT TRACKING)를 지원하는 Redis 6+ 프로토콜. HELLO 3 으로 전환.",
+  "link": "/redis/notes/16-internals-deep-dive"
+ },
+ {
+  "term": "CLIENT TRACKING",
+  "subject": "redis",
+  "def": "서버가 클라이언트가 읽은 키의 변경을 푸시해 로컬 캐시를 정확히 무효화하는 기능.",
+  "link": "/redis/notes/19-performance-tuning"
+ },
+ {
+  "term": "cgroup",
+  "subject": "docker",
+  "def": "프로세스 그룹의 CPU·메모리·I/O 사용량을 제한·계측하는 커널 기능. 컨테이너 자원 제한의 실체.",
+  "link": "/docker/notes/08-internals-namespaces-cgroups"
+ },
+ {
+  "term": "namespace (Linux)",
+  "subject": "docker",
+  "def": "PID·네트워크·마운트·UTS·IPC·사용자 등 프로세스가 보는 세계를 격리하는 커널 기능.",
+  "link": "/docker/notes/08-internals-namespaces-cgroups"
+ },
+ {
+  "term": "매니페스트 리스트",
+  "subject": "docker",
+  "def": "태그 하나에 플랫폼별 이미지 다이제스트를 묶은 멀티플랫폼 이미지 인덱스.",
+  "link": "/docker/notes/09-buildkit-multiplatform"
+ },
+ {
+  "term": "capabilities",
+  "subject": "docker",
+  "def": "root 권한을 잘게 나눈 단위. --cap-drop ALL 후 필요한 것만 추가한다.",
+  "link": "/docker/notes/10-security-hardening"
+ },
+ {
+  "term": "reconcile",
+  "subject": "kubernetes",
+  "def": "컨트롤러가 현재 상태와 원하는 상태의 차이를 메우는 멱등 함수. 레벨 기반으로 반복 실행.",
+  "link": "/kubernetes/notes/11-operators-crds"
+ },
+ {
+  "term": "CRD",
+  "subject": "kubernetes",
+  "def": "Custom Resource Definition. API 에 새 리소스 타입을 추가. Operator 가 동작을 붙인다.",
+  "link": "/kubernetes/notes/11-operators-crds"
+ },
+ {
+  "term": "Gateway API",
+  "subject": "kubernetes",
+  "def": "Ingress 의 후속 표준. GatewayClass/Gateway/HTTPRoute 로 역할을 분리하고 가중치 라우팅 지원.",
+  "link": "/kubernetes/notes/12-network-policy-mesh"
+ },
+ {
+  "term": "서비스 메시",
+  "subject": "kubernetes",
+  "def": "사이드카/노드 프록시로 서비스 간 트래픽을 가로채 mTLS·재시도·관측을 제공하는 계층 (Istio, Linkerd).",
+  "link": "/kubernetes/notes/12-network-policy-mesh"
+ },
+ {
+  "term": "GitOps",
+  "subject": "kubernetes",
+  "def": "git 을 원천으로 클러스터 안 에이전트(ArgoCD/Flux)가 선언 상태를 당겨 적용하고 드리프트를 조정하는 운영 모델.",
+  "link": "/kubernetes/notes/13-gitops-progressive-delivery"
+ },
+ {
+  "term": "PodDisruptionBudget",
+  "subject": "kubernetes",
+  "def": "자발적 중단(drain) 중 최소 가용 Pod 수를 보장하는 리소스.",
+  "link": "/kubernetes/notes/14-scheduling-autoscaling-deep"
+ },
+ {
+  "term": "KEDA",
+  "subject": "kubernetes",
+  "def": "Kafka LAG·큐 길이·cron 등 외부 이벤트로 워크로드를 0↔N 스케일하는 오토스케일러.",
+  "link": "/kubernetes/notes/14-scheduling-autoscaling-deep"
+ },
+ {
+  "term": "High Watermark",
+  "subject": "kafka",
+  "def": "ISR 전체가 복제한 마지막 오프셋. 소비자는 여기까지만 읽어 리더 교체 시 유실 노출을 피한다.",
+  "link": "/kafka/notes/05-internals-storage-replication"
+ },
+ {
+  "term": "세그먼트 (Kafka)",
+  "subject": "kafka",
+  "def": "파티션 로그를 나눈 파일 단위. 보존·컴팩션은 세그먼트 단위로, 활성 세그먼트는 제외.",
+  "link": "/kafka/notes/05-internals-storage-replication"
+ },
+ {
+  "term": "KTable",
+  "subject": "kafka",
+  "def": "Kafka Streams 에서 키별 최신 값을 나타내는 추상화. 컴팩션 토픽과 대응.",
+  "link": "/kafka/notes/06-streams-connect-schema"
+ },
+ {
+  "term": "Schema Registry",
+  "subject": "kafka",
+  "def": "토픽별 스키마 버전을 저장하고 호환성(BACKWARD/FORWARD/FULL)을 검사하는 서비스.",
+  "link": "/kafka/notes/06-streams-connect-schema"
+ },
+ {
+  "term": "파티션 프루닝",
+  "subject": "postgres",
+  "def": "WHERE 의 파티션 키 조건으로 불필요한 파티션을 계획에서 제외하는 것.",
+  "link": "/postgres/notes/06-partitioning-scale"
+ },
+ {
+  "term": "keyset 페이지네이션",
+  "subject": "postgres",
+  "def": "OFFSET 대신 마지막 행의 정렬 키로 다음 페이지를 조회하는 방식. 깊은 페이지도 빠르다.",
+  "link": "/postgres/notes/07-query-optimization-deep"
+ },
+ {
+  "term": "work_mem",
+  "subject": "postgres",
+  "def": "정렬·해시 작업마다 할당되는 메모리. 부족하면 디스크 정렬/배치. 세션 단위로 올리는 것이 안전.",
+  "link": "/postgres/notes/07-query-optimization-deep"
+ },
+ {
+  "term": "pgvector",
+  "subject": "postgres",
+  "def": "PostgreSQL 에 vector 타입과 HNSW/IVFFlat 인덱스를 추가하는 확장. 조인·트랜잭션과 함께 벡터 검색.",
+  "link": "/postgres/notes/08-jsonb-fulltext-pgvector"
+ },
+ {
+  "term": "RLS (Row Level Security)",
+  "subject": "postgres",
+  "def": "정책으로 행 단위 접근을 DB 가 강제. 멀티테넌트 격리에 사용.",
+  "link": "/postgres/notes/08-jsonb-fulltext-pgvector"
+ },
+ {
+  "term": "머지 큐",
+  "subject": "github-actions",
+  "def": "여러 PR 을 main 에 순차 적용한 상태로 CI 를 돌려 통합 시 깨짐을 막는 GitHub 기능 (merge_group).",
+  "link": "/github-actions/notes/04-monorepo-release-security"
+ },
+ {
+  "term": "cosign",
+  "subject": "github-actions",
+  "def": "컨테이너 이미지에 서명하고 검증하는 Sigstore 도구. keyless(OIDC) 서명 가능.",
+  "link": "/github-actions/notes/04-monorepo-release-security"
+ },
+ {
+  "term": "phase (Nginx)",
+  "subject": "nginx",
+  "def": "요청 처리의 11단계. 지시어가 적용되는 순서(limit_req → access → content)를 결정한다.",
+  "link": "/nginx/notes/04-internals-performance-openresty"
+ },
+ {
+  "term": "OpenResty",
+  "subject": "nginx",
+  "def": "Nginx + LuaJIT. 요청 phase 에 논블로킹 Lua 코드를 넣어 동적 로직(인증·레이트리밋)을 구현.",
+  "link": "/nginx/notes/04-internals-performance-openresty"
+ },
+ {
+  "term": "BDP",
+  "subject": "linux-network",
+  "def": "대역폭 지연 곱(Bandwidth-Delay Product). 링크를 채우는 데 필요한 윈도우/버퍼 크기.",
+  "link": "/linux-network/notes/06-kernel-stack-ebpf-performance"
+ },
+ {
+  "term": "conntrack",
+  "subject": "linux-network",
+  "def": "netfilter 의 연결 추적 테이블. NAT·포트 매핑·Service 가 의존하며 가득 차면 패킷이 버려진다.",
+  "link": "/linux-network/notes/06-kernel-stack-ebpf-performance"
+ },
+ {
+  "term": "eBPF / XDP",
+  "subject": "linux-network",
+  "def": "커널 안에서 검증된 프로그램을 실행하는 기술 / 드라이버 수신 직후의 패킷 훅. 관측·네트워킹·보안 도구의 기반.",
+  "link": "/linux-network/notes/06-kernel-stack-ebpf-performance"
  }
 ]
