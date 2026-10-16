@@ -3,7 +3,7 @@
 #   docker run --rm -p 3200:3000 -e REDIS_URL=redis://host.docker.internal:6379 study:dev
 
 # ---- 1단계: 의존성 + 빌드 ----
-FROM node:22-alpine AS builder
+FROM node:25-alpine AS builder
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
@@ -12,7 +12,7 @@ COPY . .
 RUN pnpm build
 
 # ---- 2단계: 실행 (standalone 산출물만) ----
-FROM node:22-alpine
+FROM node:25-alpine
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
