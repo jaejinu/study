@@ -3,6 +3,7 @@ import type { ChatCompletionChunk } from "openai/resources/chat/completions";
 import { executeTool, SYSTEM_PROMPT } from "@/lib/assistant/tools";
 import { estimateOpenAICost, OPENAI_MODEL, OPENAI_MODELS, openaiClient, openaiConfigured, openaiTools, type OpenAIMessage } from "@/lib/assistant/openai";
 import { getNote } from "@/lib/notes";
+import { searchSmart } from "@/lib/search";
 import { getSubject } from "@/lib/subjects";
 import { logger } from "@/lib/log";
 import { metrics } from "@/lib/metrics";
@@ -22,7 +23,7 @@ const ASK_PROMPT = `
 4. 실험이 질문에 답이 되면 propose_experiment 로 제안한다(실행은 사용자가 한다).
 `;
 
-async function pageContext(ctx: PageContext): Promise<string> {
+async function pageContext(ctx: PageContext, question: string): Promise<string> {
   const parts: string[] = [];
   const m = /^\/([a-z0-9-]+)(?:\/notes\/([a-z0-9-]+))?/.exec(ctx.pathname ?? "");
   const subject = m ? getSubject(m[1]) : undefined;
@@ -32,6 +33,9 @@ async function pageContext(ctx: PageContext): Promise<string> {
     if (note) parts.push(`현재 노트: [${note.title}](/${subject.id}/notes/${m[2]}) (${note.level})\n요약: ${note.summary}\n\n--- 노트 본문 (앞 14000자) ---\n${note.content.slice(0, 14000)}`);
   } else if (ctx.pathname) parts.push(`현재 경로: ${ctx.pathname}`);
   if (ctx.selection?.trim()) parts.push(`사용자가 화면에서 선택한 텍스트:\n"""${ctx.selection.trim().slice(0, 2000)}"""`);
+  // 모델이 툴을 안 쓰거나 검색어를 틀려도 근거가 있도록, 질문으로 관련 노트를 미리 찾아 붙인다 (검색 증강)
+  const hits = (await searchSmart(question, 5)).filter((h) => h.kind === "note" && !(m?.[2] && h.href.endsWith(`/${m[2]}`)));
+  if (hits.length) parts.push(`질문과 관련된 이 사이트의 노트 (근거로 쓰고 링크로 인용):\n${hits.map((h) => `- [${h.title}](${h.href}) — ${h.subjectName}: ${h.snippet}`).join("\n")}`);
   return parts.join("\n\n");
 }
 
@@ -53,7 +57,7 @@ export async function POST(req: Request) {
   const tracer = trace.getTracer("study-ask");
   const encoder = new TextEncoder();
   const usage = { input: 0, output: 0, cached: 0 };
-  const context = await pageContext(body.context ?? {});
+  const context = await pageContext(body.context ?? {}, history[history.length - 1].content);
 
   const stream = new ReadableStream({
     async start(controller) {
