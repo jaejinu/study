@@ -162,6 +162,8 @@ terraform {
 }
 ```
 
+> 함께 읽기: [Terraform/OpenTofu 핵심 모델 — HCL, 프로바이더, 리소스 그래프, plan/apply, state](/iac/notes/02-terraform-core-model)
+
 ## 실습 체크리스트
 
 - [ ] 실험 `iac-state-import` 를 돌리고 "generate 초안이 왜 실패했나", "속성을 빼면 왜 교체인가", "state rm 뒤 컨테이너는 왜 살아 있나" 세 질문에 답하기

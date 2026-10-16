@@ -186,6 +186,8 @@ spec:
 - Redis 는 `tls-port 6380 --tls-cert-file ... --tls-ca-cert-file ...` 로 TLS 를 켤 수 있다. ioredis 는 `tls: { ca }` 옵션. 벤치마크로 평문 대비 지연 차이를 재 보자(핸드셰이크 비용은 연결당 한 번, 데이터 암호화는 AES-NI 로 수 % 수준).
 - 앱 → Anthropic API 는 당연히 HTTPS. `NODE_EXTRA_CA_CERTS` 를 잘못 잡으면 Node 가 모든 외부 호출을 거부하는 식의 장애가 난다 — 로그에 `UNABLE_TO_VERIFY_LEAF_SIGNATURE` 가 보이면 여기.
 
+> 함께 읽기: [보안 사고방식과 위협 모델링](/security/notes/01-security-mindset-threat-modeling)
+
 ## 실습 체크리스트
 
 - [ ] 실험 `sec-tls-inspect` 를 돌리고 세 가지 실패(CA 없음·이름 불일치·만료)를 각각 설명해 보기

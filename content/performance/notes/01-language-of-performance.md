@@ -118,6 +118,8 @@ k6 에서는 `constant-arrival-rate` / `ramping-arrival-rate` 실행기가 열�
 
 `perf-k6-smoke` 는 같은 데이터를 임계값(p95 < 500ms)으로 판정한다. p99/p50 비율을 출력하는데, 2~3배면 정상, 10배 이상이면 간헐 지연(GC, 락, 캐시 미스)을 의심한다.
 
+> 함께 읽기: [측정 방법론 — USE·RED·골든 시그널, 프로파일링 vs 트레이싱, 벤치마크의 함정](/performance/notes/02-measurement-methodology)
+
 ## 실습 체크리스트
 
 - [ ] `perf-k6-arrival-rate` 를 돌려 포화점을 찾고, 운영 빌드(`pnpm build && pnpm start`)에서 다시 돌려 비교한다

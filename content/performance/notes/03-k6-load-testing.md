@@ -173,6 +173,8 @@ k6 run -o experimental-prometheus-rw script.js
 
 Grafana 연동은 `pnpm obs:up` 상태에서 위의 `-o experimental-prometheus-rw` 를 붙이면 된다. 알림 규칙([알림 파이프라인](/observability/notes/09-alerting-pipeline))의 `HighLatency` 가 부하 중 firing 되는지 보는 것도 좋은 실험이다.
 
+> 함께 읽기: [측정 방법론 — USE·RED·골든 시그널, 프로파일링 vs 트레이싱, 벤치마크의 함정](/performance/notes/02-measurement-methodology)
+
 ## 실습 체크리스트
 
 - [ ] 스모크 스크립트를 `tests/perf/smoke.js` 로 저장하고 운영 빌드에 대해 돌려 임계값을 통과시킨다

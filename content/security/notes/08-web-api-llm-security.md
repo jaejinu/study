@@ -154,6 +154,8 @@ rate(llm_cost_usd_total[10m]) * 600 > 1
 - Prometheus 규칙 파일에 `security.rules` 그룹 추가(위 질의들), Alertmanager 라우트 `severity=security`.
 - kind 에 Falco 설치 → `kubectl exec` 로 셸을 띄워 알림 → 앱 웹훅 `/api/alerts` 에 도착하는 것 확인.
 
+> 함께 읽기: [보안 사고방식과 위협 모델링](/security/notes/01-security-mindset-threat-modeling)
+
 ## 실습 체크리스트
 
 - [ ] 이 앱의 라우트/액션 목록을 만들고 OWASP A01·A03·A09 관점에서 한 줄씩 평가

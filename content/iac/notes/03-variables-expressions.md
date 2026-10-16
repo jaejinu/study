@@ -252,6 +252,8 @@ resource "docker_container" "svc" {
 
 `-var 'profiles=["core","kafka"]'` 가 compose 의 `--profile` 과 같은 역할. 포트가 `127.0.0.1` 에만 바인딩되는 보안 결정([보안 07](/security/notes/07-datastore-hardening))이 코드에 남는다.
 
+> 함께 읽기: [Terraform/OpenTofu 핵심 모델 — HCL, 프로바이더, 리소스 그래프, plan/apply, state](/iac/notes/02-terraform-core-model) · [모듈 설계와 레지스트리 — 인터페이스, 버전, 구성 vs 상속](/iac/notes/04-modules-registry)
+
 ## 실습 체크리스트
 
 - [ ] 실험 `iac-plan-apply-docker` 의 설정을 복사해 `variable "containers" = map` + `for_each` 로 컨테이너 2개를 만들고, 하나를 맵에서 빼면 plan 이 그것만 지우는지 확인

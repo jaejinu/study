@@ -140,6 +140,8 @@ IaC 의 가장 큰 약속은 "**다시 만들 수 있다**" 다. 약속은 연�
 | 6 | 환경 점검 카드에 드리프트 상태, apply 이벤트를 Grafana 어노테이션으로 | 06·관측성 |
 | 7 | `destroy` → `apply` 재현 리허설, 소요 시간 기록 | 08 |
 
+> 함께 읽기: [모듈 설계와 레지스트리 — 인터페이스, 버전, 구성 vs 상속](/iac/notes/04-modules-registry)
+
 ## 실습 체크리스트
 
 - [ ] 실험 `iac-plan-apply-docker` 의 설정을 Pulumi(TypeScript) 로 똑같이 작성해 `pulumi preview` 출력과 `tofu plan` 출력을 비교

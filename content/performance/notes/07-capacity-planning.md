@@ -117,6 +117,8 @@ kind 의 web Deployment 에 HPA 가 있다(`k8s/` + metrics-server, [HPA 실험]
 
 CI 는 `.github/workflows/ci.yml` 에 Redis 서비스 컨테이너로 vitest 를 돌리는 구조가 이미 있다. 거기에 위의 perf 잡을 추가하면 된다 — 첫 단계는 `pnpm build && pnpm start` 후 스모크 임계값만.
 
+> 함께 읽기: [시스템 수준 — CPU·메모리·디스크·네트워크, 컨테이너 제한과 스로틀링](/performance/notes/06-system-level)
+
 ## 실습 체크리스트
 
 - [ ] 운영 빌드로 breakpoint 테스트를 돌려 "SLO 내 단위 용량" 을 구한다

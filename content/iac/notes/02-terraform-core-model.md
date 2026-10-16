@@ -172,6 +172,8 @@ resource "aws_db_instance" "main" {
 
 둘 다 작업 디렉터리를 임시 폴더에 만들고 끝나면 지운다. 직접 해 보려면 실험 설명의 `code` 블록을 복사하면 된다.
 
+> 함께 읽기: [IaC 가 왜 필요한가 — 스노우플레이크, 선언 vs 명령, 멱등, 불변 인프라](/iac/notes/01-why-iac)
+
 ## 실습 체크리스트
 
 - [ ] 실험 두 개를 돌리고 plan 출력에서 `+`, `~`, `-/+`, `(known after apply)`, `# forces replacement` 를 찾아 표시

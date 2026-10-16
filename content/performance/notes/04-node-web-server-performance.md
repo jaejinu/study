@@ -126,6 +126,8 @@ const [a, b] = await Promise.all([getA(), getB()]);   // 지연 = max(A, B)
 
 이 앱의 `/api/metrics` 에는 `study_process_nodejs_eventloop_lag_p99_seconds`, `study_process_nodejs_gc_duration_seconds`, `study_process_nodejs_heap_size_used_bytes` 가 이미 있다. Grafana 에 패널을 추가하고 k6 부하 중 어떻게 움직이는지 보자 — 이벤트 루프 지연이 먼저 오르고, 그 다음 HTTP p99 가 따라온다.
 
+> 함께 읽기: [시스템 수준 — CPU·메모리·디스크·네트워크, 컨테이너 제한과 스로틀링](/performance/notes/06-system-level)
+
 ## 실습 체크리스트
 
 - [ ] `perf-node-eventloop` 를 돌리고 5ms 와 1ms 분할의 트레이드오프(총 시간 vs 최대 지연)를 설명한다
