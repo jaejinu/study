@@ -42,12 +42,10 @@ export async function POST(req: Request) {
       alertname: a.alertname, severity: a.severity, status: a.status, summary: a.summary, receiver: a.receiver,
     });
   }
-  try {
-    await storeAlerts(alerts);
-  } catch (e) {
-    logger.error("alert.store.failed", { error: String(e) });
-  }
-  return Response.json({ ok: true, received: alerts.length });
+  // 저장은 메모리 우선 + Redis best-effort (1초 타임아웃). 웹훅 응답은 의존성 상태와 무관하게 빨리 돌려준다.
+  const { redis } = await storeAlerts(alerts);
+  if (!redis) logger.warn("alert.store.redis_unavailable", { count: alerts.length });
+  return Response.json({ ok: true, received: alerts.length, storedInRedis: redis });
 }
 
 export async function GET() {

@@ -187,8 +187,28 @@ export async function checkArchitecture(): Promise<EnvStatus> {
   };
 }
 
+export async function checkChaos(): Promise<EnvStatus> {
+  const [redis, kafka, pg, k8s, obs] = await Promise.all([
+    run("docker", ["inspect", "-f", "{{.State.Status}}", "study-redis"]),
+    run("docker", ["inspect", "-f", "{{.State.Status}}", "study-kafka"]),
+    run("docker", ["inspect", "-f", "{{.State.Status}}", "study-postgres"]),
+    run("kubectl", ["-n", "study", "get", "deploy", "web", "-o", "jsonpath={.status.readyReplicas}", "--request-timeout=4s"]),
+    fetchText("http://127.0.0.1:19093/-/ready"),
+  ]);
+  const st = (r: { ok: boolean; out: string }) => (r.ok && r.out === "running" ? "running" : "없음");
+  const lines = [
+    `Redis(study-redis): ${st(redis)} · Kafka(study-kafka): ${st(kafka)} · PostgreSQL(study-postgres): ${st(pg)}`,
+    `Kubernetes web Ready 복제본: ${k8s.ok ? k8s.out || 0 : "클러스터 없음"} (Pod kill 실험은 2 이상 필요)`,
+    `Alertmanager: ${obs.ok ? "실행 중 — 장애가 알림으로 보임" : "꺼짐 — pnpm obs:up 이면 알림·로그로 장애를 확인할 수 있음"}`,
+  ];
+  const ok = st(redis) === "running";
+  return { ok, title: ok ? "장애 주입 대상 준비됨" : "장애 주입 대상이 없습니다", lines, hint: ok ? undefined : "pnpm redis:docker   # 최소 Redis 는 Docker 로", links: [{ label: "관측성 대시보드 (최근 알림)", href: "/observability" }, { label: "Grafana", href: "http://localhost:13000/d/study-redis" }] };
+}
+
 export async function checkEnv(subject: string): Promise<EnvStatus> {
   switch (subject) {
+    case "chaos":
+      return checkChaos();
     case "ai-systems":
       return checkAiSystems();
     case "architecture":

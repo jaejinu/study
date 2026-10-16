@@ -1,4 +1,4 @@
-export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network" | "ai-systems" | "architecture";
+export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network" | "ai-systems" | "architecture" | "chaos";
 
 export interface NavItem {
   href: string;
@@ -220,6 +220,23 @@ export const subjects: Subject[] = [
     setup: [
       { label: "패턴 실험", cmd: "Redis/Kafka/PostgreSQL 실험실" },
       { label: "설계 연습", cmd: "노트 06 사례" },
+    ],
+  },
+  {
+    id: "chaos",
+    name: "장애 실험실",
+    tagline: "카오스 엔지니어링 · 복원력 검증",
+    description: "Redis 멈춤, 메모리 고갈, Kafka 브로커 재시작, PostgreSQL 커넥션 고갈, 트래픽 중 Pod 강제 종료 — 실제 장애를 주입하고 타임아웃·폴백·재시도·복제본이 어떻게 동작하는지, 관측 스택에 어떻게 보이는지 측정합니다.",
+    mark: "⚡",
+    color: "bg-[#b91c1c]",
+    nav: [
+      { href: "/chaos", label: "대시보드", icon: "◉", desc: "장애 주입 대상 점검" },
+      { href: "/chaos/notes", label: "학습 노트", icon: "✎", desc: "원칙과 장애 카탈로그" },
+      { href: "/chaos/lab", label: "실험실", icon: "⚗", desc: "장애 주입 실험 5개" },
+    ],
+    setup: [
+      { label: "대상", cmd: "pnpm redis:docker · kafka:up · pg:up · k8s:up" },
+      { label: "관측", cmd: "pnpm obs:up (알림·로그로 확인)" },
     ],
   },
 ];
