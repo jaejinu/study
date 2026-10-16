@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "redis": "redis-server redis/redis.conf",
+    "redis": "redis-server redis/redis.conf --dir redis/data",
     "redis:cli": "redis-cli -p 6379",
     "test": "vitest run",
     "test:watch": "vitest",

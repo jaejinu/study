@@ -26,7 +26,7 @@ save 3600 1      # 1시간 동안 1개 이상 변경되면
 save 300 100     # 5분 동안 100개
 save 60 10000    # 1분 동안 10000개
 dbfilename dump.rdb
-dir ./redis/data
+dir /var/lib/redis        # 이 프로젝트는 명령줄 --dir 로 넘긴다 (로컬 redis/data, Docker /data)
 ```
 
 - `SAVE` 는 동기(서버 정지), `BGSAVE` 는 자식 프로세스를 **fork** 해서 저장.

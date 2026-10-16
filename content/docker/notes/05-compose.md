@@ -32,9 +32,9 @@ services:
   redis:
     image: redis:8-alpine
     container_name: study-redis
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--dir", "/data"]
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--dir", "/data", "--bind", "0.0.0.0", "--protected-mode", "no"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro   # 바인드 (설정)
       - redis-data:/data                                        # 볼륨 (데이터)
@@ -56,7 +56,9 @@ pnpm dev                     # Redis Study 가 그대로 붙는다 (REDIS_URL �
 pnpm redis:docker:down
 ```
 
-`command` 로 설정 파일을 지정하되 `--dir /data` 를 뒤에 덧붙여 RDB/AOF 경로를 볼륨으로 보낸다. 뒤의 인자가 설정 파일 값을 덮어쓴다.
+`command` 로 설정 파일을 지정하고 `--dir /data` 를 뒤에 덧붙여 RDB/AOF 경로를 볼륨으로 보낸다. 설정 파일에 `dir ./redis/data` 처럼 호스트 기준 상대 경로를 넣어 두면 컨테이너 안에는 그 경로가 없어 시작 자체가 실패한다 (처음 띄울 때 실제로 겪은 문제). 환경마다 다른 값은 명령줄 인자로 넘기는 편이 안전하다.
+
+`--bind 0.0.0.0` 도 같은 이유다. 설정 파일의 `bind 127.0.0.1` 은 **컨테이너 안의** 루프백이라, 호스트에서 `-p 6379:6379` 로 들어온 연결(브리지 게이트웨이 IP 에서 옴)은 거부된다. 컨테이너 안에서 `redis-cli ping` 은 되는데 호스트에서는 "Connection reset by peer" 가 나면 이 문제다. 비밀번호 없는 Redis 는 **protected mode** 가 루프백 밖의 연결을 거부하므로 `--protected-mode no` 도 함께 준다. 대신 `ports` 를 `127.0.0.1:6379:6379` 로 적어 호스트 루프백에만 공개한다. 운영이라면 `requirepass`/ACL 을 쓴다.
 
 ## 서비스 간 의존성
 

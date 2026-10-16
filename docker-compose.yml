@@ -5,9 +5,10 @@ services:
   redis:
     image: redis:8-alpine
     container_name: study-redis
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--dir", "/data"]
+    # redis.conf 의 bind 127.0.0.1 은 컨테이너 안의 루프백이라 호스트에서 접속이 안 된다 → 0.0.0.0 으로 덮어쓴다
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--dir", "/data", "--bind", "0.0.0.0", "--protected-mode", "no"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"   # 호스트 루프백에만 공개 (같은 네트워크의 다른 기기에서 접근 불가)
     volumes:
       - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
       - redis-data:/data
