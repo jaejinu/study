@@ -99,3 +99,6 @@ if (containsPolicyViolation(parsed.data.answer)) return fallbackResponse();
 - Anthropic "Building effective agents", 프롬프트 엔지니어링 가이드
 - promptfoo / Ragas / DeepEval — 평가 도구
 - Langfuse — 트레이스·평가·프롬프트 관리
+
+> 이어서 읽기: [평가 데이터셋과 지표 — 골든셋, LLM-as-judge 와 그 편향](/mlops/notes/02-eval-datasets-metrics) — 평가 데이터셋·LLM 판사 편향 실측 · [심화 — 평가 CI 와 프롬프트 회귀 테스트: 프롬프트도 코드처럼 리뷰하고 막는다](/mlops/notes/07-eval-ci-prompt-regression) — 평가를 CI 회귀 게이트로
+

@@ -156,6 +156,8 @@ rate(llm_cost_usd_total[10m]) * 600 > 1
 
 > 함께 읽기: [보안 사고방식과 위협 모델링](/security/notes/01-security-mindset-threat-modeling)
 
+> 이어서 읽기: [AI 에이전트 설계](/ai-agents) — 에이전트의 툴 권한·사람 승인 설계
+
 ## 실습 체크리스트
 
 - [ ] 이 앱의 라우트/액션 목록을 만들고 OWASP A01·A03·A09 관점에서 한 줄씩 평가

@@ -4,7 +4,7 @@ order: 1
 level: 기초
 summary: 이벤트 기반 워커 모델, 설정 파일 구조(main/events/http/server/location), server·location 매칭 규칙, 기본 명령
 tags: [개요, worker, 설정, server_name, location]
-experiments: []
+experiments: [nginx-rate-limit-burst, nginx-proxy-cache, nginx-upstream-failover]
 ---
 
 ## 왜 Nginx 인가
@@ -81,6 +81,23 @@ docker compose exec nginx nginx -s reload
 docker compose logs -f nginx
 ```
 
+## 요청 하나의 여정 — 단계(phase)
+
+설정 파일의 지시어는 **쓴 순서대로 실행되지 않는다**. Nginx 는 요청을 정해진 단계로 흘려보내고, 각 지시어는 자기가 속한 단계에서만 돈다. 그래서 `location` 안에서 `limit_req` 를 `return` 아래에 써도 아무 소용이 없다 — `return` 은 rewrite 단계에서 응답을 끝내 버리고, `limit_req` 는 그 다음인 preaccess 단계에 있기 때문이다.
+
+![Nginx 요청 처리 단계](/diagrams/nginx-request-flow.svg)
+
+| 단계 | 대표 지시어 | 여기서 끝날 수 있나 |
+|---|---|---|
+| server 선택·location 매칭 | `listen`, `server_name`, `location` | 아니오 (다음 단계로) |
+| rewrite | `rewrite`, `set`, **`return`** | 예 — `return` 이면 즉시 응답 |
+| preaccess | `limit_req`, `limit_conn` | 예 — 503/429 |
+| access | `allow`/`deny`, `auth_request` | 예 — 403/401 |
+| content | `proxy_pass`, 정적 파일, `fastcgi_pass` | 응답 생성 |
+| log | `access_log` | 항상 (응답 후) |
+
+실험실의 [레이트리밋 실험](/nginx/lab/nginx-rate-limit-burst)은 처음에 `return 200` 으로 짰다가 30개 요청이 전부 통과했다. 이 표가 그 이유다. 단계가 깊어질수록 [프로세스 모델과 성능](/nginx/notes/04-internals-performance-openresty)에서 더 자세히 다룬다.
+
 ## 이 프로젝트의 프록시
 
 ```bash
@@ -98,9 +115,12 @@ curl http://localhost:18080/nginx_status   # Active connections ...
 - [ ] `location = /health` 를 지우면 `/health` 가 어디로 가는지 확인 (업스트림 404)
 - [ ] `server_name` 을 바꾸고 `curl -H 'Host: other'` 로 default_server 동작 확인
 - [ ] 설정을 일부러 틀리게 하고 `nginx -t` 메시지 읽기
+- [ ] 실험실의 세 실험(레이트리밋·프록시 캐시·장애 전환)을 돌리고, 각 실험이 위 단계 표의 어느 단계를 건드리는지 말해 보기
 
 ## 관련 노트
 
 - [리버스 프록시와 로드밸런싱](/nginx/notes/02-reverse-proxy-lb)
 - [Linux: 포트·소켓·TCP 상태](/linux-network/notes/02-ip-ports-sockets) — 이벤트 모델이 다루는 소켓
 - [Redis 란 무엇인가](/redis/notes/01-redis-overview) — 같은 이벤트 루프 철학
+- [Kubernetes Service 와 Ingress](/kubernetes/notes/04-service-ingress) — ingress-nginx 는 이 Nginx 를 Pod 로 띄운 것
+- [운영체제: 시스템 콜과 epoll](/os-internals/notes/05-syscalls-interrupts) — 워커 하나가 수만 연결을 다루는 원리

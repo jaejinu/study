@@ -116,6 +116,8 @@ Redis 의 `--hotkeys`(`redis-cli --hotkeys`, LFU 정책 필요)와 `CLIENT TRACK
 
 **이 앱의 키 설계**: `progress:checks:<subject>/<slug>` 는 Cluster 로 가도 노트별로 흩어진다. 만약 `progress:*` 를 한 트랜잭션에 다뤄야 했다면 `{progress}:…` 태그로 한 슬롯에 묶어야 하고, 그러면 진행률 전체가 한 마스터에 몰린다 — 키 설계 = 파티셔닝 설계.
 
+> 이어서 읽기: [매핑·샤드·복제본 — 인덱스를 설계한다는 것](/opensearch/notes/02-mapping-shards-replicas) — 검색 엔진의 샤드 설계
+
 ## 실습 체크리스트
 
 - [ ] `redis:cluster` 에서 `CLUSTER KEYSLOT` 으로 해시 태그를 실험하고, `MSET` 이 다른 슬롯 키에 대해 `CROSSSLOT` 오류를 내는 것을 확인

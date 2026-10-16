@@ -159,6 +159,10 @@ sum by (pod) (rate({namespace="study"}[1m]))                     # Pod 별 로�
 - 대시보드는 ConfigMap(`grafana_dashboard: "1"` 레이블)으로 사이드카가 자동 로드 — 코드로 관리.
 - 알림은 증상 기반, 런북 링크 필수 ([Grafana 와 알림 노트](/observability/notes/04-grafana-alerting)).
 
+> 이어서 읽기: [Kubernetes 에서의 관측 — 수집 아키텍처와 무엇을 볼 것인가](/observability/notes/07-kubernetes-observability) — 쿠버네티스 관측의 전체 그림
+
+> 이어서 읽기: [minikube 와 애드온 — Ingress·metrics-server·HPA 실습](/kubernetes/notes/09-minikube-addons) — metrics-server·ingress 애드온으로 빠르게 켜기
+
 ## 실습 체크리스트
 
 - [ ] `pnpm k8s:monitoring` 후 Prometheus Targets 에서 `study/redis`, `study/web` 이 UP 인지 확인

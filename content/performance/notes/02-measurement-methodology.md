@@ -103,6 +103,8 @@ histogram_quantile(0.99, sum(rate(study_action_duration_seconds_bucket[1m])) by 
 rate(redis_commands_processed_total[1m]) / sum(rate(study_action_duration_seconds_count[1m]))
 ```
 
+> 이어서 읽기: [프로파일링 — 스택 샘플링, flame graph, 연속 프로파일링](/ebpf/notes/06-profiling-continuous) — eBPF 로 하는 상시 프로파일링
+
 ## 실습 체크리스트
 
 - [ ] `perf-k6-redis-path` 를 돌리고 같은 시간대의 Grafana 에서 Redis ops/s 와 앱 p99 를 함께 본다

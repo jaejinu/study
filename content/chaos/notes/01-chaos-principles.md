@@ -69,6 +69,31 @@ spec:
 - 데이터 손상을 일으키는 실험(디스크 쓰기 오류)은 백업·복구 연습 후에만.
 - 실험 기록: 시각·범위·관찰·조치. 포스트모템과 같은 형식.
 
+### 원복은 주입한 쪽과 수명이 독립이어야 한다 — 데드맨 스위치
+
+`finally` 와 `cleanup` 은 **실험 프로세스가 살아 있을 때만** 돈다. 실행이 권한 거부·타임아웃·강제 종료로 중간에 끊기면 멈춘 컨테이너나 바꾼 설정이 그대로 남는다. 이 프로젝트에서 실제로 일어났다: 번레이트 실험이 `docker pause study-redis` 직후 중단돼 Redis 가 **2시간 57분** 멈춰 있었고 RedisDown·앱 다운 알림이 계속 울렸다([SRE 노트 05 의 포스트모템](/sre/notes/05-incident-postmortem)).
+
+그래서 모든 장애 주입 실험은 주입 **직전에** 분리된 프로세스를 장전한다(`src/lib/deadman.ts`):
+
+```ts
+const guard = armUnpause("study-redis", 60);   // sh -c "sleep 60; docker unpause study-redis" 를 detached 로
+await exec("docker", ["pause", "study-redis"]); // 주입
+try { /* 관찰 */ } finally {
+  await exec("docker", ["unpause", "study-redis"]); // 정상 원복
+  guard.disarm();                                   // 장전한 원복 프로세스 해제
+}
+```
+
+| 장치 | 적용 |
+|---|---|
+| `armUnpause(container, s)` | redis-hang · circuit-breaker · retry-storm · 알림 파이프라인 · SRE 번레이트의 `docker pause` |
+| `armRestart(container, s)` | kafka-broker-restart 의 `docker stop` |
+| `armRedisConfigRestore(원래값, s)` | redis-oom 의 `maxmemory`, DB 내부 실험의 `appendfsync` |
+
+실측: `chaos-redis-hang` 을 일시정지 도중(628ms 지점) **강제 종료**했더니 Redis 가 60초 뒤 스스로 풀렸다. 정상 실행에서는 disarm 으로 남는 프로세스가 0개였다. 이 동작은 CI 의 단위 테스트(`tests/deadman.test.ts`)가 매번 확인한다.
+
+![장애 지도와 안전장치](/diagrams/chaos-fault-map.svg)
+
 ## 게임데이
 
 팀이 모여 2~3시간 동안 시나리오 몇 개를 돌린다. 역할: 주입자, 온콜(알림만 보고 대응), 기록자. 온콜이 **런북과 대시보드만으로** 원인을 찾을 수 있는지가 핵심 — 못 찾으면 관측·런북의 구멍이다. 끝나면 발견 목록을 티켓으로.
@@ -84,7 +109,7 @@ spec:
 
 ## 이 프로젝트의 장애 실험실
 
-실험은 실제 컨테이너·클러스터에 장애를 주입하고 **반드시 원복**한다(finally). 각 실험은 정상 상태 측정 → 주입 → 관찰(지연·에러·복구 시간) → 원복 → 교훈 순서다. 돌리는 동안 [관측성 대시보드](/observability)의 최근 알림, Grafana 의 받은 알림·에러율 패널, Loki 의 `alert.received`·`experiment.run` 로그를 함께 보면 "장애가 어떻게 보이는가" 를 배운다.
+실험은 실제 컨테이너·클러스터에 장애를 주입하고 **반드시 원복**한다(finally + 데드맨 스위치의 이중 장치). 각 실험은 정상 상태 측정 → 주입 → 관찰(지연·에러·복구 시간) → 원복 → 교훈 순서다. 돌리는 동안 [관측성 대시보드](/observability)의 최근 알림, Grafana 의 받은 알림·에러율 패널, Loki 의 `alert.received`·`experiment.run` 로그를 함께 보면 "장애가 어떻게 보이는가" 를 배운다.
 
 > 다음: [복원력 패턴 실측](/chaos/notes/03-resilience-patterns-verified) · [게임데이와 자동화](/chaos/notes/04-gameday-and-automation)
 

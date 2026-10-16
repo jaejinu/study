@@ -137,6 +137,8 @@ pnpm k8s:web:port                      # http://localhost:3200 — 클러스터 
 - 또는 Bitnami Helm 차트 (`bitnami/redis`: master + replicas + sentinel 옵션)
 - 또는 관리형 (ElastiCache, Memorystore) 을 쓰고 k8s 안에선 ExternalName Service 로 연결
 
+> 이어서 읽기: [WAL·체크포인트·복구 — 죽었다 깨어나도 커밋은 남는다](/db-internals/notes/04-wal-checkpoint-recovery) — DB 가 디스크에 기대하는 것: WAL·fsync · [파일시스템과 I/O — write() 에서 디스크 섹터까지](/os-internals/notes/04-filesystem-io) — 파일시스템·페이지 캐시·fsync 비용
+
 ## 실습 체크리스트
 
 - [ ] `kubectl get pvc,pv` 로 동적 프로비저닝 결과 확인

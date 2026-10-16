@@ -156,6 +156,8 @@ spec:
 ```
 Job 은 멱등해야 한다(재시도·중복 실행). 큐 소비형 워커는 Deployment + KEDA 가 더 맞다.
 
+> 이어서 읽기: [Kubernetes 비용 — requests 는 예약이고, 노드가 청구서다](/finops/notes/03-kubernetes-cost) — 빈 패킹·right-sizing 의 비용 효과 · [CPU 스케줄러와 cgroup — 누가 언제 CPU 를 얻고, 컨테이너 제한은 어떻게 동작하나](/os-internals/notes/03-scheduler-cgroups) — CFS/EEVDF 와 cgroup 대역폭 제어
+
 ## 실습 체크리스트
 
 - [ ] `requests.cpu: "100"` 처럼 불가능한 값으로 배포해 FailedScheduling 메시지 읽기

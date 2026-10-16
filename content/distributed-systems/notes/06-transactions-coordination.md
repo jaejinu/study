@@ -151,6 +151,8 @@ Kafka "exactly-once semantics(EOS)" 는 정확히 다음을 뜻한다:
 
 **PostgreSQL `PREPARE TRANSACTION`**: `max_prepared_transactions` 가 기본 0 이라 꺼져 있다. 켜고 `PREPARE TRANSACTION 'x'` 후 세션을 끊어 보면 `pg_prepared_xacts` 에 고아가 남고 락이 유지된다 — 2PC 블로킹의 실물.
 
+> 이어서 읽기: [전달 보장·중복 제거·우선순위·지연 큐 — 브로커가 약속하는 것과 앱이 해야 하는 것](/messaging/notes/04-delivery-guarantees-delay) — 브로커의 전달 보장과 멱등 소비자 · [REST 설계 원칙 — 리소스, 메서드의 의미, 상태 코드, 멱등, 페이지네이션](/api-design/notes/01-rest-principles) — HTTP API 의 멱등 키
+
 ## 실습 체크리스트
 
 - [ ] PG 에서 `max_prepared_transactions=10` 으로 켜고 PREPARE 후 연결을 끊어 `pg_prepared_xacts` 와 잠긴 행을 확인, `ROLLBACK PREPARED` 로 정리

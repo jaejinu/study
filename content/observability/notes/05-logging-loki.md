@@ -146,6 +146,8 @@ Grafana 데이터소스 설정(`observability/grafana/provisioning/datasources/p
 | 다중 줄 스택트레이스 | 줄마다 다른 로그로 깨짐 | `stack` 필드에 문자열로 |
 | 라벨에 user_id | Loki 스트림 폭발 | 본문/구조화 메타데이터 |
 
+> 이어서 읽기: [데이터·관측 비용 — 볼륨 × 보존 × 카디널리티](/finops/notes/04-data-observability-cost) — 로그 볼륨·카디널리티가 곧 비용 · [집계와 로그 분석 — 검색 엔진이 분석 엔진이 되는 순간, 그리고 Loki 와의 선택](/opensearch/notes/04-aggregations-log-analysis) — 같은 로그를 OpenSearch 집계로 · [ClickHouse · OLAP](/clickhouse) — ClickHouse 로 로그 분석
+
 ## 실습 체크리스트
 
 - [ ] `pnpm obs:up` 후 Grafana Explore → Loki → `{service="study-app"} | json` 에서 노트 조회·실험 실행 로그 보기

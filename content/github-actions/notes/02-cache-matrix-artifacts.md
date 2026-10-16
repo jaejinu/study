@@ -4,7 +4,7 @@ order: 2
 level: 중급
 summary: 의존성·Docker 레이어 캐시, 매트릭스 빌드, 잡 간 데이터 전달, 중복 실행 취소, 비용 절감 팁
 tags: [cache, matrix, artifact, concurrency, 비용]
-experiments: []
+experiments: [gha-cache-key, gha-act-local-run]
 ---
 
 ## 캐시
@@ -24,6 +24,27 @@ experiments: []
 - 키가 정확히 맞으면 복원, 아니면 `restore-keys` 접두어로 가장 최근 것을 복원하고 잡 끝에 새 키로 저장.
 - 저장소당 10GB, 7일 미사용 시 삭제.
 - Docker 레이어: `docker/build-push-action` 의 `cache-from/to: type=gha`. 이 저장소의 image 잡이 쓴다 — 두 번째 빌드부터 수십 초.
+
+### 실험: 캐시 키는 어떻게 해석되나
+
+실험 [gha-cache-key](/github-actions/lab/gha-cache-key)는 이 저장소 `pnpm-lock.yaml`(241KB)로 `hashFiles()` 를 실제로 계산하고(0.1ms), actions/cache 의 복원 규칙을 시뮬레이션한다. key = `<OS>-pnpm-<해시 앞 8자>`, restore-keys = `<OS>-pnpm-`.
+
+| 상황 | 복원 | cache-hit | 저장 |
+|---|---|---|---|
+| main 첫 실행 | MISS | false | 새 키 저장 |
+| main 재실행 (락 그대로) | **정확 일치** | true | 건너뜀 (키는 불변) |
+| 의존성 추가 → 락 변경 | **부분 복원** ← 이전 키 | false | 새 키 저장 |
+| feature 브랜치 첫 실행 | main 캐시 정확 일치 | true | 건너뜀 |
+| feature 에서 의존성 추가 | main 캐시 부분 복원 | false | feature 범위에 저장 |
+| other 브랜치 (락 = feature) | feature 것은 **안 보임** → main 것 부분 복원 | false | other 범위에 저장 |
+| macOS 러너 | MISS (OS 접두가 달라 섞이지 않음) | false | 저장 |
+| restore-keys 없이 락 변경 | MISS (콜드 설치) | false | 저장 |
+
+- `cache-hit` 이 false 여도 복원은 됐을 수 있다. "설치 생략" 을 `cache-hit == 'true'` 로 분기하면 부분 복원 때 설치를 빼먹지 않도록 주의.
+- 검색 범위는 **현재 브랜치 → 기본 브랜치**. 기능 브랜치끼리는 서로의 캐시를 못 본다. 그래서 main 이 자주 돌아 최신 캐시를 유지하는 것이 PR 속도를 정한다.
+- 키에 날짜나 커밋 SHA 를 넣으면 매 실행 새 캐시가 쌓여 10GB 한도에서 정작 쓸 캐시가 밀려난다.
+
+잡 그래프와 캐시 키 해석을 한 장으로 본 그림은 [노트 01](/github-actions/notes/01-workflow-basics)에 있다.
 
 ## 매트릭스
 
@@ -110,8 +131,11 @@ jobs:
 - [ ] `timeout-minutes` 추가
 - [ ] 매트릭스로 Node 20/22 에서 테스트
 - [ ] 업로드된 `vitest-report` 아티팩트를 `gh run download` 로 받기
+- [ ] 실험 gha-cache-key 의 표를 보고, 키에 `${{ github.ref }}` 를 넣으면 기능 브랜치 첫 실행이 어떻게 바뀌는지 예측하기
+- [ ] 실험 gha-act-local-run 에서 매트릭스 잡 출력이 '마지막에 끝난 잡' 값이 되는 것을 확인하고, 잡별 값을 넘기는 방법 찾기
 
 ## 관련 노트
 
 - [워크플로 기본](/github-actions/notes/01-workflow-basics)
 - [Docker 이미지 최적화 — 레이어 캐시](/docker/notes/06-optimization-security)
+- [CI 성능](/github-actions/notes/06-ci-performance) — 캐시 적중률을 재고 개선하는 법

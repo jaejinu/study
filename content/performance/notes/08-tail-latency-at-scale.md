@@ -131,6 +131,8 @@ LLM 호출은 전형적 API 와 다른 지연 구조를 가진다. 지표부터:
 
 **카오스와의 연결**: `chaos-redis-hang` 에서 타임아웃이 없으면 요청이 영원히 큐에 머문다 — 데드라인·부하 차단이 없는 시스템의 준안정 장애 입구다. 타임아웃(ms) 과 재시도(횟수·백오프)가 설정된 ioredis 클라이언트가 어떻게 다른지 [장애 카탈로그](/chaos/notes/02-failure-catalog) 에서 비교할 수 있다.
 
+> 이어서 읽기: [LLM 서빙 — prefill·decode, 연속 배칭, KV 캐시와 PagedAttention, 양자화](/mlops/notes/05-serving-batching-kv-cache) — LLM 서빙의 배칭·KV 캐시 실측
+
 ## 실습 체크리스트
 
 - [ ] 이벤트 루프 지연 기반 부하 차단 미들웨어를 넣고 50 req/s 실험을 다시 돌려 "성공 요청의 p99" 와 "503 비율" 을 기록한다

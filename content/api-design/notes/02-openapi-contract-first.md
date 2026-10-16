@@ -213,6 +213,8 @@ Schemathesis 는 `maxLength` 를 넘는 문자열, 빈 배열, 유니코드 경�
 | 예시(example) 없음 | 목 서버가 쓸모없는 값을 냄 | 모든 스키마에 현실적인 example |
 | 스펙만 있고 CI 검증 없음 | 몇 달 뒤 스펙과 서버가 다름 | 퍼징·계약 테스트를 CI 에 |
 
+> 이어서 읽기: [계약 테스트 — 서비스를 같이 띄우지 않고 호환성을 검증한다](/testing/notes/04-contract-testing) — 소비자 주도 계약 테스트(Pact)
+
 ## 실습 체크리스트
 
 - [ ] 실험 `api-idempotency-key` 의 `POST /payments` 를 OpenAPI 3.1 로 써 보고 `@redocly/cli lint` 통과시키기

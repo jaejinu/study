@@ -185,6 +185,8 @@ Falco 는 이 프로젝트의 관심사(관측)와 딱 맞는다: 이벤트를 J
 
 `redis:8-alpine` 은 `USER` 가 비어 있어 **root 로 뜬다**(이미지 안에 `redis` 사용자는 있다). compose 에 `user: "999:1000"` 과 볼륨 권한을 맞추면 non-root 가 된다 — 실험이 이 점을 지적한다.
 
+> 이어서 읽기: [보안 관측 — Falco 와 Tetragon 으로 런타임 이벤트를 보고 알린다](/ebpf/notes/05-security-falco-tetragon) — Falco·Tetragon 이 커널에서 보는 방식
+
 ## 실습 체크리스트
 
 - [ ] 실험 `sec-image-scan` 결과 표에서 CRITICAL 수와 수정판 비율, 실행 사용자 확인

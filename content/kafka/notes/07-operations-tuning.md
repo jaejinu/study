@@ -111,6 +111,8 @@ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --all-grou
 | 메시지 순서 뒤섞임 | in-flight > 1 + 재시도, 멱등성 off | enable.idempotence |
 | 컨슈머가 중복 처리 | 커밋 전 크래시 | 멱등 소비자 ([전달 보장](/kafka/notes/04-delivery-guarantees)) |
 
+> 이어서 읽기: [메시징 운영과 관측 — 큐 깊이, 소비 지연, 재전달률로 장애를 먼저 본다](/messaging/notes/07-operations-observability) — 브로커 공통 운영 지표(가장 오래된 메시지 나이) · [데이터·관측 비용 — 볼륨 × 보존 × 카디널리티](/finops/notes/04-data-observability-cost) — 보존 기간과 저장 비용
+
 ## 실습 체크리스트
 
 - [ ] kafkajs 프로듀서에서 `linger.ms`(kafkajs 는 배치 API 로) 와 압축 유무로 처리량 비교 스크립트

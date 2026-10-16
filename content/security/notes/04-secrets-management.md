@@ -174,6 +174,8 @@ gitleaks protect --staged                     # pre-commit 훅: 커밋 전에 �
 
 셸 실험이 자식 프로세스에 환경을 통째로 넘기는 것(`env: process.env`)은 개선 후보다: 실험 러너에 필요한 변수만 허용 목록으로 넘기면 LLM 키가 `docker`/`kubectl` 프로세스에 보이지 않는다.
 
+> 이어서 읽기: [ConfigMap 과 Secret](/kubernetes/notes/05-configmap-secret) — Kubernetes Secret 의 실제 동작
+
 ## 실습 체크리스트
 
 - [ ] `gitleaks detect` 를 이 저장소에 돌리고 결과 확인(히스토리 포함)

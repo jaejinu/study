@@ -119,6 +119,8 @@ CI 는 `.github/workflows/ci.yml` 에 Redis 서비스 컨테이너로 vitest 를
 
 > 함께 읽기: [시스템 수준 — CPU·메모리·디스크·네트워크, 컨테이너 제한과 스로틀링](/performance/notes/06-system-level)
 
+> 이어서 읽기: [Kubernetes 비용 — requests 는 예약이고, 노드가 청구서다](/finops/notes/03-kubernetes-cost) — 용량을 비용으로 번역하기 · [단위 경제 — 총액이 아니라 요청당 비용으로 생각하기](/finops/notes/02-unit-economics) — 요청당 비용 · [설계 사례 — URL 단축기, 피드, 채팅, 좌석 예약, 결제](/architecture/notes/06-design-cases) — 설계 사례로 용량 추정 연습
+
 ## 실습 체크리스트
 
 - [ ] 운영 빌드로 breakpoint 테스트를 돌려 "SLO 내 단위 용량" 을 구한다

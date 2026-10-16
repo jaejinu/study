@@ -138,6 +138,8 @@ bpftrace -e 'tracepoint:raw_syscalls:sys_enter /comm == "redis-server"/ { @[args
 
 [Redis 파이프라이닝](/redis/notes/06-pipelining)에서 "RTT 를 줄인다" 고만 배웠다면, 여기서 **커널 쪽 절감**까지 숫자로 본 셈이다.
 
+> 이어서 읽기: [심화 — Nginx 내부 동작, 성능 튜닝, HTTP/3, OpenResty](/nginx/notes/04-internals-performance-openresty) — epoll 위의 Nginx 워커
+
 ## 실습 체크리스트
 
 - [ ] 실험 `os-context-switch` 의 Redis 표에서 파이프라인이 스위치를 몇 분의 1 로 줄였는지 기록하고, 시스템 콜 수도 같은 비율로 줄 것이라 예측한 뒤 eBPF 실험으로 확인하기

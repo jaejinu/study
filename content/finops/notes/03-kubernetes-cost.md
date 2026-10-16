@@ -156,6 +156,8 @@ curl -s 'localhost:9003/allocation/compute?window=1d&aggregate=namespace' | jq '
 - `study` 의 web·redis 는 requests 가 실사용의 10배 이상이다. 학습용이라 괜찮지만 운영이라면 재조정 1순위다.
 - monitoring 은 메모리 실사용(~1.1 GiB)이 요청(456 MiB)의 2배 이상이다 — **메모리 요청이 너무 작다**는 반대 방향의 문제다. Prometheus 가 메모리를 더 쓰면 노드 압박 때 축출 위험이 있다.
 
+> 이어서 읽기: [minikube 애드온](/kubernetes/notes/09-minikube-addons) — `kubectl top` 과 실사용 측정에 필요한 metrics-server 를 켜는 가장 빠른 길
+
 ## 실습 체크리스트
 
 - [ ] 실험 `finops-k8s-requests-vs-usage` 를 돌리고 효율이 가장 낮은 네임스페이스와 BestEffort Pod 목록을 확인하기

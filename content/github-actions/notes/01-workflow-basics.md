@@ -4,7 +4,7 @@ order: 1
 level: 기초
 summary: 워크플로 파일 구조, 트리거 이벤트, 잡과 러너, 스텝과 액션, 표현식·컨텍스트. 이 저장소의 ci.yml 해부
 tags: [workflow, on, jobs, steps, actions, 표현식]
-experiments: []
+experiments: [gha-act-local-run, gha-workflow-lint]
 ---
 
 ## 구조
@@ -105,15 +105,33 @@ jobs:
 
 액션은 **태그 대신 커밋 SHA 로 고정**하는 것이 공급망 안전에 좋다 (`uses: actions/checkout@<sha> # v4.2.2`). Dependabot 이 갱신해 준다.
 
+## 푸시하기 전에 로컬에서 — act 와 actionlint
+
+워크플로를 고칠 때마다 푸시하고 기다리면 한 번에 1~3분이 사라진다. 두 도구가 이 루프를 줄인다.
+
+| 도구 | 하는 일 | 못 하는 일 |
+|---|---|---|
+| **actionlint** | 문법·러너 라벨·`${{ }}` 식 타입·`needs` 그래프·유명 액션 입력·스크립트 인젝션을 **실행 없이** 검사 | 의미 문제(권한 과다, `pull_request_target` 위험) |
+| **act** | 잡마다 Docker 컨테이너를 띄워 단계를 **실제로 실행**, `act -l` 로 잡 그래프 확인 | GitHub-hosted 러너 이미지·`actions/cache`·OIDC·권한을 그대로 재현하지 못함 |
+
+![잡 그래프와 캐시 키 해석](/diagrams/gha-pipeline.svg)
+
+실험 [gha-act-local-run](/github-actions/lab/gha-act-local-run)은 매트릭스(node 20·22) → `needs` 로 이어진 워크플로를 act 로 1.8초에 실행했다. 확인한 것: 매트릭스가 두 잡으로 확장되고, `if: matrix.node == 22` 단계는 22 에서만 돌고, `continue-on-error` 단계는 실패해도 잡이 성공하고, `$GITHUB_OUTPUT` 으로 만든 잡 출력이 `needs.build.outputs` 로 다음 잡에 넘어간다. 그리고 **매트릭스 잡의 outputs 는 마지막에 끝난 잡의 값 하나만 남는다**(실측: `study-20.tgz`). `act -l` 로 본 이 저장소 CI 는 test·image 두 잡이 모두 stage 0 — 서로 기다리지 않고 병렬로 돈다.
+
+실험 [gha-workflow-lint](/github-actions/lab/gha-workflow-lint)는 이 저장소 워크플로가 actionlint 0건인 것을 확인한 뒤, 일부러 틀린 워크플로에서 6건을 잡았다: 러너 라벨 오타(`ubuntu-lates`), 액션 입력 오타(`fetch-dept`), PR 제목을 `run:` 에 직접 넣는 인젝션, 정의 안 된 `matrix.nod`, 없는 잡 `needs: [biuld]`, 없는 `steps.missing`. 특히 `matrix.nod` 같은 오타는 실행해도 에러 없이 **빈 문자열**이 되므로 정적 검사가 아니면 늦게 발견된다.
+
 ## 실습 체크리스트
 
 - [ ] `gh run list`, `gh run view <id> --log` 로 이 저장소의 실행 로그 읽기
 - [ ] `workflow_dispatch` 를 ci.yml 에 추가하고 `gh workflow run CI` 로 수동 실행
 - [ ] 스텝에 `if: failure()` 로 실패 시에만 도는 디버그 스텝 추가
 - [ ] 일부러 lint 를 깨뜨려 PR 체크가 빨간불이 되는 것 확인
+- [ ] `brew install actionlint act` 후 `actionlint` 와 `act -l` 을 이 저장소에서 실행해 보기
+- [ ] ci.yml 의 첫 단계에 `actionlint` 를 넣는다면 어떤 잡·순서가 좋을지 정하기
 
 ## 관련 노트
 
 - [Docker 이미지와 Dockerfile](/docker/notes/03-images-dockerfile) — image 잡이 빌드하는 것
 - [Redis 란 무엇인가](/redis/notes/01-redis-overview) — 서비스 컨테이너로 띄우는 Redis
+- [테스트 전략: 테스트 피라미드와 트로피](/testing/notes/01-test-pyramid-trophy) — CI 가 무엇을 어느 층에서 돌릴지
 - [캐시·매트릭스·아티팩트](/github-actions/notes/02-cache-matrix-artifacts)

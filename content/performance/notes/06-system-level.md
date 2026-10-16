@@ -97,6 +97,8 @@ macOS 에서는 `top -o cpu`, `vm_stat`, `nettop`, `iostat`(옵션 다름), Dock
 
 **노드 단일 스레드**: k6 부하 중 `top` 을 보면 Node 프로세스가 **한 코어만 100%** 에 가깝고 나머지 코어는 논다 — 멀티 프로세스(cluster/복제본)가 처리량에 필요한 이유이자, 그래도 꼬리는 해결 안 되는 이유([Node 성능](/performance/notes/04-node-web-server-performance)).
 
+> 이어서 읽기: [CPU 스케줄러와 cgroup — 누가 언제 CPU 를 얻고, 컨테이너 제한은 어떻게 동작하나](/os-internals/notes/03-scheduler-cgroups) — CPU 스로틀링을 커널 수준에서 · [심화 — Nginx 내부 동작, 성능 튜닝, HTTP/3, OpenResty](/nginx/notes/04-internals-performance-openresty) — 워커·이벤트 루프 튜닝의 실제 예
+
 ## 실습 체크리스트
 
 - [ ] `--cpus=0.5` Redis 에 `redis-benchmark` 를 돌리고 `cpu.stat` 의 `nr_throttled` 와 처리량 변화를 기록한다

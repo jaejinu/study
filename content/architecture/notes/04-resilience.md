@@ -104,3 +104,5 @@ readiness 에 **의존성 전체**를 넣으면 Redis 장애 시 모든 Pod 이 
 - [ ] 장애 주입 테스트 1회 이상
 
 > 실측 증거: [복원력 패턴을 장애로 검증](/chaos/notes/03-resilience-patterns-verified) — 서킷 브레이커·재시도 폭풍 실험
+
+> 이어서 읽기: [심화 — SLO 기반 자동화: 릴리스 게이트, 자동 롤백, 버짓 소진 시 차단](/sre/notes/07-slo-driven-automation) — SLO 로 자동 롤백·배포 게이트

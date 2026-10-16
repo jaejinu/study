@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="440" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">워크플로 실행 — 잡 그래프(stage) 와 캐시 키 해석</text>
+  <!-- event -->
+  <rect x="20" y="70" width="120" height="70" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="80" y="98" text-anchor="middle" fill="#e6edf3" font-weight="600">이벤트</text>
+  <text x="80" y="118" text-anchor="middle" fill="#8b949e" font-size="11">push · pull_request</text>
+  <line x1="140" y1="105" x2="176" y2="105" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <!-- stage 0 -->
+  <rect x="178" y="56" width="250" height="160" rx="10" fill="none" stroke="#30363d" stroke-dasharray="5 4"/>
+  <text x="190" y="74" fill="#8b949e" font-size="11">stage 0 — needs 없음 → 병렬</text>
+  <rect x="192" y="84" width="104" height="58" rx="6" fill="#161b22" stroke="#3b82f6"/>
+  <text x="244" y="106" text-anchor="middle" fill="#3b82f6" font-weight="600">build</text>
+  <text x="244" y="124" text-anchor="middle" fill="#8b949e" font-size="11">matrix node=20</text>
+  <rect x="310" y="84" width="104" height="58" rx="6" fill="#161b22" stroke="#3b82f6"/>
+  <text x="362" y="106" text-anchor="middle" fill="#3b82f6" font-weight="600">build</text>
+  <text x="362" y="124" text-anchor="middle" fill="#8b949e" font-size="11">matrix node=22</text>
+  <rect x="192" y="150" width="222" height="52" rx="6" fill="#161b22" stroke="#30363d"/>
+  <text x="303" y="172" text-anchor="middle" fill="#e6edf3" font-size="12">이 저장소: test 와 image 가 둘 다 stage 0</text>
+  <text x="303" y="190" text-anchor="middle" fill="#8b949e" font-size="11">(서로 기다리지 않음 — act -l)</text>
+  <line x1="428" y1="113" x2="476" y2="113" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="452" y="104" text-anchor="middle" fill="#8b949e" font-size="10">needs</text>
+  <!-- stage 1 -->
+  <rect x="478" y="56" width="180" height="160" rx="10" fill="none" stroke="#30363d" stroke-dasharray="5 4"/>
+  <text x="490" y="74" fill="#8b949e" font-size="11">stage 1</text>
+  <rect x="492" y="84" width="152" height="58" rx="6" fill="#161b22" stroke="#22c55e"/>
+  <text x="568" y="106" text-anchor="middle" fill="#22c55e" font-weight="600">test</text>
+  <text x="568" y="124" text-anchor="middle" fill="#8b949e" font-size="11">needs.build.outputs.*</text>
+  <text x="568" y="166" text-anchor="middle" fill="#f59e0b" font-size="11">매트릭스 잡의 outputs 는</text>
+  <text x="568" y="182" text-anchor="middle" fill="#f59e0b" font-size="11">마지막에 끝난 잡 값만 남는다</text>
+  <!-- step semantics -->
+  <rect x="680" y="56" width="262" height="160" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="694" y="78" fill="#e6edf3" font-weight="600">단계 하나의 운명</text>
+  <text x="694" y="102" fill="#e6edf3" font-size="12">if: false → 건너뜀 (skipped)</text>
+  <text x="694" y="124" fill="#e6edf3" font-size="12">실패 → 잡 실패, 이후 단계 생략</text>
+  <text x="694" y="146" fill="#e6edf3" font-size="12">continue-on-error → 실패해도 잡 성공</text>
+  <text x="694" y="168" fill="#e6edf3" font-size="12">$GITHUB_OUTPUT → steps.id.outputs</text>
+  <text x="694" y="196" fill="#8b949e" font-size="11">실험 gha-act-local-run: act 로 1.8초에 재현</text>
+  <!-- cache key flow -->
+  <text x="20" y="252" fill="#e6edf3" font-size="15" font-weight="600">actions/cache — 키로만 찾는다</text>
+  <rect x="20" y="266" width="230" height="80" rx="8" fill="#161b22" stroke="#8b5cf6"/>
+  <text x="34" y="288" fill="#8b5cf6" font-weight="600">key</text>
+  <text x="34" y="308" fill="#e6edf3" font-size="12">Linux-pnpm-${hashFiles(lock)}</text>
+  <text x="34" y="328" fill="#8b949e" font-size="11">restore-keys: Linux-pnpm-</text>
+  <line x1="250" y1="306" x2="286" y2="306" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="288" y="266" width="200" height="80" rx="8" fill="#161b22" stroke="#22c55e"/>
+  <text x="388" y="288" text-anchor="middle" fill="#22c55e" font-weight="600">① 정확 일치?</text>
+  <text x="388" y="308" text-anchor="middle" fill="#e6edf3" font-size="12">cache-hit=true</text>
+  <text x="388" y="328" text-anchor="middle" fill="#8b949e" font-size="11">저장 건너뜀 (키 불변)</text>
+  <line x1="488" y1="306" x2="524" y2="306" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="506" y="296" text-anchor="middle" fill="#8b949e" font-size="10">아니면</text>
+  <rect x="526" y="266" width="200" height="80" rx="8" fill="#161b22" stroke="#f59e0b"/>
+  <text x="626" y="288" text-anchor="middle" fill="#f59e0b" font-weight="600">② 접두 일치 (최신)</text>
+  <text x="626" y="308" text-anchor="middle" fill="#e6edf3" font-size="12">부분 복원, cache-hit=false</text>
+  <text x="626" y="328" text-anchor="middle" fill="#8b949e" font-size="11">끝나면 새 key 로 저장</text>
+  <line x1="726" y1="306" x2="762" y2="306" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="764" y="266" width="178" height="80" rx="8" fill="#161b22" stroke="#ff4438"/>
+  <text x="853" y="288" text-anchor="middle" fill="#ff4438" font-weight="600">③ MISS</text>
+  <text x="853" y="308" text-anchor="middle" fill="#e6edf3" font-size="12">콜드 설치</text>
+  <text x="853" y="328" text-anchor="middle" fill="#8b949e" font-size="11">다른 OS 접두와 안 섞임</text>
+  <rect x="20" y="362" width="922" height="62" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="34" y="386" fill="#e6edf3" font-size="12">검색 범위: 현재 브랜치 → 기본 브랜치(main). 기능 브랜치는 main 캐시를 쓰지만, 기능 브랜치끼리는 서로 못 본다.</text>
+  <text x="34" y="408" fill="#8b949e" font-size="12">키에 날짜·커밋 SHA 를 넣으면 매번 새 캐시가 쌓여 10GB 한도에서 쓸 캐시가 밀려난다. 실험: gha-cache-key (이 저장소 pnpm-lock 해시로 8개 시나리오)</text>
+</svg>

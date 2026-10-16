@@ -109,6 +109,8 @@ kubectl delete -f k8s/redis.yaml
 kubectl create deployment web --image=nginx:1.27 --dry-run=client -o yaml > web.yaml
 ```
 
+> 이어서 읽기: [Docker 란 무엇인가](/docker/notes/01-docker-overview) — 컨테이너가 무엇인지부터 · [Kubernetes·Docker 프로바이더로 이 프로젝트 코드화 — kind, Helm, 역할 분담](/iac/notes/07-provider-kubernetes-docker) — kind 클러스터를 OpenTofu 로 선언하기
+
 ## 실습 체크리스트
 
 - [ ] `pnpm k8s:cluster` 후 `kubectl get nodes` 에서 Ready 확인

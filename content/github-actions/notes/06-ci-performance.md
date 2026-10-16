@@ -4,7 +4,7 @@ order: 6
 level: 심화
 summary: "CI 가 느린 이유를 측정으로 찾는 법(잡·스텝 시간, 캐시 적중률, 대기 시간), 의존성 캐시의 키 설계와 pnpm store 캐시, Docker 빌드 캐시(gha·registry·레이어 순서·multi-stage), 잡 분할과 매트릭스·샤딩, concurrency 로 중복 실행 취소, 테스트 선택과 affected 빌드, CI 시간 회귀를 잡는 메트릭, 그리고 이 저장소 CI 의 구체적 개선안"
 tags: [CI 성능, 캐시, pnpm store, Docker 레이어 캐시, buildx, 매트릭스, 샤딩, concurrency, affected, 회귀]
-experiments: []
+experiments: [gha-cache-key, gha-act-local-run, gha-workflow-lint]
 ---
 
 느린 CI 는 비용이 아니라 **행동을 바꾼다**: 개발자가 PR 을 묶어 크게 만들고, 테스트를 건너뛰고, 머지 큐가 밀린다. 목표는 "PR 피드백 10분 이내, main 배포 15분 이내" 같은 **SLO** 로 두고 측정한다([SRE](/sre)).
@@ -117,6 +117,10 @@ concurrency:
 - **모노레포 affected**: Turborepo `--filter=...[origin/main]`, Nx `affected` ([04 모노레포](/github-actions/notes/04-monorepo-release-security)).
 - **이 저장소**: `content/**` 만 바뀐 커밋(노트 집필)도 전체 vitest 와 Docker 빌드가 돈다. 노트 변경은 lint+tsc+Markdown 검증만으로 충분하다.
 
+## 느린 테스트와 불안정한 테스트
+
+CI 시간의 상당 부분은 **테스트 자체의 설계**에서 온다. 고정 대기(`sleep`)로 짠 테스트는 느리고 불안정하며, "재시도 2회" 로 덮으면 시간이 더 든다 — [테스트 노트 06](/testing/notes/06-e2e-flaky-management)의 실측에서 재시도 2회는 실패율을 6% 로 낮췄지만 시간이 70% 늘었다. 테스트 수가 늘면 샤딩·변경 기반 선택·뮤테이션 점수로 "무엇을 얼마나 돌릴지" 를 정한다([노트 07 뮤테이션 테스트와 비용](/testing/notes/07-mutation-testing-cost)).
+
 ## 회귀 감지 — CI 시간도 메트릭이다
 
 CI 시간은 조용히 늘어난다. 잡 시간을 **시계열로** 남겨야 "지난달보다 2배" 를 알 수 있다.
@@ -156,3 +160,5 @@ CI 시간은 조용히 늘어난다. 잡 시간을 **시계열로** 남겨야 "�
 - [ ] `concurrency` 를 추가하고 같은 브랜치에 두 번 연속 푸시해 첫 실행이 취소되는 것 보기
 - [ ] Dockerfile 에서 `COPY . .` 를 `pnpm install` 앞으로 옮긴 뒤 빌드 시간이 얼마나 늘어나는지 재고 되돌리기
 - [ ] vitest 를 2샤드로 나눠 총 시간과 샤드 불균형을 측정
+- [ ] 실험 gha-cache-key 로 지금 키 설계의 부분 복원 시나리오를 확인하고, 실험 gha-workflow-lint 를 CI 첫 단계로 넣었을 때 줄어드는 '푸시→실패' 왕복 수를 추정
+- [ ] 플레이키 테스트가 CI 시간을 얼마나 잡아먹는지 [테스트 노트 06](/testing/notes/06-e2e-flaky-management)의 재시도 비용 실측과 비교

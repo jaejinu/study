@@ -181,6 +181,8 @@ docker exec -it study-postgres psql -U study -c "create extension if not exists 
 docker exec -it study-postgres psql -U study -c "select * from bt_metap('pg_class_oid_index')"
 ```
 
+> 이어서 읽기: [PostgreSQL 아키텍처 한눈에](/postgres/notes/01-postgres-overview) — PostgreSQL 프로세스·메모리 구조
+
 ## 실습 체크리스트
 
 - [ ] 실험을 돌리고 순차·무작위·fillfactor 50 세 인덱스의 리프 수·채움률을 설명하기

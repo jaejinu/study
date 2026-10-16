@@ -108,6 +108,8 @@ kafkajs 는 `@kafkajs/confluent-schema-registry` 로 encode/decode. CI 에서 �
 | DB ↔ Kafka 동기화 | Connect + Debezium |
 | 간단한 소비자 로직 | 그냥 컨슈머 (kafkajs) — 대부분은 이걸로 충분 |
 
+> 이어서 읽기: [데이터 엔지니어링](/data-engineering) — 데이터 엔지니어링 — CDC 를 레이크하우스로 · [ClickHouse · OLAP](/clickhouse) — ClickHouse — Kafka 토픽을 분석 저장소로
+
 ## 실습 체크리스트
 
 - [ ] Connect 워커(`confluentinc/cp-kafka-connect` 또는 `debezium/connect`)를 compose 에 추가하고 PostgreSQL 컨테이너에 `wal_level=logical` 설정 후 Debezium 소스 등록 → orders 테이블 INSERT 가 토픽에 나타나는지

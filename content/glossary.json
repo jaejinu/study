@@ -2680,5 +2680,119 @@
     "subject": "linux-network",
     "def": "/proc/net/softnet_stat 의 세 번째 열. softirq 가 한 번에 처리할 패킷 예산(netdev_budget)을 다 써서 미룬 횟수로, 패킷 처리 CPU 부족 신호.",
     "link": "/linux-network/notes/06-kernel-stack-ebpf-performance"
+  },
+  {
+    "term": "프로바이더 (Terraform provider)",
+    "subject": "iac",
+    "def": "Terraform/OpenTofu 가 클라우드·Kubernetes·Docker API 를 호출하도록 해 주는 플러그인. required_providers 로 버전을 고정하고 init 때 내려받는다.",
+    "link": "/iac/notes/02-terraform-core-model"
+  },
+  {
+    "term": "리소스 의존성 그래프",
+    "subject": "iac",
+    "def": "리소스 간 참조로 만들어지는 방향 그래프. plan/apply 는 이 그래프를 위상 정렬해 독립 리소스는 병렬로, 의존 리소스는 순서대로 만든다. depends_on 은 숨은 의존성을 명시할 때만 쓴다.",
+    "link": "/iac/notes/02-terraform-core-model"
+  },
+  {
+    "term": "모듈 (Terraform module)",
+    "subject": "iac",
+    "def": "변수 입력과 출력으로 인터페이스를 가진 재사용 가능한 리소스 묶음. 레지스트리 모듈은 버전을 고정해 쓰고, 상속 대신 조합으로 설계한다.",
+    "link": "/iac/notes/04-modules-registry"
+  },
+  {
+    "term": "원격 백엔드와 상태 잠금",
+    "subject": "iac",
+    "def": "state 를 S3·GCS 등 공유 저장소에 두고 apply 동안 잠가 두 사람이 동시에 바꾸지 못하게 하는 설정. 로컬 state 는 팀에서 즉시 사고가 된다.",
+    "link": "/iac/notes/05-state-management-deep"
+  },
+  {
+    "term": "워크스페이스 (Terraform workspace)",
+    "subject": "iac",
+    "def": "같은 코드로 state 를 여러 벌 두는 기능. 환경 분리에는 설정 차이가 드러나지 않아 디렉터리(또는 별도 백엔드 키) 분리가 더 흔히 권장된다.",
+    "link": "/iac/notes/05-state-management-deep"
+  },
+  {
+    "term": "burst / nodelay (limit_req)",
+    "subject": "nginx",
+    "def": "burst 는 리키 버킷이 rate 를 넘어 담아 둘 수 있는 요청 수, nodelay 는 그 버스트를 줄 세우지 않고 즉시 통과시키는 옵션. 실험에서 5r/s burst=10 의 통과 수는 둘 다 11개였고, delay 쪽 마지막 요청만 2초 기다렸다.",
+    "link": "/nginx/notes/03-cache-tls-ratelimit"
+  },
+  {
+    "term": "proxy_cache_lock",
+    "subject": "nginx",
+    "def": "같은 캐시 키의 동시 미스 중 첫 요청만 업스트림으로 보내고 나머지는 캐시가 채워질 때까지 기다리게 하는 지시어. 실험에서 동시 20요청의 원본 호출이 20 → 1 로 줄었다.",
+    "link": "/nginx/notes/03-cache-tls-ratelimit"
+  },
+  {
+    "term": "max_fails / fail_timeout",
+    "subject": "nginx",
+    "def": "오픈소스 nginx 의 수동 헬스 체크. fail_timeout 안에 max_fails 번 실패한 업스트림을 fail_timeout 동안 후보에서 뺀다. 실제 요청이 실패해야 감지된다.",
+    "link": "/nginx/notes/02-reverse-proxy-lb"
+  },
+  {
+    "term": "proxy_next_upstream",
+    "subject": "nginx",
+    "def": "연결 실패·타임아웃·지정 상태 코드일 때 같은 요청을 다음 업스트림으로 재시도하는 설정. 실패를 지연으로 바꾸며, 이미 보낸 비멱등 요청은 기본적으로 재시도하지 않는다.",
+    "link": "/nginx/notes/02-reverse-proxy-lb"
+  },
+  {
+    "term": "stub_status",
+    "subject": "nginx",
+    "def": "활성 연결·accepts·handled·requests·Reading/Writing/Waiting 을 보여 주는 Nginx 내장 상태 페이지. nginx-prometheus-exporter 가 이것을 메트릭으로 바꾼다.",
+    "link": "/nginx/notes/03-cache-tls-ratelimit"
+  },
+  {
+    "term": "worker_connections",
+    "subject": "nginx",
+    "def": "워커 프로세스 하나가 동시에 열 수 있는 연결 수. 최대 동시 연결 ≈ worker_processes × worker_connections 이며, 프록시는 클라이언트·업스트림 연결을 둘 다 쓰고 파일 디스크립터 한도에도 묶인다.",
+    "link": "/nginx/notes/04-internals-performance-openresty"
+  },
+  {
+    "term": "스크레이프 (pull 모델)",
+    "subject": "observability",
+    "def": "Prometheus 가 정해진 간격으로 대상의 /metrics 를 가져가는 수집 방식. 대상이 죽으면 up=0 으로 바로 드러나고, 짧게 사는 작업은 Pushgateway·remote write 로 보완한다.",
+    "link": "/observability/notes/02-prometheus-promql"
+  },
+  {
+    "term": "억제 (inhibition)",
+    "subject": "observability",
+    "def": "상위 원인 알림(예: RedisDown)이 울리는 동안 그 결과로 생기는 하위 알림을 Alertmanager 가 보내지 않게 하는 규칙. 알림 폭풍과 페이지 피로를 줄인다.",
+    "link": "/observability/notes/09-alerting-pipeline"
+  },
+  {
+    "term": "OTLP",
+    "subject": "observability",
+    "def": "OpenTelemetry 의 전송 프로토콜(gRPC 4317·HTTP 4318). 트레이스·메트릭·로그를 하나의 형식으로 collector·백엔드에 보낸다. 이 사이트는 HTTP 14318 로 Tempo 에 보낸다.",
+    "link": "/observability/notes/06-tracing-otel"
+  },
+  {
+    "term": "act",
+    "subject": "github-actions",
+    "def": "GitHub Actions 워크플로를 Docker 컨테이너로 로컬 실행하는 도구. act -l 로 잡 그래프를 보고 단계를 재현하지만, 러너 이미지·actions/cache·OIDC·권한은 그대로 재현하지 못한다.",
+    "link": "/github-actions/notes/01-workflow-basics"
+  },
+  {
+    "term": "actionlint",
+    "subject": "github-actions",
+    "def": "워크플로를 실행 없이 검사하는 정적 분석기. 러너 라벨, ${{ }} 식 타입, needs 그래프, 유명 액션 입력, 신뢰할 수 없는 입력의 스크립트 인젝션을 잡는다. pull_request_target 위험 같은 의미 문제는 못 잡는다.",
+    "link": "/github-actions/notes/01-workflow-basics"
+  },
+  {
+    "term": "매트릭스 (strategy.matrix)",
+    "subject": "github-actions",
+    "def": "변수 조합마다 잡을 복제해 병렬로 돌리는 설정. include/exclude 로 조합을 다듬고 fail-fast 로 하나가 실패하면 나머지를 취소한다. 매트릭스 잡의 outputs 는 마지막에 끝난 잡의 값만 남는다.",
+    "link": "/github-actions/notes/02-cache-matrix-artifacts"
+  },
+  {
+    "term": "hashFiles()",
+    "subject": "github-actions",
+    "def": "파일마다 SHA-256 을 구한 뒤 그 해시들을 이어 다시 SHA-256 하는 식 함수. 락파일 해시를 캐시 키에 넣어, 의존성이 바뀌면 새 캐시가 만들어지게 한다.",
+    "link": "/github-actions/notes/02-cache-matrix-artifacts"
+  },
+  {
+    "term": "concurrency (cancel-in-progress)",
+    "subject": "github-actions",
+    "def": "같은 그룹 이름의 실행을 하나만 돌게 하는 설정. cancel-in-progress: true 면 같은 브랜치에 새로 푸시할 때 이전 실행을 취소해 러너 시간을 아낀다.",
+    "link": "/github-actions/notes/02-cache-matrix-artifacts"
   }
 ]

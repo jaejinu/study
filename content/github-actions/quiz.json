@@ -78,5 +78,30 @@
     "note": "06-ci-performance",
     "q": "concurrency 의 cancel-in-progress 를 배포 워크플로엔 왜 끄나?",
     "a": "배포 중간에 취소되면 반쯤 배포된 상태가 남는다. PR CI 는 밀려난 실행을 취소해도 안전하지만 배포는 끝까지 가야 한다."
+  },
+  {
+    "note": "01-workflow-basics",
+    "q": "act 와 actionlint 는 각각 무엇을 검증하나?",
+    "a": "actionlint 는 실행 없이 문법·식 타입·needs·액션 입력·스크립트 인젝션을 정적으로, act 는 Docker 컨테이너로 단계를 실제로 실행한다. act 는 GitHub-hosted 이미지·cache·OIDC 를 그대로 재현하지 못한다."
+  },
+  {
+    "note": "01-workflow-basics",
+    "q": "매트릭스 잡(node 20·22)의 outputs 를 needs 로 받으면 어떤 값이 오나?",
+    "a": "마지막에 끝난 매트릭스 잡의 값 하나만 남는다(덮어쓰기). 잡별 값이 필요하면 아티팩트나 잡마다 다른 출력 이름을 쓴다."
+  },
+  {
+    "note": "02-cache-matrix-artifacts",
+    "q": "actions/cache 에서 cache-hit 이 false 인데도 파일이 복원될 수 있는 경우는?",
+    "a": "key 정확 일치는 없지만 restore-keys 접두로 이전 캐시를 찾은 부분 복원. 이때 잡 끝에 새 key 로 저장한다."
+  },
+  {
+    "note": "02-cache-matrix-artifacts",
+    "q": "기능 브랜치 A 가 만든 캐시를 기능 브랜치 B 가 쓸 수 있나?",
+    "a": "없다. 검색 범위는 현재 브랜치와 기본 브랜치뿐이다. B 는 main 의 캐시로 부분 복원된다."
+  },
+  {
+    "note": "05-runners-and-security",
+    "q": "actionlint 가 잡는 보안 문제와 못 잡는 보안 문제 하나씩은?",
+    "a": "잡음: PR 제목 같은 신뢰할 수 없는 입력을 run 에 직접 넣는 스크립트 인젝션. 못 잡음: pull_request_target 에서 PR 코드를 checkout 해 실행하는 위험(문법상 정상)."
   }
 ]

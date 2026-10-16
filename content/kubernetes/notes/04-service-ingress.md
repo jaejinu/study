@@ -97,6 +97,12 @@ kind 에서 nginx ingress 를 쓰려면 클러스터 생성 시 80/443 포트를
 
 **Gateway API** 가 Ingress 의 후속 표준으로 자리잡고 있다 (GatewayClass, Gateway, HTTPRoute). 새 프로젝트라면 살펴볼 것.
 
+## 요청이 Pod 에 닿기까지
+
+![Ingress → Service → EndpointSlice → Pod](/diagrams/k8s-request-path.svg)
+
+Service 는 **L4** 다. 가상 IP 로 온 연결을 각 노드의 kube-proxy 규칙(iptables/IPVS)이 Ready 인 Pod IP 하나로 바꿔 줄 뿐, HTTP 재시도·타임아웃·캐시는 하지 않는다. 그런 L7 일은 Ingress controller(ingress-nginx 는 [Nginx](/nginx/notes/01-nginx-overview) 그 자체다)나 서비스 메시, 앱이 한다 — [Nginx 의 업스트림 장애 전환 실험](/nginx/notes/02-reverse-proxy-lb)이 그 L7 재시도를 보여 준다. 서비스 이름 해석은 CoreDNS 가 한다([Linux 네트워크: DNS](/linux-network/notes/03-dns)). kube-proxy 를 eBPF 로 대체하면 무엇이 바뀌는지는 [eBPF 노트 04](/ebpf/notes/04-networking-xdp-tc-cilium)에 있다.
+
 ## 네트워크 모델 요약
 
 - 모든 Pod 은 NAT 없이 서로 통신할 수 있는 고유 IP 를 가진다 (CNI 플러그인이 구현: kind 는 kindnet, 운영에선 Calico/Cilium).

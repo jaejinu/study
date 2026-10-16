@@ -68,6 +68,8 @@ kafka-consumer-groups.sh --reset-offsets --shift-by -100 --execute ...
 - 버그 수정 후 다시 처리, 새 소비자 서비스를 과거부터 따라잡게 하기.
 - 재처리를 전제로 **소비자 로직은 멱등**하게 (같은 메시지 두 번 처리해도 결과 동일: upsert, 처리한 ID 기록).
 
+> 이어서 읽기: [NATS 와 JetStream — 가벼운 pub/sub 위에 쌓는 스트림](/messaging/notes/03-nats-jetstream) — NATS 큐 그룹·JetStream 컨슈머와 비교
+
 ## 실습 체크리스트
 
 - [ ] 같은 그룹 컨슈머 2개 → `--describe` 로 파티션이 나뉜 것 확인 (실험실)

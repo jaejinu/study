@@ -149,6 +149,8 @@ groups:
          / sum(increase(study_action_duration_seconds_count[30d]))) / (1 - 0.995)
 ```
 
+> 이어서 읽기: [SLO 대시보드와 번레이트 패널 — Grafana 로 '지금 괜찮은가' 를 한 화면에](/observability/notes/11-slo-dashboard-burn-rate) — SLO 를 Grafana 대시보드로
+
 ## 실습 체크리스트
 
 - [ ] 실험 `sre-slo-recording-rules` 를 돌리고, 출력된 현재 SLI 가 표의 SLO 를 만족하는지 보기

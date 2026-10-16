@@ -89,3 +89,5 @@ pnpm kafka:down
 
 - [Redis 메시징 — List, Pub/Sub, Stream](/redis/notes/07-pubsub-streams) — Stream 과의 비교
 - [토픽·파티션·프로듀서](/kafka/notes/02-topics-partitions)
+
+> 이어서 읽기: [큐·토픽·로그 — 메시징의 세 가지 모델](/messaging/notes/01-queue-topic-log-models) — 큐·토픽·로그 세 모델 속에서 Kafka 의 자리 · [Kafka 를 쓰지 말아야 할 때 — 브로커 선택 기준](/messaging/notes/05-when-not-kafka) — Kafka 를 쓰지 말아야 할 때

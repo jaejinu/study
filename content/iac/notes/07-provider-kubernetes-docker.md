@@ -192,6 +192,8 @@ resource "kubernetes_manifest" "app_study" {
 4. 환경 점검 카드([IaC 대시보드](/iac))에 `tofu show`/`state list` 결과를 띄워 "코드가 아는 리소스" 와 실제를 비교(드리프트 패널).
 5. CI 에 `fmt/validate/checkov` + plan 코멘트. 드리프트 cron 은 로컬 클러스터라 생략(또는 self-hosted runner).
 
+> 이어서 읽기: [로컬 클러스터와 kubectl](/kubernetes/notes/02-local-cluster-kubectl) — kind·kubectl 기본 · [심화 — CRD 와 Operator: Kubernetes 를 확장하는 방법](/kubernetes/notes/11-operators-crds) — CRD 와 Terraform 타이밍 문제의 배경
+
 ## 실습 체크리스트
 
 - [ ] 실험 `iac-local-stack` 을 돌리고, `infra/local/20-platform/main.tf` 의 `config-hash` 어노테이션을 지운 뒤 변수를 바꿔 Pod 가 재시작되지 **않는** 것을 확인(ConfigMap 만 바뀌고 프로세스는 옛 값)

@@ -79,6 +79,8 @@ Grafana Alerting(통합) 또는 Prometheus rules + Alertmanager. 라우팅: seve
 | 전체 | Grafana LGTM 스택 | Loki·Grafana·Tempo·Mimir |
 | 대안 | Elastic(ELK), Jaeger, Datadog/New Relic(SaaS) | |
 
+> 이어서 읽기: [데이터·관측 비용 — 볼륨 × 보존 × 카디널리티](/finops/notes/04-data-observability-cost) — 대시보드·시계열 수의 비용
+
 ## 실습 체크리스트
 
 - [ ] Grafana 에서 study-redis 대시보드를 열고 Redis 벤치마크를 돌려 패널 변화 보기

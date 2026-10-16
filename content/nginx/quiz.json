@@ -1,47 +1,77 @@
 [
- {
-  "note": "01-nginx-overview",
-  "q": "location 매칭 우선순위는?",
-  "a": "= 정확 일치 → ^~ 접두어 → 정규식(파일 순서) → 가장 긴 접두어."
- },
- {
-  "note": "01-nginx-overview",
-  "q": "설정을 바꾼 뒤 reload 전에 꼭 할 일은?",
-  "a": "nginx -t 로 문법 검증. 잘못된 설정으로 reload 하면 기존 워커가 유지되지만 검증이 안전하다."
- },
- {
-  "note": "02-reverse-proxy-lb",
-  "q": "proxy_pass http://app/ 와 http://app 의 차이는?",
-  "a": "끝 슬래시가 있으면 location 접두어가 치환되어 /api/users → /users, 없으면 경로가 그대로 전달된다."
- },
- {
-  "note": "02-reverse-proxy-lb",
-  "q": "앱이 실제 클라이언트 IP 와 https 여부를 알게 하려면?",
-  "a": "X-Real-IP / X-Forwarded-For / X-Forwarded-Proto / Host 헤더를 proxy_set_header 로 전달하고 앱에서 trust proxy."
- },
- {
-  "note": "03-cache-tls-ratelimit",
-  "q": "proxy_cache_lock on 이 막는 문제는?",
-  "a": "같은 키의 동시 미스가 모두 업스트림으로 가는 stampede. 한 요청만 가고 나머지는 기다린다."
- },
- {
-  "note": "03-cache-tls-ratelimit",
-  "q": "add_header 의 흔한 함정은?",
-  "a": "하위 블록에 add_header 가 하나라도 있으면 상위 블록의 add_header 를 상속하지 않는다."
- },
- {
-  "note": "04-internals-performance-openresty",
-  "q": "limit_req 가 auth_request 보다 먼저 거절하는 이유는?",
-  "a": "phase 순서: limit_req 는 PREACCESS, auth_request 는 ACCESS 단계다."
- },
- {
-  "note": "04-internals-performance-openresty",
-  "q": "업스트림 keepalive 가 없을 때 생기는 증상은?",
-  "a": "요청마다 앱에 새 TCP 연결 → TIME_WAIT 폭증, 지연 증가. proxy_http_version 1.1 + Connection \"\" 필요."
- },
- {
-  "note": "04-internals-performance-openresty",
-  "q": "OpenResty Lua 에서 블로킹 라이브러리를 쓰면?",
-  "a": "워커의 이벤트 루프가 멈춰 그 워커의 모든 연결이 지연된다. cosocket 기반 논블로킹 API 만 사용."
- }
+  {
+    "note": "01-nginx-overview",
+    "q": "location 매칭 우선순위는?",
+    "a": "= 정확 일치 → ^~ 접두어 → 정규식(파일 순서) → 가장 긴 접두어."
+  },
+  {
+    "note": "01-nginx-overview",
+    "q": "설정을 바꾼 뒤 reload 전에 꼭 할 일은?",
+    "a": "nginx -t 로 문법 검증. 잘못된 설정으로 reload 하면 기존 워커가 유지되지만 검증이 안전하다."
+  },
+  {
+    "note": "02-reverse-proxy-lb",
+    "q": "proxy_pass http://app/ 와 http://app 의 차이는?",
+    "a": "끝 슬래시가 있으면 location 접두어가 치환되어 /api/users → /users, 없으면 경로가 그대로 전달된다."
+  },
+  {
+    "note": "02-reverse-proxy-lb",
+    "q": "앱이 실제 클라이언트 IP 와 https 여부를 알게 하려면?",
+    "a": "X-Real-IP / X-Forwarded-For / X-Forwarded-Proto / Host 헤더를 proxy_set_header 로 전달하고 앱에서 trust proxy."
+  },
+  {
+    "note": "03-cache-tls-ratelimit",
+    "q": "proxy_cache_lock on 이 막는 문제는?",
+    "a": "같은 키의 동시 미스가 모두 업스트림으로 가는 stampede. 한 요청만 가고 나머지는 기다린다."
+  },
+  {
+    "note": "03-cache-tls-ratelimit",
+    "q": "add_header 의 흔한 함정은?",
+    "a": "하위 블록에 add_header 가 하나라도 있으면 상위 블록의 add_header 를 상속하지 않는다."
+  },
+  {
+    "note": "04-internals-performance-openresty",
+    "q": "limit_req 가 auth_request 보다 먼저 거절하는 이유는?",
+    "a": "phase 순서: limit_req 는 PREACCESS, auth_request 는 ACCESS 단계다."
+  },
+  {
+    "note": "04-internals-performance-openresty",
+    "q": "업스트림 keepalive 가 없을 때 생기는 증상은?",
+    "a": "요청마다 앱에 새 TCP 연결 → TIME_WAIT 폭증, 지연 증가. proxy_http_version 1.1 + Connection \"\" 필요."
+  },
+  {
+    "note": "04-internals-performance-openresty",
+    "q": "OpenResty Lua 에서 블로킹 라이브러리를 쓰면?",
+    "a": "워커의 이벤트 루프가 멈춰 그 워커의 모든 연결이 지연된다. cosocket 기반 논블로킹 API 만 사용."
+  },
+  {
+    "note": "01-nginx-overview",
+    "q": "limit_req 를 return 200 과 같은 location 에 두면 왜 레이트리밋이 걸리지 않나?",
+    "a": "return 은 rewrite 단계에서 응답을 끝내고, limit_req 는 그 다음인 preaccess 단계에서 돌기 때문이다. 실험에서 30요청이 전부 통과했다. 정적 파일이나 proxy_pass 로 응답해야 한다."
+  },
+  {
+    "note": "03-cache-tls-ratelimit",
+    "q": "rate=5r/s burst=10 에서 nodelay 유무는 무엇을 바꾸나?",
+    "a": "통과 수(1+burst=11)는 같고 지연이 다르다. nodelay 는 버스트를 즉시 통과시키고, 없으면 200ms 간격으로 줄 세워 마지막 요청이 약 2초 기다린다."
+  },
+  {
+    "note": "03-cache-tls-ratelimit",
+    "q": "proxy_cache_lock 이 막는 문제와 대가는?",
+    "a": "캐시가 빈 순간 같은 키의 동시 미스가 원본으로 몰리는 썬더링 허드. 실험에서 원본 호출 20 → 1. 대가는 기다린 요청의 추가 지연(약 500ms)이며 use_stale updating 으로 줄인다."
+  },
+  {
+    "note": "02-reverse-proxy-lb",
+    "q": "오픈소스 nginx 는 업스트림이 죽은 것을 어떻게 아나?",
+    "a": "능동 헬스 체크가 없어 실제 요청의 실패로 판단한다(수동). max_fails 번 실패하면 fail_timeout 동안 후보에서 빼고, 그 뒤 다시 시도한다."
+  },
+  {
+    "note": "02-reverse-proxy-lb",
+    "q": "proxy_connect_timeout 을 기본값(60s)으로 두면 업스트림 장애 때 무슨 일이 생기나?",
+    "a": "죽은 서버를 처음 만난 요청이 60초 매달린다. 실험은 1s 로 두어 첫 요청만 1초 지연되고 재시도로 성공했다."
+  },
+  {
+    "note": "02-reverse-proxy-lb",
+    "q": "proxy_next_upstream 재시도가 POST 에 위험한 이유는?",
+    "a": "업스트림이 이미 처리했는데 응답만 실패한 경우 다시 보내면 중복 처리된다. 기본값은 이미 보낸 비멱등 요청을 재시도하지 않으며, 멱등 키로 서버가 막아야 한다."
+  }
 ]

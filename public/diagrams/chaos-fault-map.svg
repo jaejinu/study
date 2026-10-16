@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 460" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="460" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">장애 지도 — 어디에 주입하고, 무엇으로 보이며, 무엇이 되돌리나</text>
+  <text x="140" y="62" text-anchor="middle" fill="#ff4438" font-weight="600">주입 지점</text>
+  <text x="480" y="62" text-anchor="middle" fill="#3b82f6" font-weight="600">관측 신호</text>
+  <text x="820" y="62" text-anchor="middle" fill="#22c55e" font-weight="600">안전장치 · 복구</text>
+  <!-- injections -->
+  <g font-size="12">
+    <rect x="20" y="74" width="240" height="44" rx="6" fill="#161b22" stroke="#ff4438"/>
+    <text x="32" y="93" fill="#e6edf3">Redis 멈춤 — docker pause</text>
+    <text x="32" y="110" fill="#8b949e" font-size="11">hang · circuit-breaker · retry-storm</text>
+    <rect x="20" y="126" width="240" height="44" rx="6" fill="#161b22" stroke="#ff4438"/>
+    <text x="32" y="145" fill="#e6edf3">메모리 고갈 — CONFIG SET maxmemory</text>
+    <text x="32" y="162" fill="#8b949e" font-size="11">noeviction OOM vs allkeys-lru 축출</text>
+    <rect x="20" y="178" width="240" height="44" rx="6" fill="#161b22" stroke="#ff4438"/>
+    <text x="32" y="197" fill="#e6edf3">브로커 정지 — docker stop kafka</text>
+    <text x="32" y="214" fill="#8b949e" font-size="11">send 재시도 → 에러, 유실</text>
+    <rect x="20" y="230" width="240" height="44" rx="6" fill="#161b22" stroke="#ff4438"/>
+    <text x="32" y="249" fill="#e6edf3">커넥션 고갈 — PG max_connections</text>
+    <text x="32" y="266" fill="#8b949e" font-size="11">풀 대기 · too many clients</text>
+    <rect x="20" y="282" width="240" height="44" rx="6" fill="#161b22" stroke="#ff4438"/>
+    <text x="32" y="301" fill="#e6edf3">Pod 강제 종료 — kubectl delete</text>
+    <text x="32" y="318" fill="#8b949e" font-size="11">부하 중 복제본 1개 손실</text>
+  </g>
+  <!-- signals -->
+  <g font-size="12">
+    <rect x="350" y="74" width="260" height="56" rx="6" fill="#161b22" stroke="#3b82f6"/>
+    <text x="362" y="94" fill="#e6edf3">메트릭: redis_up · p99 지연 · 에러율</text>
+    <text x="362" y="113" fill="#8b949e" font-size="11">hang 이면 redis_up 시계열이 '사라진다'</text>
+    <rect x="350" y="138" width="260" height="56" rx="6" fill="#161b22" stroke="#3b82f6"/>
+    <text x="362" y="158" fill="#e6edf3">알림: RedisDown(critical) · 번레이트</text>
+    <text x="362" y="177" fill="#8b949e" font-size="11">for 30s → Alertmanager → /api/alerts</text>
+    <rect x="350" y="202" width="260" height="56" rx="6" fill="#161b22" stroke="#3b82f6"/>
+    <text x="362" y="222" fill="#e6edf3">로그·트레이스: Loki · Tempo</text>
+    <text x="362" y="241" fill="#8b949e" font-size="11">타임아웃 span · 폴백 로그</text>
+    <rect x="350" y="266" width="260" height="56" rx="6" fill="#161b22" stroke="#3b82f6"/>
+    <text x="362" y="286" fill="#e6edf3">사용자 증상: 실패율 · 지연</text>
+    <text x="362" y="305" fill="#8b949e" font-size="11">k6 · 실험 결과 표</text>
+  </g>
+  <line x1="260" y1="200" x2="348" y2="200" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="610" y1="200" x2="688" y2="200" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <!-- safety -->
+  <rect x="690" y="74" width="250" height="168" rx="8" fill="#0f1f14" stroke="#22c55e"/>
+  <text x="704" y="98" fill="#22c55e" font-weight="600">데드맨 스위치 (src/lib/deadman.ts)</text>
+  <text x="704" y="122" fill="#e6edf3" font-size="12">① 주입 직전: 분리 프로세스 장전</text>
+  <text x="718" y="140" fill="#8b949e" font-size="11">sh -c "sleep N; docker unpause …"</text>
+  <text x="704" y="162" fill="#e6edf3" font-size="12">② 정상 종료: 원복 후 disarm()</text>
+  <text x="704" y="184" fill="#e6edf3" font-size="12">③ 실험이 죽으면: N초 뒤 자동 원복</text>
+  <text x="704" y="210" fill="#f59e0b" font-size="12">실측: 일시정지 중 강제 종료</text>
+  <text x="704" y="228" fill="#f59e0b" font-size="12">→ 60초 뒤 Redis 자동 복구</text>
+  <rect x="690" y="250" width="250" height="72" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="704" y="272" fill="#e6edf3" font-size="12">폭발 반경: 로컬 컨테이너 1개</text>
+  <text x="704" y="292" fill="#e6edf3" font-size="12">중단 조건: 시간 상한 · 사람 승인</text>
+  <text x="704" y="312" fill="#e6edf3" font-size="12">원복: finally + 데드맨 (이중)</text>
+  <!-- incident -->
+  <rect x="20" y="346" width="920" height="98" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="34" y="370" fill="#e6edf3" font-weight="600">왜 이중 안전장치인가 — 실제 사고</text>
+  <text x="34" y="394" fill="#e6edf3" font-size="12">번레이트 실험이 docker pause 직후 실행 거부로 중단 → finally 가 돌지 않아 study-redis 가 2시간 57분 멈춤 (RedisDown 22:33 → 01:30).</text>
+  <text x="34" y="414" fill="#e6edf3" font-size="12">cleanup 은 실험 프로세스가 살아 있을 때만 돈다. 원복 장치는 주입한 쪽과 수명이 독립이어야 한다 → 모든 pause·stop·CONFIG SET 실험에 데드맨 적용.</text>
+  <text x="34" y="434" fill="#8b949e" font-size="11">포스트모템: SRE 노트 05 · 복원력 패턴: 장애 실험실 노트 03 · 게임데이: 노트 04</text>
+</svg>

@@ -4,7 +4,7 @@ order: 2
 level: 기초
 summary: proxy_pass 의 경로 규칙, 전달해야 할 헤더, upstream 과 밸런싱 알고리즘, 헬스체크·재시도, keepalive, WebSocket
 tags: [proxy_pass, upstream, 로드밸런싱, X-Forwarded-For, keepalive, WebSocket]
-experiments: []
+experiments: [nginx-upstream-failover]
 ---
 
 ## proxy_pass
@@ -84,6 +84,25 @@ location /ws/ {
 
 - 같은 compose 네트워크의 서비스 이름(`web:3000`)은 Nginx 기동 시 한 번 해석된다. 컨테이너가 재생성되어 IP 가 바뀌면 502 → `resolver 127.0.0.11 valid=10s;` + 변수로 `proxy_pass http://$upstream;` 패턴.
 - 호스트 프로세스는 `host.docker.internal` (이 프로젝트).
+
+## 예시로 보기 — 실험으로 보는 장애 전환
+
+실험 [nginx-upstream-failover](/nginx/lab/nginx-upstream-failover)는 업스트림 A·B 컨테이너 앞에 로드밸런서를 두고 B 를 `docker stop` 한다. `proxy_connect_timeout 1s`, `max_fails=1 fail_timeout=5s` 기준 순차 10요청의 실측:
+
+| 상황 | 성공 | 응답한 서버 | 실패 | 800ms 이상 |
+|---|---|---|---|---|
+| 둘 다 정상 | 10/10 | A 5 · B 5 | 0 | 0 |
+| B 정지 · `proxy_next_upstream error timeout` · `max_fails=1` | 10/10 | A 10 | 0 | 1 (1.0s) |
+| B 정지 · `proxy_next_upstream off` · `max_fails=0` | 5/10 | A 5 | 5 | 5 (각 1.0s) |
+| B 복구 후(fail_timeout 경과) | 10/10 | A 6 · B 4 | 0 | 0 |
+
+읽는 법:
+- **재시도는 실패를 지연으로 바꾼다.** B 를 처음 만난 요청 하나만 connect timeout(1s) 을 맞고 A 로 넘어갔다. 사용자는 실패를 보지 못했다.
+- **`max_fails`·`fail_timeout` 이 죽은 서버를 잠시 뺀다.** 그 뒤 9개는 B 를 건너뛰어 1ms 대로 끝났다. 수동 헬스 체크라 "실제 요청이 실패해야" 알아차린다.
+- **둘 다 끄면** 라운드 로빈 몫의 절반이 그대로 실패하고, 실패마다 1초씩 매달린다. 기본 `proxy_connect_timeout 60s` 였다면 60초다.
+- 복구 후 `fail_timeout` 이 지나면 B 가 다시 후보가 된다 — 별도 조치가 필요 없다.
+
+재시도는 **멱등 요청에만** 안전하다. 기본값은 이미 업스트림에 보낸 POST 를 재시도하지 않는다(`non_idempotent` 를 켜야 한다). 결제처럼 중복이 치명적인 경로는 [멱등 키](/api-design/notes/01-rest-principles)로 서버가 막아야 한다. 재시도 폭풍과 서킷 브레이커는 [장애 실험실 노트 03](/chaos/notes/03-resilience-patterns-verified)에서 실측한다.
 
 ## 실습 체크리스트
 

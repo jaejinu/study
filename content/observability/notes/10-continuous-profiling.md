@@ -131,6 +131,8 @@ Pyroscope.start();     // CPU wall + heap 을 10초 간격으로 push
 
 실제 앱에 적용하려면: 개발 서버를 `NODE_OPTIONS=--cpu-prof` 로 띄우고 [k6 부하](/performance/notes/03-k6-load-testing) 를 30초 건 뒤 종료 → 프로파일에서 노트 렌더링(markdown 파싱·하이라이트)이 상위에 오는지 확인. 오면 렌더 결과 캐시가 다음 최적화다([캐시 계층](/architecture/notes/10-cache-layers-cdn)).
 
+> 이어서 읽기: [프로파일링 — 스택 샘플링, flame graph, 연속 프로파일링](/ebpf/notes/06-profiling-continuous) — eBPF 스택 샘플링의 원리
+
 ## 실습 체크리스트
 
 - [ ] `obs-cpu-profile` 을 실행하고 저장된 `.cpuprofile` 을 speedscope 에서 열어 self time 상위 함수를 찾기

@@ -144,6 +144,8 @@ O_DIRECT 의 28 µs 가 "가상 디스크(virtio-blk)까지 요청 하나 왕복
 
 1 MiB 블록으로 읽으면 반대로 O_DIRECT 가 가장 빨랐다(8.8 GB/s vs 캐시 5.8 GB/s). 큰 요청 하나의 고정 비용이 작아지고, 버퍼드 읽기는 페이지 캐시 → 유저 버퍼 복사를 한 번 더 하기 때문이다. **블록 크기에 따라 승자가 바뀐다** — DB 가 페이지 크기와 I/O 크기를 신중히 고르는 이유다.
 
+> 이어서 읽기: [스토리지와 StatefulSet](/kubernetes/notes/06-storage-statefulset) — PVC·StatefulSet 이 디스크를 Pod 에 묶는 방식
+
 ## 실습 체크리스트
 
 - [ ] 실험 `os-page-cache` 의 1 MiB·4 KiB 결과를 비교하고 "왜 블록 크기에 따라 O_DIRECT 의 순위가 바뀌는지" 한 문단으로 설명하기

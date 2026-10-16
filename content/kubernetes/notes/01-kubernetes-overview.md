@@ -102,3 +102,6 @@ kubectl get nodes
 ```
 
 대시보드의 클러스터 점검 카드가 노드와 Pod 상태를 보여 준다.
+
+> 이어서 읽기: [로컬 클러스터와 kubectl](/kubernetes/notes/02-local-cluster-kubectl) — 바로 다음: 로컬 클러스터와 kubectl · [Docker 란 무엇인가](/docker/notes/01-docker-overview) — 컨테이너 기초가 필요하면
+

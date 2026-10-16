@@ -145,6 +145,8 @@ spec:
 
 `PodDisruptionBudget` 으로 노드 점검 중에도 최소 가용 Pod 수를 보장한다.
 
+> 이어서 읽기: [Kubernetes 비용 — requests 는 예약이고, 노드가 청구서다](/finops/notes/03-kubernetes-cost) — requests 가 곧 비용 — 배분과 유휴 비용 · [CPU 스케줄러와 cgroup — 누가 언제 CPU 를 얻고, 컨테이너 제한은 어떻게 동작하나](/os-internals/notes/03-scheduler-cgroups) — limits 의 실체: cgroup cpu.max 와 스로틀링
+
 ## 실습 체크리스트
 
 - [ ] `kubectl kustomize k8s` 로 렌더링 결과와 ConfigMap 해시 이름 확인

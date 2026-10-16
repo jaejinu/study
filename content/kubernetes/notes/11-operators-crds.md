@@ -147,6 +147,8 @@ func (r *RedisCacheReconciler) SetupWithManager(mgr ctrl.Manager) error {
 | 조직 고유 플랫폼 추상화("우리 서비스 하나 = CRD 하나") | 자체 Operator 또는 Crossplane/Kratix |
 | 관리형 서비스가 있다 | 관리형 + ExternalName/External Secrets. Operator 보다 쉽다 |
 
+> 이어서 읽기: [심화 — 대안과 설계: Pulumi·CDK·Crossplane, 저장소 구조, 멀티 환경·계정, 거버넌스, 재해 복구](/iac/notes/08-alternatives-design) — Crossplane — 클라우드 리소스도 CRD 로
+
 ## 실습 체크리스트
 
 - [ ] 위 CRD 를 kind 에 적용하고 `kubectl get rc`, `kubectl explain` 으로 스키마·출력 컬럼 확인

@@ -140,6 +140,8 @@ docker run --rm --privileged --pid=host nicolaka/netshoot nsenter -t $P -n ss -t
 
 `os-cgroup-limits` 만 특권이 필요 없다는 점에 주목하자. 한도를 **거는** 것은 런타임의 일이고, 컨테이너는 자기 cgroup 파일을 **읽을** 수만 있으면 된다. 반대로 커널 전체를 관측·조작하는 실험은 경계를 넘어야 한다 — 그 경계가 바로 이 노트의 주제다.
 
+> 이어서 읽기: [Docker 란 무엇인가](/docker/notes/01-docker-overview) — Docker 가 이 커널 기능들을 감싸는 방식
+
 ## 실습 체크리스트
 
 - [ ] study-redis 의 `/proc/<호스트PID>/status` 에서 Uid·CapEff·Seccomp·NoNewPrivs 를 읽고, 같은 값을 `docker run --rm alpine` 과 `--privileged` 컨테이너와 비교하기

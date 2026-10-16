@@ -97,6 +97,8 @@ function pickModel(req) {
 
 라우팅 결정과 결과 품질(피드백)을 함께 기록해 규칙을 조정한다.
 
+> 이어서 읽기: [LLM 토큰 비용 최적화 — 입력은 캐시하고, 출력은 줄이고, 모델은 고른다](/finops/notes/05-llm-token-cost) — 토큰 비용·캐시 절감 실측 · [LLM 서빙 — prefill·decode, 연속 배칭, KV 캐시와 PagedAttention, 양자화](/mlops/notes/05-serving-batching-kv-cache) — 접두 캐시가 서빙에서 하는 일
+
 ## 실습 체크리스트
 
 - [ ] 시맨틱 캐시 실험의 임계값을 0.95 / 0.5 로 바꿔 적중·오탐 변화 보기

@@ -4,7 +4,7 @@ order: 4
 level: 심화
 summary: 마스터·워커 프로세스 모델과 이벤트 루프, 요청 처리 11단계(phase)와 모듈 훅, 연결·버퍼·파일 디스크립터 튜닝 수치, keepalive 와 업스트림 커넥션 풀, HTTP/2·HTTP/3(QUIC) 설정, OpenResty/njs 로 로직 넣기, 성능 측정과 병목 찾기, 디버그 로그
 tags: [워커, 이벤트루프, phase, 튜닝, keepalive, HTTP/3, QUIC, OpenResty, njs, 벤치마크]
-experiments: [net-ports-sockets]
+experiments: [net-ports-sockets, nginx-rate-limit-burst]
 ---
 
 ## 프로세스 모델
@@ -36,6 +36,10 @@ POST_READ → SERVER_REWRITE (server 의 rewrite) → FIND_CONFIG (location 매�
 ```
 
 예: `limit_req` 는 PREACCESS 라 `auth_request` 보다 먼저 거절한다. `return` 은 REWRITE 단계라 그 아래 `proxy_pass` 는 실행되지 않는다. `try_files` 는 CONTENT 직전에 파일 존재를 확인한다.
+
+![요청 처리 단계와 캐시·업스트림](/diagrams/nginx-request-flow.svg)
+
+단계 순서는 곧 **정책의 순서**다. 레이트리밋(preaccess)이 인증(access)보다 앞에 있어 로그인 폭주도 인증 처리 전에 깎이고, `return` 은 rewrite 에서 끝나 그 뒤 단계를 모두 건너뛴다 — 실험 [nginx-rate-limit-burst](/nginx/lab/nginx-rate-limit-burst)가 이 함정을 직접 보여 준다. 워커가 이 단계들을 이벤트 루프로 돌리는 원리는 [운영체제 노트 05 의 epoll](/os-internals/notes/05-syscalls-interrupts)과 같다.
 
 ## 핵심 튜닝 수치
 
