@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { recordQuizAction } from "@/actions/study";
-import type { QuizStat } from "@/lib/study-shared";
+import { GRADE_LABEL, previewIntervals, retrievability, type Grade, type QuizStat } from "@/lib/study-shared";
 import { Button } from "./ui";
 
 export interface Card {
   /** 서버에서 만든 카드 키 (간격 반복 기록용) */
   key?: string;
+  /** 여러 주제를 섞어 보여 줄 때(오늘의 복습) 카드의 주제 */
+  subject?: string;
+  subjectName?: string;
   note: string;
   noteTitle?: string;
   q: string;
@@ -17,7 +20,6 @@ export interface Card {
 
 type Mode = "review" | "order";
 
-const BOX_LABEL = ["새로/틀림", "1일", "3일", "7일", "14일"];
 
 function buildOrder(cards: Card[], stats: Record<string, QuizStat>, mode: Mode, now: number): number[] {
   const idx = cards.map((_, i) => i);
@@ -26,7 +28,7 @@ function buildOrder(cards: Card[], stats: Record<string, QuizStat>, mode: Mode, 
   const rank = (i: number) => {
     const s = cards[i].key ? stats[cards[i].key!] : undefined;
     if (!s) return [1, 0, i];
-    if (s.due <= now) return [0, s.box * 1000 - s.wrong, i];
+    if (s.due <= now) return [0, retrievability(s, now) * 1000 - s.wrong, i];
     return [2, s.due, i];
   };
   return idx.sort((a, b) => {
@@ -50,12 +52,13 @@ export function Flashcards({ cards, subject, stats: initialStats = {}, defaultMo
   const stat = card?.key ? stats[card.key] : undefined;
   const dueCount = useMemo(() => cards.filter((c) => c.key && stats[c.key] && stats[c.key].due <= now).length, [cards, stats, now]);
 
-  const next = (right: boolean) => {
+  const next = (grade: Grade) => {
+    const right = grade >= 2;
     setScore((s) => ({ right: s.right + (right ? 1 : 0), wrong: s.wrong + (right ? 0 : 1) }));
     if (!right) setMissed((m) => [...m, order[idx]]);
     if (card.key) {
       const key = card.key;
-      void recordQuizAction(subject, key, right).then((r) => {
+      void recordQuizAction(card.subject ?? subject, key, grade).then((r) => {
         if (r.ok && r.stat) setStats((s) => ({ ...s, [key]: r.stat! }));
         else setSaveErr(true);
       });
@@ -129,18 +132,18 @@ export function Flashcards({ cards, subject, stats: initialStats = {}, defaultMo
         <div className="mb-2 flex items-center justify-between text-[11px] uppercase tracking-wide text-muted">
           <span>{flipped ? "답" : "질문 (클릭해서 뒤집기)"}</span>
           {stat ? (
-            <span className={`normal-case ${stat.due <= now ? "text-warn" : ""}`} title={`맞음 ${stat.right} · 틀림 ${stat.wrong} · 연속 ${stat.streak}`}>
-              상자 {stat.box} · 간격 {BOX_LABEL[stat.box]}{stat.due <= now && stat.last > 0 ? " · 복습 기한" : ""}
+            <span className={`normal-case ${stat.due <= now ? "text-warn" : ""}`} title={`맞음 ${stat.right} · 틀림 ${stat.wrong} · 연속 ${stat.streak} · 난이도 ${stat.difficulty ?? "-"}/10`}>
+              {`${card.subjectName ? `${card.subjectName} · ` : ""}기억 확률 ${Math.round(retrievability(stat, now) * 100)}% · 안정도 ${stat.stability ?? "-"}일${stat.due <= now && stat.last > 0 ? " · 복습 기한" : ""}`}
             </span>
           ) : (
-            <span className="normal-case">처음 보는 카드</span>
+            <span className="normal-case">{`${card.subjectName ? `${card.subjectName} · ` : ""}처음 보는 카드`}</span>
           )}
         </div>
         <div className={`text-lg leading-relaxed ${flipped ? "text-foreground" : "font-medium"}`}>{flipped ? card.a : card.q}</div>
         {flipped && card.noteTitle && (
           <div className="mt-3 text-xs text-muted">
             관련 노트:{" "}
-            <Link href={`/${subject}/notes/${card.note}`} className="text-info hover:underline" onClick={(e) => e.stopPropagation()}>
+            <Link href={`/${card.subject ?? subject}/notes/${card.note}`} className="text-info hover:underline" onClick={(e) => e.stopPropagation()}>
               {card.noteTitle}
             </Link>
           </div>
@@ -150,10 +153,16 @@ export function Flashcards({ cards, subject, stats: initialStats = {}, defaultMo
         {!flipped ? (
           <Button variant="ghost" onClick={() => setFlipped(true)}>답 보기</Button>
         ) : (
-          <>
-            <Button onClick={() => next(true)}>맞았다 ✓</Button>
-            <Button variant="danger" onClick={() => next(false)}>틀렸다 ✗</Button>
-          </>
+          <div className="flex flex-wrap gap-2">
+            {([1, 2, 3, 4] as Grade[]).map((g) => {
+              const iv = previewIntervals(stat, now)[g];
+              return (
+                <Button key={g} variant={g === 1 ? "danger" : g === 3 ? "primary" : "ghost"} onClick={() => next(g)} title={`${GRADE_LABEL[g]} — 다음 복습 ${iv} 후`}>
+                  {GRADE_LABEL[g]} <span className="ml-1 text-[11px] opacity-75">{iv}</span>
+                </Button>
+              );
+            })}
+          </div>
         )}
         <Button variant="ghost" className="ml-auto" onClick={() => restart(shuffled())}>섞기</Button>
       </div>

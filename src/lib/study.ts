@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { ensureConnected, getRedis } from "./redis";
-import { BOX_INTERVALS, type QuizStat } from "./study-shared";
+import { schedule, type Grade, type QuizStat } from "./study-shared";
 
-export { BOX_INTERVALS, fmtDuration, type QuizStat } from "./study-shared";
+export { fmtDuration, type QuizStat } from "./study-shared";
 
 /**
  * 학습 기록 (이 앱의 Redis 에 저장)
@@ -59,22 +59,12 @@ export async function getQuizStatsMany(subjects: string[]): Promise<Record<strin
   return out;
 }
 
-export async function recordQuiz(subject: string, key: string, right: boolean): Promise<QuizStat> {
+export async function recordQuiz(subject: string, key: string, grade: Grade): Promise<QuizStat> {
   const r = getRedis();
   await ensureConnected(r);
   const field = `quiz:stats:${subject}`;
   const prevRaw = await r.hget(field, key);
-  const prev: QuizStat = prevRaw ? (JSON.parse(prevRaw) as QuizStat) : { right: 0, wrong: 0, streak: 0, box: 0, due: 0, last: 0 };
-  const now = Date.now();
-  const box = right ? Math.min(prev.box + 1, BOX_INTERVALS.length - 1) : 0;
-  const next: QuizStat = {
-    right: prev.right + (right ? 1 : 0),
-    wrong: prev.wrong + (right ? 0 : 1),
-    streak: right ? prev.streak + 1 : 0,
-    box,
-    due: now + BOX_INTERVALS[box],
-    last: now,
-  };
+  const next = schedule(prevRaw ? (JSON.parse(prevRaw) as QuizStat) : undefined, grade);
   await r.hset(field, key, JSON.stringify(next));
   return next;
 }
@@ -96,7 +86,7 @@ export function summarizeReview(keys: string[], stats: Record<string, QuizStat>,
     if (!s) unseen++;
     else {
       if (s.due <= now) due++;
-      if (s.box >= 3) stable++;
+      if ((s.stability ?? [0.4, 1, 3, 7, 14][s.box ?? 0]) >= 7) stable++;
     }
   }
   return { total: keys.length, unseen, due, stable };
