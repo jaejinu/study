@@ -1,0 +1,22 @@
+# 이 프로젝트의 Redis 를 Docker 로 띄운다. (Docker 노트 05-compose 참고)
+#   pnpm redis:docker        # = docker compose up -d redis
+#   pnpm redis:docker:down
+services:
+  redis:
+    image: redis:8-alpine
+    container_name: study-redis
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--dir", "/data"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis-data:

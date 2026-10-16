@@ -11,7 +11,9 @@
     "redis:cli": "redis-cli -p 6379",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:report": "vitest run --reporter=default --reporter=json --outputFile.json=reports/vitest.json"
+    "test:report": "vitest run --reporter=default --reporter=json --outputFile.json=reports/vitest.json",
+    "redis:docker": "docker compose up -d redis",
+    "redis:docker:down": "docker compose down"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",

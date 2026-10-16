@@ -53,7 +53,7 @@ OBJECT FREQ key              # LFU 카운터
 MONITOR                      # 운영에서 절대 오래 켜지 말 것 (부하 큼)
 ```
 
-해법은 [캐싱 노트](/notes/08-caching-patterns)의 핫 키 항목 참고: 로컬 캐시, 키 복제.
+해법은 [캐싱 노트](/redis/notes/08-caching-patterns)의 핫 키 항목 참고: 로컬 캐시, 키 복제.
 
 ## 느린 명령 찾기
 

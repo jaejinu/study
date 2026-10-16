@@ -18,7 +18,7 @@ export interface Note extends NoteMeta {
   headings: { depth: number; text: string; id: string }[];
 }
 
-const NOTES_DIR = path.join(process.cwd(), "content", "notes");
+const notesDir = (subject: string) => path.join(process.cwd(), "content", subject, "notes");
 
 export function slugify(text: string): string {
   // rehype-slug 와 동일한 규칙(github-slugger)에 가깝게: 소문자, 공백→-, 특수문자 제거(한글 유지)
@@ -53,11 +53,17 @@ function toMeta(slug: string, data: Record<string, unknown>): NoteMeta {
   };
 }
 
-export async function listNotes(): Promise<NoteMeta[]> {
-  const files = (await fs.readdir(NOTES_DIR)).filter((f) => f.endsWith(".md"));
+export async function listNotes(subject: string): Promise<NoteMeta[]> {
+  const dir = notesDir(subject);
+  let files: string[];
+  try {
+    files = (await fs.readdir(dir)).filter((f) => f.endsWith(".md"));
+  } catch {
+    return [];
+  }
   const metas = await Promise.all(
     files.map(async (f) => {
-      const raw = await fs.readFile(path.join(NOTES_DIR, f), "utf8");
+      const raw = await fs.readFile(path.join(dir, f), "utf8");
       const { data } = matter(raw);
       return toMeta(f.replace(/\.md$/, ""), data);
     }),
@@ -65,10 +71,10 @@ export async function listNotes(): Promise<NoteMeta[]> {
   return metas.sort((a, b) => a.order - b.order);
 }
 
-export async function getNote(slug: string): Promise<Note | null> {
-  if (!/^[a-z0-9-]+$/.test(slug)) return null;
+export async function getNote(subject: string, slug: string): Promise<Note | null> {
+  if (!/^[a-z0-9-]+$/.test(slug) || !/^[a-z0-9-]+$/.test(subject)) return null;
   try {
-    const raw = await fs.readFile(path.join(NOTES_DIR, `${slug}.md`), "utf8");
+    const raw = await fs.readFile(path.join(notesDir(subject), `${slug}.md`), "utf8");
     const { data, content } = matter(raw);
     return { ...toMeta(slug, data), content, headings: extractHeadings(content) };
   } catch {

@@ -4,32 +4,36 @@ import { Markdown } from "@/components/Markdown";
 import { LevelBadge } from "@/components/ui";
 import { experiments } from "@/experiments";
 import { getNote, listNotes } from "@/lib/notes";
+import { getSubject } from "@/lib/subjects";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = { params: Promise<{ subject: string; slug: string }> };
 
 export async function generateMetadata({ params }: Props) {
-  const { slug } = await params;
-  const note = await getNote(slug);
+  const { subject, slug } = await params;
+  const note = await getNote(subject, slug);
   return { title: note?.title ?? "노트" };
 }
 
 export default async function NotePage({ params }: Props) {
-  const { slug } = await params;
-  const [note, all] = await Promise.all([getNote(slug), listNotes()]);
+  const { subject: id, slug } = await params;
+  const subject = getSubject(id);
+  if (!subject) notFound();
+  const [note, all] = await Promise.all([getNote(subject.id, slug), listNotes(subject.id)]);
   if (!note) notFound();
   const idx = all.findIndex((n) => n.slug === slug);
   const prev = all[idx - 1];
   const next = all[idx + 1];
-  const related = note.experiments.map((id) => experiments.find((e) => e.id === id)).filter((e) => e !== undefined);
+  const related = subject.id === "redis" ? note.experiments.map((eid) => experiments.find((e) => e.id === eid)).filter((e) => e !== undefined) : [];
+  const base = `/${subject.id}/notes`;
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,1fr)_220px]">
       <article>
         <div className="mb-4 flex items-center gap-2 pt-8 text-xs text-muted md:pt-0">
-          <Link href="/notes" className="hover:text-foreground">
-            학습 노트
+          <Link href={base} className="hover:text-foreground">
+            {subject.name} 학습 노트
           </Link>
           <span>/</span>
           <span>{String(idx + 1).padStart(2, "0")}</span>
@@ -47,7 +51,7 @@ export default async function NotePage({ params }: Props) {
             <ul className="space-y-1.5">
               {related.map((e) => (
                 <li key={e.id}>
-                  <Link href={`/lab/${e.id}`} className="text-sm hover:underline">
+                  <Link href={`/redis/lab/${e.id}`} className="text-sm hover:underline">
                     {e.title}
                   </Link>
                   <span className="ml-2 text-xs text-muted">{e.summary}</span>
@@ -59,14 +63,14 @@ export default async function NotePage({ params }: Props) {
 
         <nav className="mt-10 flex justify-between border-t border-border pt-4 text-sm">
           {prev ? (
-            <Link href={`/notes/${prev.slug}`} className="text-info hover:underline">
+            <Link href={`${base}/${prev.slug}`} className="text-info hover:underline">
               ← {prev.title}
             </Link>
           ) : (
             <span />
           )}
           {next ? (
-            <Link href={`/notes/${next.slug}`} className="text-right text-info hover:underline">
+            <Link href={`${base}/${next.slug}`} className="text-right text-info hover:underline">
               {next.title} →
             </Link>
           ) : (

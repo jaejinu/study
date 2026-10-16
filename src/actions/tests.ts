@@ -26,7 +26,7 @@ export async function runTestsAction(): Promise<RunTestsResult> {
     );
   });
   const report = await readLastReport();
-  revalidatePath("/tests");
-  revalidatePath("/");
+  revalidatePath("/redis/tests");
+  revalidatePath("/redis");
   return { ok: report?.success ?? false, report, output, error: report ? undefined : "리포트를 생성하지 못했습니다" };
 }

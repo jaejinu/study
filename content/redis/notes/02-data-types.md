@@ -52,7 +52,7 @@ BLMOVE src dst RIGHT LEFT 0   # 안전한 큐 (처리 중 리스트로 이동)
 
 - 작업 큐, 최근 활동 타임라인, 채팅 메시지 버퍼.
 - Redis 7 부터 내부는 **quicklist** (listpack 노드들의 연결). 작으면 listpack 하나.
-- 메시지 유실 없는 큐가 필요하면 List 보다 [Stream](/notes/07-pubsub-streams) 을 고려.
+- 메시지 유실 없는 큐가 필요하면 List 보다 [Stream](/redis/notes/07-pubsub-streams) 을 고려.
 
 ## Hash
 

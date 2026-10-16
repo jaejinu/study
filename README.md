@@ -1,17 +1,19 @@
-# Redis Study
+# Study
 
-Redis 를 **공부하고 → 정리하고 → 실제로 실험하고 → 웹에서 확인**하는 개인 학습 프로젝트.
+주제별로 **공부하고 → 정리하고 → 실제로 실험하고 → 웹에서 확인**하는 개인 학습 프로젝트.
+첫 화면(`/`)에서 주제를 고른다. 현재 주제: **Redis**, **Docker**.
 
 ## 구성
 
 | 메뉴 | 경로 | 설명 |
 |---|---|---|
-| 대시보드 | `/` | Redis 서버 상태(INFO), 학습 로드맵, 최근 테스트 결과 |
-| 학습 노트 | `/notes` | `content/notes/*.md` 를 목차 순으로 렌더링. 노트별 TOC, 관련 실험 링크 |
-| 실험실 | `/lab` | 실제 Redis 에 명령을 보내고 실행된 명령·응답·시간·검증(✓/✗)을 표시 |
-| 콘솔 | `/console` | 브라우저 redis-cli. 위험 명령(FLUSHALL, CONFIG SET 등)은 차단 |
-| 키 브라우저 | `/keys` | SCAN 으로 키 순회, 타입·인코딩·TTL·메모리, 값 미리보기, 삭제 |
-| 테스트 | `/tests` | vitest 리포트. 버튼으로 브라우저에서 실행 가능 |
+| 주제 선택 | `/` | Redis / Docker 카드 |
+| 대시보드 | `/redis`, `/docker` | 환경 상태(Redis INFO / Docker 데몬·컨테이너), 학습 로드맵 |
+| 학습 노트 | `/<subject>/notes` | `content/<subject>/notes/*.md` 를 목차 순으로 렌더링. 노트별 TOC |
+| 실험실 | `/redis/lab` | 실제 Redis 에 명령을 보내고 실행된 명령·응답·시간·검증(✓/✗)을 표시 |
+| 콘솔 | `/redis/console` | 브라우저 redis-cli. 위험 명령(FLUSHALL, CONFIG SET 등)은 차단 |
+| 키 브라우저 | `/redis/keys` | SCAN 으로 키 순회, 타입·인코딩·TTL·메모리, 값 미리보기, 삭제 |
+| 테스트 | `/redis/tests` | vitest 리포트. 버튼으로 브라우저에서 실행 가능 |
 
 ## 실행
 
@@ -22,11 +24,14 @@ pnpm dev            # 터미널 2: http://localhost:3000
 pnpm test           # 모든 실험을 vitest 로 실행
 pnpm test:report    # JSON 리포트 생성 → /tests 페이지에 표시
 pnpm redis:cli      # redis-cli 접속
+pnpm redis:docker   # Docker 로 Redis 띄우기 (docker-compose.yml)
 ```
 
 Redis 가 없다면 `brew install redis`. 다른 주소를 쓰려면 `.env.local` 에 `REDIS_URL` 설정.
 
 ## 학습 순서 (노트 목차)
+
+### Redis
 
 **기초**
 1. Redis 란 무엇인가
@@ -48,9 +53,20 @@ Redis 가 없다면 `brew install redis`. 다른 주소를 쓰려면 `.env.local
 13. 확률적 자료구조 — HyperLogLog, Bitmap, Bloom
 14. 운영 명령과 redis-cli 활용
 
+### Docker
+
+1. Docker 란 무엇인가
+2. 첫 컨테이너 — run, ps, logs, exec
+3. 이미지와 Dockerfile
+4. 볼륨과 네트워크
+5. Docker Compose
+6. 이미지 최적화와 보안
+7. 운영 명령과 디버깅
+
 ## 노트/실험 추가하기
 
-- **노트**: `content/notes/NN-slug.md` 생성. frontmatter 에 `title, order, level(기초|중급|심화), summary, tags, experiments(관련 실험 id)` 를 적는다.
+- **주제**: `src/lib/subjects.ts` 에 항목 추가 + `content/<id>/notes/` 디렉터리.
+- **노트**: `content/<subject>/notes/NN-slug.md` 생성. frontmatter 에 `title, order, level(기초|중급|심화), summary, tags, experiments(관련 실험 id)` 를 적는다.
 - **실험**: `src/experiments/0X-*.ts` 에 `Experiment` 객체를 추가하고 export 하면 `index.ts` 가 자동으로 모은다.
   `run()` 안에서 `redis`(기록되는 클라이언트), `rec.note()`, `rec.check()`, `newClient()` 를 쓴다. 키는 `k("name")` 으로 만들면 실험 종료 후 자동 삭제된다.
   모든 실험은 자동으로 vitest 테스트가 된다.
@@ -58,7 +74,9 @@ Redis 가 없다면 `brew install redis`. 다른 주소를 쓰려면 `.env.local
 ## 구조
 
 ```
-content/notes/        학습 노트 (markdown)
+content/<subject>/notes/  학습 노트 (markdown)
+src/lib/subjects.ts   주제 정의 (메뉴, 색상)
+docker-compose.yml    Redis 컨테이너
 redis/redis.conf      학습용 Redis 설정 (AOF + RDB, 256MB LRU)
 src/lib/redis.ts      ioredis 싱글턴, 상태 조회
 src/lib/trace.ts      명령 기록 Proxy (실험 결과 표)

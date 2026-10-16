@@ -66,7 +66,7 @@ export function RedisDown({ error, url }: { error?: string; url: string }) {
 
 export function NoteLink({ slug, title }: { slug: string; title: string }) {
   return (
-    <Link href={`/notes/${slug}`} className="text-sm text-info underline-offset-2 hover:underline">
+    <Link href={`/redis/notes/${slug}`} className="text-sm text-info underline-offset-2 hover:underline">
       {title}
     </Link>
   );

@@ -8,8 +8,8 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Redis Study", template: "%s · Redis Study" },
-  description: "Redis 를 공부하고, 정리하고, 실제로 실험해 보는 개인 학습 사이트",
+  title: { default: "Study", template: "%s · Study" },
+  description: "주제별로 공부하고, 정리하고, 실제로 실험해 보는 개인 학습 사이트",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

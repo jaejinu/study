@@ -1,99 +1,59 @@
 import Link from "next/link";
-import { Suspense } from "react";
-import { RedisStatusCard } from "@/components/RedisStatusCard";
-import { Badge, Card, LevelBadge, PageHeader } from "@/components/ui";
-import { categories, experiments } from "@/experiments";
+import { experiments } from "@/experiments";
 import { listNotes } from "@/lib/notes";
-import { readLastReport } from "@/lib/report";
+import { subjects } from "@/lib/subjects";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [notes, report] = await Promise.all([listNotes(), readLastReport()]);
+  const counts = await Promise.all(
+    subjects.map(async (s) => ({
+      id: s.id,
+      notes: (await listNotes(s.id)).length,
+      experiments: s.id === "redis" ? experiments.length : 0,
+    })),
+  );
   return (
-    <div className="mx-auto max-w-5xl">
-      <PageHeader title="Redis Study" subtitle="노트로 개념을 익히고 → 실험실에서 실제 동작을 확인하고 → 콘솔로 직접 만져 본다." />
-
-      <Suspense fallback={<Card className="p-4 text-sm text-muted">Redis 상태 확인 중…</Card>}>
-        <RedisStatusCard />
-      </Suspense>
-
-      <section className="mt-8">
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold">학습 로드맵</h2>
-          <Link href="/notes" className="text-sm text-info hover:underline">
-            전체 목차 →
-          </Link>
-        </div>
-        <ol className="grid gap-2 sm:grid-cols-2">
-          {notes.map((n, idx) => (
-            <li key={n.slug}>
-              <Link href={`/notes/${n.slug}`} className="flex h-full gap-3 rounded-lg border border-border bg-surface p-3 transition-colors hover:border-muted">
-                <span className="w-6 shrink-0 font-mono text-sm text-muted">{String(idx + 1).padStart(2, "0")}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium">{n.title}</span>
-                    <LevelBadge level={n.level} />
-                  </span>
-                  <span className="mt-0.5 block text-xs text-muted">{n.summary}</span>
-                  {n.experiments.length > 0 && (
-                    <span className="mt-1 block text-[11px] text-muted">⚗ 실험 {n.experiments.length}개</span>
-                  )}
+    <div className="mx-auto max-w-4xl pt-10 md:pt-16">
+      <div className="mb-10 text-center">
+        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">무엇을 공부할까요?</h1>
+        <p className="mt-3 text-muted">주제를 고르면 목차 순서의 학습 노트와 실습 환경이 열립니다.</p>
+      </div>
+      <div className="grid gap-5 sm:grid-cols-2">
+        {subjects.map((s) => {
+          const c = counts.find((x) => x.id === s.id)!;
+          return (
+            <Link
+              key={s.id}
+              href={`/${s.id}`}
+              className="group flex flex-col rounded-xl border border-border bg-surface p-6 transition-all hover:-translate-y-0.5 hover:border-muted hover:shadow-lg hover:shadow-black/30"
+            >
+              <div className="flex items-center gap-3">
+                <span className={`grid h-12 w-12 place-items-center rounded-lg text-xl font-bold text-white ${s.color}`}>{s.mark}</span>
+                <div>
+                  <div className="text-xl font-semibold">{s.name}</div>
+                  <div className="text-sm text-muted">{s.tagline}</div>
+                </div>
+              </div>
+              <p className="mt-4 flex-1 text-sm leading-relaxed text-muted">{s.description}</p>
+              <div className="mt-5 flex gap-4 border-t border-border pt-4 text-xs text-muted">
+                <span>
+                  노트 <span className="font-mono text-foreground">{c.notes}</span>편
                 </span>
-              </Link>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="mt-8 grid gap-4 md:grid-cols-2">
-        <Card className="p-4">
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="font-semibold">실험실</h2>
-            <Link href="/lab" className="text-sm text-info hover:underline">
-              모두 보기 →
-            </Link>
-          </div>
-          <ul className="space-y-1 text-sm">
-            {categories.map((c) => {
-              const n = experiments.filter((e) => e.category === c).length;
-              return (
-                <li key={c} className="flex justify-between">
-                  <span className="text-muted">{c}</span>
-                  <span className="font-mono">{n}개</span>
-                </li>
-              );
-            })}
-            <li className="flex justify-between border-t border-border pt-1 font-medium">
-              <span>합계</span>
-              <span className="font-mono">{experiments.length}개</span>
-            </li>
-          </ul>
-        </Card>
-        <Card className="p-4">
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="font-semibold">최근 테스트</h2>
-            <Link href="/tests" className="text-sm text-info hover:underline">
-              리포트 →
-            </Link>
-          </div>
-          {report ? (
-            <div className="space-y-1 text-sm">
-              <div className="flex items-center gap-2">
-                <Badge tone={report.success ? "ok" : "accent"}>{report.success ? "모두 통과" : "실패 있음"}</Badge>
-                <span className="text-xs text-muted">{new Date(report.startTime).toLocaleString("ko-KR")}</span>
+                {c.experiments > 0 && (
+                  <span>
+                    실험 <span className="font-mono text-foreground">{c.experiments}</span>개
+                  </span>
+                )}
+                <span className="ml-auto text-info group-hover:underline">시작하기 →</span>
               </div>
-              <div className="font-mono text-xs text-muted">
-                통과 {report.numPassedTests} / 실패 {report.numFailedTests} / 전체 {report.numTotalTests}
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted">
-              아직 리포트가 없습니다. <code>pnpm test:report</code> 를 실행하거나 테스트 페이지에서 실행하세요.
-            </p>
-          )}
-        </Card>
-      </section>
+            </Link>
+          );
+        })}
+      </div>
+      <p className="mt-10 text-center text-xs text-muted">
+        주제를 추가하려면 <code>src/lib/subjects.ts</code> 에 항목을 넣고 <code>content/&lt;id&gt;/notes</code> 에 노트를 작성하세요.
+      </p>
     </div>
   );
 }

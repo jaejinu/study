@@ -19,7 +19,7 @@ export default async function ExperimentPage({ params }: Props) {
   const { id } = await params;
   const exp = getExperiment(id);
   if (!exp) notFound();
-  const notes = await listNotes();
+  const notes = await listNotes("redis");
   const related = exp.notes.map((s) => notes.find((n) => n.slug === s)).filter((n) => n !== undefined);
   const idx = experiments.findIndex((e) => e.id === id);
   const prev = experiments[idx - 1];
@@ -28,7 +28,7 @@ export default async function ExperimentPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-3 flex items-center gap-2 pt-8 text-xs text-muted md:pt-0">
-        <Link href="/lab" className="hover:text-foreground">
+        <Link href="/redis/lab" className="hover:text-foreground">
           실험실
         </Link>
         <span>/</span>
@@ -47,7 +47,7 @@ export default async function ExperimentPage({ params }: Props) {
               {related.map((n, i) => (
                 <span key={n.slug}>
                   {i > 0 && ", "}
-                  <Link href={`/notes/${n.slug}`} className="text-info hover:underline">
+                  <Link href={`/redis/notes/${n.slug}`} className="text-info hover:underline">
                     {n.title}
                   </Link>
                 </span>
@@ -68,14 +68,14 @@ export default async function ExperimentPage({ params }: Props) {
 
       <nav className="mt-10 flex justify-between border-t border-border pt-4 text-sm">
         {prev ? (
-          <Link href={`/lab/${prev.id}`} className="text-info hover:underline">
+          <Link href={`/redis/lab/${prev.id}`} className="text-info hover:underline">
             ← {prev.title}
           </Link>
         ) : (
           <span />
         )}
         {next ? (
-          <Link href={`/lab/${next.id}`} className="text-right text-info hover:underline">
+          <Link href={`/redis/lab/${next.id}`} className="text-right text-info hover:underline">
             {next.title} →
           </Link>
         ) : (

@@ -17,7 +17,7 @@ export default function LabPage() {
             <ul className="grid gap-2 sm:grid-cols-2">
               {list.map((e) => (
                 <li key={e.id}>
-                  <Link href={`/lab/${e.id}`} className="block h-full rounded-lg border border-border bg-surface p-3 transition-colors hover:border-muted">
+                  <Link href={`/redis/lab/${e.id}`} className="block h-full rounded-lg border border-border bg-surface p-3 transition-colors hover:border-muted">
                     <div className="text-sm font-medium">{e.title}</div>
                     <div className="mt-1 text-xs text-muted">{e.summary}</div>
                     <div className="mt-2">

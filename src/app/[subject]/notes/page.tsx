@@ -1,21 +1,33 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { LevelBadge, PageHeader } from "@/components/ui";
-import { listNotes } from "@/lib/notes";
 import { experiments } from "@/experiments";
+import { listNotes } from "@/lib/notes";
+import { getSubject } from "@/lib/subjects";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "학습 노트" };
 
-export default async function NotesPage() {
-  const notes = await listNotes();
+type Props = { params: Promise<{ subject: string }> };
+
+export async function generateMetadata({ params }: Props) {
+  const { subject } = await params;
+  return { title: `${getSubject(subject)?.name ?? ""} 학습 노트` };
+}
+
+export default async function NotesPage({ params }: Props) {
+  const { subject: id } = await params;
+  const subject = getSubject(id);
+  if (!subject) notFound();
+  const notes = await listNotes(subject.id);
   const groups = [
-    { level: "기초", desc: "Redis 가 무엇이고 어떻게 데이터를 다루는지" },
-    { level: "중급", desc: "원자성, 메시징, 캐싱 같은 실전 패턴" },
-    { level: "심화", desc: "운영·고가용성·메모리 최적화" },
+    { level: "기초", desc: "개념과 기본 사용법" },
+    { level: "중급", desc: "실전에서 자주 쓰는 패턴" },
+    { level: "심화", desc: "운영·최적화·내부 동작" },
   ] as const;
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title="학습 노트 목차" subtitle="위에서 아래로 순서대로 읽도록 구성했습니다. 각 노트 끝에는 관련 실험이 연결되어 있습니다." />
+      <PageHeader title={`${subject.name} 학습 노트 목차`} subtitle="위에서 아래로 순서대로 읽도록 구성했습니다. 각 노트에는 목차와 실습·실험 링크가 있습니다." />
+      {notes.length === 0 && <p className="text-muted">아직 노트가 없습니다.</p>}
       {groups.map((g) => {
         const list = notes.filter((n) => n.level === g.level);
         if (list.length === 0) return null;
@@ -30,7 +42,7 @@ export default async function NotesPage() {
                 const globalIdx = notes.findIndex((x) => x.slug === n.slug) + 1;
                 return (
                   <li key={n.slug}>
-                    <Link href={`/notes/${n.slug}`} className="flex gap-4 px-4 py-3 hover:bg-surface-2">
+                    <Link href={`/${subject.id}/notes/${n.slug}`} className="flex gap-4 px-4 py-3 hover:bg-surface-2">
                       <span className="w-7 shrink-0 font-mono text-sm text-muted">{String(globalIdx).padStart(2, "0")}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block font-medium">{n.title}</span>
@@ -41,10 +53,10 @@ export default async function NotesPage() {
                               #{t}
                             </span>
                           ))}
-                          {n.experiments.map((id) => {
-                            const e = experiments.find((x) => x.id === id);
+                          {n.experiments.map((eid) => {
+                            const e = experiments.find((x) => x.id === eid);
                             return e ? (
-                              <span key={id} className="rounded border border-accent/30 bg-accent-soft px-1.5 py-0.5 text-[11px] text-accent">
+                              <span key={eid} className="rounded border border-accent/30 bg-accent-soft px-1.5 py-0.5 text-[11px] text-accent">
                                 ⚗ {e.title.split(":")[0]}
                               </span>
                             ) : null;
