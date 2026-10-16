@@ -61,3 +61,6 @@ logs/
 
 # Claude Code 워크트리
 /.claude/
+
+# 학습 기록 백업 (개인 데이터)
+/backups/

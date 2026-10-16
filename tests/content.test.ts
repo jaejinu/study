@@ -41,6 +41,21 @@ const noteKey = new Set(notes.map((n) => `${n.subject}/${n.slug}`));
 const subjectIds = new Set<string>(subjects.map((s) => s.id));
 const labIds = new Map<string, Set<string>>(subjects.map((s) => [s.id, new Set(s.id === "redis" ? experiments.map((e) => e.id) : listLab(s.id).map((e) => e.id))]));
 
+describe("저장소 위생", () => {
+  it("iCloud·Finder 충돌 사본(' 2.' 파일)이 콘텐츠·소스에 없다", () => {
+    const found: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (/ \d+\.[a-z]+$/.test(e.name)) found.push(path.relative(ROOT, p));
+      }
+    };
+    for (const d of ["content", "src", "tests", "scripts", "public"]) if (fs.existsSync(path.join(ROOT, d))) walk(path.join(ROOT, d));
+    expect(found).toEqual([]);
+  });
+});
+
 describe("주제 정의", () => {
   it("주제 id 가 전역 라우트(src/app 의 폴더)와 겹치지 않는다", () => {
     const routes = fs
