@@ -308,7 +308,7 @@ export async function checkEnv(subject: string): Promise<EnvStatus> {
   switch (subject) {
     case "sre": return checkSre();
     case "ebpf": return checkEbpf();
-    case "search": return checkSearch();
+    case "opensearch": return checkSearch();
     case "db-internals": return checkDbInternals();
     case "api-design": return checkApiDesign();
     case "messaging": return checkMessaging();

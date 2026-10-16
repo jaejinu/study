@@ -15,6 +15,7 @@
 | 실험실 | `/<subject>/lab` | Redis 명령 / docker / kubectl / kafkajs / pg / 네트워크 도구 / Redis 벡터 검색을 실제로 실행하고 단계·응답·시간·검증(✓/✗)을 표시 |
 | 검색 · 용어집 · 퀴즈 · 그래프 | `/search`, `/glossary`, `/<subject>/quiz`, `/graph` | 전문 검색, 용어집, 플래시카드(**간격 반복**: 맞고 틀림을 라이트너 상자 1·3·7·14일로 기록, 틀린·기한 지난 카드부터), 노트↔실험 링크 그래프 |
 | AI 도우미 | `/assistant` | 노트 검색·실험 제안·진행률 조회 툴을 가진 Claude 스트리밍 도우미 (ANTHROPIC_API_KEY 필요) |
+| AI 에게 묻기 | 모든 페이지 우측 패널 (⌘/) | 현재 노트 본문·드래그한 텍스트를 컨텍스트로 OpenAI(`OPENAI_API_KEY`, 기본 gpt-5-mini; `OPENAI_BASE_URL` 로 Ollama 등 호환 서버)에 묻는다. 사이트 내용을 먼저 근거로 답하고 부족하면 '사이트 밖 내용' 으로 보충, 실험 제안 |
 | 학습 기록 | 노트 하단 | 탭이 보이고 활동 중일 때 30초마다 학습 시간 기록 (`study:time:*`, `study:day:*`), 노트별·주제별·주간 합계 |
 | 모니터 · 벤치마크 | `/redis/monitor`, `/redis/benchmark` | INFO·SLOWLOG 실시간, redis-benchmark 차트 |
 | 콘솔 | `/redis/console` | 브라우저 redis-cli. 위험 명령(FLUSHALL, CONFIG SET 등)은 차단 |

@@ -1,4 +1,4 @@
-export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network" | "ai-systems" | "architecture" | "chaos" | "security" | "iac" | "distributed-systems" | "performance" | "sre" | "ebpf" | "search" | "db-internals" | "api-design" | "messaging" | "mlops" | "testing" | "finops" | "os-internals";
+export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network" | "ai-systems" | "architecture" | "chaos" | "security" | "iac" | "distributed-systems" | "performance" | "sre" | "ebpf" | "opensearch" | "db-internals" | "api-design" | "messaging" | "mlops" | "testing" | "finops" | "os-internals";
 
 export interface NavItem {
   href: string;
@@ -378,7 +378,7 @@ export const subjects: Subject[] = [
     ],
   },
   {
-    id: "search",
+    id: "opensearch",
     track: "data",
     name: "검색 · OpenSearch",
     tagline: "역색인 · BM25 · 하이브리드 검색",
@@ -386,10 +386,10 @@ export const subjects: Subject[] = [
     mark: "OS",
     color: "bg-[#005eb8]",
     nav: [
-      { href: "/search", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
-      { href: "/search/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
-      { href: "/search/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
-      { href: "/search/lab", label: "실험실", icon: "⚗", desc: "색인 · BM25 vs 벡터 · nori" },
+      { href: "/opensearch", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/opensearch/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/opensearch/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/opensearch/lab", label: "실험실", icon: "⚗", desc: "색인 · BM25 vs 벡터 · nori" },
     ],
     setup: [
       { label: "서버", cmd: "pnpm search:up (19200)" },

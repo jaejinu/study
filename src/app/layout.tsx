@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "highlight.js/styles/github-dark.css";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
+import { AskPanel } from "@/components/AskPanel";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Sidebar />
           <main className="min-w-0 flex-1 px-5 py-6 md:px-10 md:py-8">{children}</main>
         </div>
+        <AskPanel />
       </body>
     </html>
   );
