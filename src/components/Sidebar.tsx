@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { getSubject, subjects } from "@/lib/subjects";
+import { getSubject, subjectsByTrack } from "@/lib/subjects";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -69,38 +69,37 @@ export function Sidebar() {
                     </span>
                   </Link>
                 ))}
-                <div className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wide text-muted">다른 주제</div>
-                {subjects
-                  .filter((s) => s.id !== subject.id)
-                  .map((s) => (
-                    <Link
-                      key={s.id}
-                      href={`/${s.id}`}
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-3 rounded-md px-3 py-1.5 text-sm text-muted hover:bg-surface-2 hover:text-foreground"
-                    >
-                      <span className={`grid h-5 w-5 place-items-center rounded text-[10px] font-bold text-white ${s.color}`}>{s.mark}</span>
-                      {s.name}
-                    </Link>
-                  ))}
+                {subjectsByTrack().map(({ track, subjects: list }) => (
+                  <div key={track.id}>
+                    <div className="px-3 pb-0.5 pt-4 text-[11px] font-semibold tracking-wide text-muted">{track.name}</div>
+                    {list.map((s) => (
+                      <Link
+                        key={s.id}
+                        href={`/${s.id}`}
+                        onClick={() => setOpen(false)}
+                        className={`flex items-center gap-2.5 rounded-md px-3 py-1 text-[13px] ${s.id === subject.id ? "text-foreground" : "text-muted hover:bg-surface-2 hover:text-foreground"}`}
+                      >
+                        <span className={`grid h-4.5 w-4.5 place-items-center rounded text-[9px] font-bold text-white ${s.color}`}>{s.mark}</span>
+                        {s.name}
+                      </Link>
+                    ))}
+                  </div>
+                ))}
                 <Link href="/" onClick={() => setOpen(false)} className="block rounded-md px-3 py-1.5 text-sm text-muted hover:bg-surface-2 hover:text-foreground">
                   ← 주제 선택으로
                 </Link>
               </>
             ) : (
-              subjects.map((s) => (
-                <Link
-                  key={s.id}
-                  href={`/${s.id}`}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-foreground"
-                >
-                  <span className={`grid h-6 w-6 place-items-center rounded text-xs font-bold text-white ${s.color}`}>{s.mark}</span>
-                  <span>
-                    <span className="block font-medium text-foreground">{s.name}</span>
-                    <span className="block text-[11px]">{s.tagline}</span>
-                  </span>
-                </Link>
+              subjectsByTrack().map(({ track, subjects: list }) => (
+                <div key={track.id}>
+                  <div className="px-3 pb-0.5 pt-3 text-[11px] font-semibold tracking-wide text-muted">{track.name}</div>
+                  {list.map((s) => (
+                    <Link key={s.id} href={`/${s.id}`} onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-md px-3 py-1 text-[13px] text-muted hover:bg-surface-2 hover:text-foreground">
+                      <span className={`grid h-4.5 w-4.5 place-items-center rounded text-[9px] font-bold text-white ${s.color}`}>{s.mark}</span>
+                      <span className="text-foreground/90">{s.name}</span>
+                    </Link>
+                  ))}
+                </div>
               ))
             )}
           </nav>

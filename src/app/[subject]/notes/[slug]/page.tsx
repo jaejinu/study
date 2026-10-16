@@ -10,6 +10,7 @@ import { Flashcards } from "@/components/Flashcards";
 import { loadQuiz } from "@/lib/quiz";
 import { cardKey, getNoteTime, getQuizStats } from "@/lib/study";
 import { StudyTimer } from "@/components/StudyTimer";
+import { Toc } from "@/components/Toc";
 import { logger } from "@/lib/log";
 import { metrics } from "@/lib/metrics";
 import { getSubject } from "@/lib/subjects";
@@ -38,9 +39,10 @@ export default async function NotePage({ params }: Props) {
   const next = all[idx + 1];
   const related = subject.id === "redis" ? note.experiments.map((eid) => experiments.find((e) => e.id === eid)).filter((e) => e !== undefined) : [];
   const base = `/${subject.id}/notes`;
+  const readMinutes = Math.max(1, Math.round(note.content.replace(/```[\s\S]*?```/g, "").length / 650));
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,1fr)_220px]">
+    <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[minmax(0,1fr)_230px]">
       <article>
         <div className="mb-4 flex items-center gap-2 pt-8 text-xs text-muted md:pt-0">
           <Link href={base} className="hover:text-foreground">
@@ -51,8 +53,17 @@ export default async function NotePage({ params }: Props) {
           <LevelBadge level={note.level} />
           {read && <span className="text-ok">✓ 읽음</span>}
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">{note.title}</h1>
-        <p className="mt-2 text-muted">{note.summary}</p>
+        <h1 className="text-[2rem] font-bold leading-tight tracking-tight">{note.title}</h1>
+        <p className="mt-3 max-w-[78ch] text-[15.5px] leading-relaxed text-muted">{note.summary}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-muted">
+          <span>읽는 데 약 {readMinutes}분</span>
+          {note.experiments.length > 0 && <span>⚗ 실험 {note.experiments.length}개</span>}
+          <span className="flex flex-wrap gap-1.5">
+            {note.tags.map((t) => (
+              <span key={t} className="rounded bg-surface-2 px-1.5 py-0.5 text-[11px]">#{t}</span>
+            ))}
+          </span>
+        </div>
         <div className="mt-6">
           <Markdown content={note.content} checklist={{ subject: subject.id, slug, checked }} />
         </div>
@@ -88,17 +99,19 @@ export default async function NotePage({ params }: Props) {
           </section>
         )}
 
-        <nav className="mt-10 flex justify-between border-t border-border pt-4 text-sm">
+        <nav className="mt-10 grid gap-3 border-t border-border pt-5 text-sm sm:grid-cols-2">
           {prev ? (
-            <Link href={`${base}/${prev.slug}`} className="text-info hover:underline">
-              ← {prev.title}
+            <Link href={`${base}/${prev.slug}`} className="rounded-lg border border-border bg-surface p-3 transition-colors hover:border-muted">
+              <span className="block text-[11px] text-muted">← 이전 노트</span>
+              <span className="mt-0.5 block font-medium">{prev.title}</span>
             </Link>
           ) : (
             <span />
           )}
           {next ? (
-            <Link href={`${base}/${next.slug}`} className="text-right text-info hover:underline">
-              {next.title} →
+            <Link href={`${base}/${next.slug}`} className="rounded-lg border border-border bg-surface p-3 text-right transition-colors hover:border-muted">
+              <span className="block text-[11px] text-muted">다음 노트 →</span>
+              <span className="mt-0.5 block font-medium">{next.title}</span>
             </Link>
           ) : (
             <span />
@@ -109,15 +122,9 @@ export default async function NotePage({ params }: Props) {
       <aside className="hidden lg:block">
         <div className="sticky top-8">
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">이 노트의 목차</div>
-          <ul className="space-y-1 border-l border-border text-[13px]">
-            {note.headings.map((h) => (
-              <li key={h.id} className={h.depth === 3 ? "pl-6" : "pl-3"}>
-                <a href={`#${h.id}`} className="block py-0.5 text-muted hover:text-foreground">
-                  {h.text}
-                </a>
-              </li>
-            ))}
-          </ul>
+          <div className="max-h-[calc(100vh-8rem)] overflow-y-auto pr-1">
+            <Toc headings={note.headings} />
+          </div>
           {note.tags.length > 0 && (
             <div className="mt-5 flex flex-wrap gap-1.5">
               {note.tags.map((t) => (

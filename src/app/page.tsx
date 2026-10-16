@@ -3,7 +3,7 @@ import { experiments } from "@/experiments";
 import { listNotes } from "@/lib/notes";
 import { listLab } from "@/lab/registry";
 import { getReadCounts } from "@/lib/progress";
-import { subjects } from "@/lib/subjects";
+import { subjects, subjectsByTrack } from "@/lib/subjects";
 import { loadQuiz } from "@/lib/quiz";
 import { cardKey, getQuizStats, getWeeklyStudy, summarizeReview } from "@/lib/study";
 import { WeeklyStudyCard } from "@/components/WeeklyStudy";
@@ -31,42 +31,55 @@ export default async function Home() {
     <div className="mx-auto max-w-5xl pt-10 md:pt-16">
       <div className="mb-10 text-center">
         <h1 className="text-3xl font-bold tracking-tight md:text-4xl">무엇을 공부할까요?</h1>
-        <p className="mt-3 text-muted">주제를 고르면 목차 순서의 학습 노트와 실습 환경이 열립니다.</p>
+        <p className="mt-3 text-muted">
+          {subjects.length}개 주제 · 노트 {counts.reduce((a, c) => a + c.notes, 0)}편 · 실험 {counts.reduce((a, c) => a + c.experiments, 0)}개. 주제를 고르면 목차 순서의 학습 노트와 실험실이 열립니다.
+        </p>
       </div>
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {subjects.map((s) => {
-          const c = counts.find((x) => x.id === s.id)!;
-          return (
-            <Link
-              key={s.id}
-              href={`/${s.id}`}
-              className="group flex flex-col rounded-xl border border-border bg-surface p-6 transition-all hover:-translate-y-0.5 hover:border-muted hover:shadow-lg hover:shadow-black/30"
-            >
-              <div className="flex items-center gap-3">
-                <span className={`grid h-12 w-12 place-items-center rounded-lg text-xl font-bold text-white ${s.color}`}>{s.mark}</span>
-                <div>
-                  <div className="text-xl font-semibold">{s.name}</div>
-                  <div className="text-sm text-muted">{s.tagline}</div>
-                </div>
-              </div>
-              <p className="mt-4 flex-1 text-sm leading-relaxed text-muted">{s.description}</p>
-              <div className="mt-5 flex gap-4 border-t border-border pt-4 text-xs text-muted">
-                <span>
-                  노트 <span className="font-mono text-foreground">{c.notes}</span>편
-                  {(readCounts[c.id] ?? 0) > 0 && <span className="text-ok"> · {readCounts[c.id]}편 읽음</span>}
-                </span>
-                {c.experiments > 0 && (
-                  <span>
-                    실험 <span className="font-mono text-foreground">{c.experiments}</span>개
-                  </span>
-                )}
-                {c.due > 0 && <span className="text-warn">복습 {c.due}장</span>}
-                <span className="ml-auto text-info group-hover:underline">시작하기 →</span>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+      {subjectsByTrack().map(({ track, subjects: list }) => (
+        <section key={track.id} className="mb-9">
+          <div className="mb-3 flex items-baseline gap-3">
+            <h2 className="text-lg font-semibold">{track.name}</h2>
+            <span className="text-sm text-muted">{track.desc}</span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {list.map((s) => {
+              const c = counts.find((x) => x.id === s.id)!;
+              const read = readCounts[s.id] ?? 0;
+              const pct = c.notes ? Math.round((read / c.notes) * 100) : 0;
+              return (
+                <Link key={s.id} href={`/${s.id}`} className="group flex flex-col rounded-xl border border-border bg-surface p-5 transition-all hover:-translate-y-0.5 hover:border-muted hover:shadow-lg hover:shadow-black/30">
+                  <div className="flex items-center gap-3">
+                    <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg text-base font-bold text-white ${s.color}`}>{s.mark}</span>
+                    <div className="min-w-0">
+                      <div className="truncate text-[17px] font-semibold leading-tight">{s.name}</div>
+                      <div className="truncate text-[12.5px] text-muted">{s.tagline}</div>
+                    </div>
+                  </div>
+                  <p className="clamp-3 mt-3 flex-1 text-[13.5px] leading-relaxed text-muted">{s.description}</p>
+                  <div className="mt-4">
+                    <div className="h-1 overflow-hidden rounded bg-surface-2">
+                      <div className="h-full rounded bg-ok" style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="mt-2 flex items-center gap-3 text-[12px] text-muted">
+                      <span>
+                        노트 <span className="font-mono text-foreground">{c.notes}</span>
+                        {read > 0 && <span className="text-ok"> · {read} 읽음</span>}
+                      </span>
+                      {c.experiments > 0 && (
+                        <span>
+                          실험 <span className="font-mono text-foreground">{c.experiments}</span>
+                        </span>
+                      )}
+                      {c.due > 0 && <span className="text-warn">복습 {c.due}</span>}
+                      <span className="ml-auto text-info opacity-0 transition-opacity group-hover:opacity-100">시작 →</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      ))}
       <div className="mt-8">
         <WeeklyStudyCard weekly={weekly} dueBySubject={dueBySubject} />
       </div>
