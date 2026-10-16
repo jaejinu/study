@@ -314,8 +314,9 @@ export async function checkClickhouse(): Promise<EnvStatus> {
   return checkSimple(ch.ok ? `ClickHouse ${ch.text.trim()} 연결됨 (18123)` : "ClickHouse 가 꺼져 있습니다", [{ label: "ClickHouse HTTP(18123)", ok: ch.ok }], ch.ok ? undefined : "pnpm clickhouse:up", [{ label: "ClickHouse 문서", href: "https://clickhouse.com/docs" }]);
 }
 export async function checkDataEngineering(): Promise<EnvStatus> {
-  const [minio, kafka, connect] = await Promise.all([fetchText("http://127.0.0.1:19100/minio/health/live"), run("docker", ["inspect", "-f", "{{.State.Status}}", "study-kafka"]), fetchText("http://127.0.0.1:18083/connectors")]);
-  return checkSimple("데이터 파이프라인 구성 요소", [{ label: "DuckDB (내장)", ok: true }, { label: "MinIO(19100, 콘솔 19101)", ok: minio.ok }, { label: "Kafka(19092)", ok: kafka.ok && kafka.out === "running" }, { label: "Kafka Connect/Debezium(18083)", ok: connect.ok }], minio.ok ? undefined : "pnpm lake:up   # MinIO · CDC 실험은 pnpm cdc:up 도", [{ label: "MinIO 콘솔", href: "http://localhost:19101" }]);
+  const [s3, kafka, connect] = await Promise.all([run("docker", ["inspect", "-f", "{{.State.Status}}", "study-s3"]), run("docker", ["inspect", "-f", "{{.State.Status}}", "study-kafka"]), fetchText("http://127.0.0.1:18083/connectors")]);
+  const s3ok = s3.ok && s3.out === "running";
+  return checkSimple("데이터 파이프라인 구성 요소", [{ label: "DuckDB (내장)", ok: true }, { label: "S3 호환 저장소 versitygw (19100, 선택 — CDC 실험은 자체 컨테이너를 띄움)", ok: s3ok }, { label: "Kafka(19092)", ok: kafka.ok && kafka.out === "running" }, { label: "Kafka Connect/Debezium(18083)", ok: connect.ok }], connect.ok ? undefined : "pnpm cdc:up   # CDC → 레이크 실험용 (S3 저장소는 pnpm lake:up)", [{ label: "DuckDB 문서", href: "https://duckdb.org/docs" }]);
 }
 
 export async function checkEnv(subject: string): Promise<EnvStatus> {

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="400" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">머티리얼라이즈드 뷰 = INSERT 트리거 — 쓸 때 줄이고, 읽을 때 상태를 병합한다</text>
+
+  <rect x="30" y="80" width="150" height="90" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="105" y="108" text-anchor="middle" fill="#e6edf3" font-weight="600">INSERT 블록</text>
+  <text x="105" y="132" text-anchor="middle" fill="#8b949e">로그 10만 줄</text>
+  <text x="105" y="152" text-anchor="middle" fill="#8b949e" font-size="11">(매초 1회)</text>
+
+  <line x1="184" y1="110" x2="250" y2="88" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="184" y1="140" x2="250" y2="190" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+
+  <rect x="255" y="56" width="200" height="66" rx="10" fill="#161b22" stroke="#3b82f6"/>
+  <text x="355" y="82" text-anchor="middle" fill="#3b82f6" font-weight="600">logs (MergeTree)</text>
+  <text x="355" y="104" text-anchor="middle" fill="#8b949e" font-size="12">원본 · TTL 7일</text>
+
+  <rect x="255" y="160" width="200" height="80" rx="10" fill="#161b22" stroke="#22c55e"/>
+  <text x="355" y="186" text-anchor="middle" fill="#22c55e" font-weight="600">MV: 이 블록에만 SELECT</text>
+  <text x="355" y="206" text-anchor="middle" fill="#e6edf3" font-size="11">GROUP BY minute, service, route</text>
+  <text x="355" y="224" text-anchor="middle" fill="#e6edf3" font-size="11">countState · quantileState(0.95)</text>
+
+  <line x1="459" y1="200" x2="525" y2="200" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+
+  <rect x="530" y="150" width="200" height="100" rx="10" fill="#161b22" stroke="#facc15"/>
+  <text x="630" y="176" text-anchor="middle" fill="#facc15" font-weight="600">red_1m</text>
+  <text x="630" y="196" text-anchor="middle" fill="#e6edf3" font-size="12">AggregatingMergeTree</text>
+  <text x="630" y="216" text-anchor="middle" fill="#8b949e" font-size="11">같은 키의 상태는 머지 때 병합</text>
+  <text x="630" y="234" text-anchor="middle" fill="#8b949e" font-size="11">TTL 30일 · 10만 줄 → 수백 행</text>
+
+  <line x1="734" y1="200" x2="790" y2="200" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="762" y="190" text-anchor="middle" fill="#8b949e" font-size="10">체인 MV</text>
+
+  <rect x="795" y="150" width="140" height="100" rx="10" fill="#161b22" stroke="#facc15"/>
+  <text x="865" y="176" text-anchor="middle" fill="#facc15" font-weight="600">red_1h</text>
+  <text x="865" y="198" text-anchor="middle" fill="#8b949e" font-size="11">-MergeState</text>
+  <text x="865" y="216" text-anchor="middle" fill="#8b949e" font-size="11">TTL 1년</text>
+
+  <rect x="530" y="290" width="405" height="90" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="550" y="314" fill="#e6edf3" font-weight="600">대시보드 질의 (읽을 때 병합)</text>
+  <text x="550" y="336" fill="#e6edf3" font-family="ui-monospace, monospace" font-size="11">SELECT toStartOfHour(minute), countMerge(requests),</text>
+  <text x="550" y="352" fill="#e6edf3" font-family="ui-monospace, monospace" font-size="11">       quantileMerge(0.95)(p95) FROM red_1m GROUP BY 1</text>
+  <text x="550" y="372" fill="#8b949e" font-size="11">SELECT * 로 읽으면 상태 열은 깨진 바이너리 — 항상 -Merge</text>
+  <line x1="630" y1="254" x2="630" y2="286" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+
+  <rect x="30" y="290" width="470" height="90" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="50" y="314" fill="#f59e0b" font-weight="600">주의</text>
+  <text x="50" y="336" fill="#e6edf3" font-size="12">• MV 는 원본 테이블을 다시 읽지 않는다 → 생성 이전 데이터는 백필 INSERT</text>
+  <text x="50" y="356" fill="#e6edf3" font-size="12">• 블록마다 결과가 나뉘어 들어간다 → 머지 전엔 같은 키 행이 여러 개</text>
+  <text x="50" y="374" fill="#e6edf3" font-size="12">• 1분 p95 들의 평균 ≠ 1시간 p95 → 상태(-State)를 저장해야 정확</text>
+</svg>

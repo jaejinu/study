@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="470" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">MergeTree — INSERT 마다 불변 파트, 백그라운드 머지, 그래뉼마다 키 하나(희소 인덱스)</text>
+
+  <!-- inserts -->
+  <text x="40" y="70" fill="#8b949e">INSERT (1만 행씩)</text>
+  <rect x="40" y="82" width="120" height="44" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="100" y="104" text-anchor="middle" fill="#e6edf3">파트 1_1_0</text>
+  <text x="100" y="119" text-anchor="middle" fill="#8b949e" font-size="11">정렬됨 · 불변</text>
+  <rect x="40" y="134" width="120" height="44" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="100" y="156" text-anchor="middle" fill="#e6edf3">파트 2_2_0</text>
+  <text x="100" y="171" text-anchor="middle" fill="#8b949e" font-size="11">정렬됨 · 불변</text>
+  <rect x="40" y="186" width="120" height="44" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="100" y="208" text-anchor="middle" fill="#e6edf3">파트 3_3_0</text>
+  <text x="100" y="223" text-anchor="middle" fill="#8b949e" font-size="11">정렬됨 · 불변</text>
+
+  <line x1="164" y1="156" x2="226" y2="156" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="195" y="146" text-anchor="middle" fill="#22c55e" font-size="11">머지</text>
+  <text x="195" y="174" text-anchor="middle" fill="#8b949e" font-size="10">정렬 병합</text>
+
+  <!-- merged part -->
+  <rect x="230" y="60" width="700" height="250" rx="10" fill="#161b22" stroke="#facc15"/>
+  <text x="250" y="84" fill="#facc15" font-weight="600">파트 1_3_1 (3만 행)  —  ORDER BY (user_id, ts)</text>
+
+  <!-- primary.idx -->
+  <rect x="250" y="100" width="170" height="190" rx="8" fill="#0d1117" stroke="#3b82f6"/>
+  <text x="335" y="120" text-anchor="middle" fill="#3b82f6" font-weight="600">primary.idx (메모리)</text>
+  <text x="262" y="146" fill="#e6edf3" font-size="12">#0 → (1, 00:00:03)</text>
+  <text x="262" y="168" fill="#e6edf3" font-size="12">#1 → (412, 00:10:20)</text>
+  <text x="262" y="190" fill="#e6edf3" font-size="12">#2 → (819, 03:22:51)</text>
+  <text x="262" y="212" fill="#e6edf3" font-size="12">#3 → (1240, 01:05:07)</text>
+  <text x="262" y="234" fill="#8b949e" font-size="12">…</text>
+  <text x="262" y="262" fill="#8b949e" font-size="11">그래뉼마다 첫 키 하나</text>
+  <text x="262" y="278" fill="#8b949e" font-size="11">10억 행 → 약 12만 항목</text>
+
+  <!-- column files -->
+  <text x="445" y="120" fill="#e6edf3" font-weight="600">열 파일 (.bin) + 마크 (.cmrk2)</text>
+  <g font-size="11">
+    <text x="445" y="146" fill="#8b949e">user_id.bin</text>
+    <text x="445" y="182" fill="#8b949e">ts.bin</text>
+    <text x="445" y="218" fill="#8b949e">amount.bin</text>
+    <text x="445" y="254" fill="#8b949e">event.bin</text>
+  </g>
+  <!-- granule grid -->
+  <g>
+    <rect x="530" y="134" width="90" height="20" fill="#0d1117" stroke="#30363d"/><rect x="622" y="134" width="90" height="20" fill="#22c55e33" stroke="#22c55e"/><rect x="714" y="134" width="90" height="20" fill="#0d1117" stroke="#30363d"/><rect x="806" y="134" width="90" height="20" fill="#0d1117" stroke="#30363d"/>
+    <rect x="530" y="170" width="90" height="20" fill="#0d1117" stroke="#30363d"/><rect x="622" y="170" width="90" height="20" fill="#0d1117" stroke="#30363d"/><rect x="714" y="170" width="90" height="20" fill="#0d1117" stroke="#30363d"/><rect x="806" y="170" width="90" height="20" fill="#0d1117" stroke="#30363d"/>
+    <rect x="530" y="206" width="90" height="20" fill="#0d1117" stroke="#30363d"/><rect x="622" y="206" width="90" height="20" fill="#22c55e33" stroke="#22c55e"/><rect x="714" y="206" width="90" height="20" fill="#0d1117" stroke="#30363d"/><rect x="806" y="206" width="90" height="20" fill="#0d1117" stroke="#30363d"/>
+    <rect x="530" y="242" width="90" height="20" fill="#0d1117" stroke="#30363d"/><rect x="622" y="242" width="90" height="20" fill="#0d1117" stroke="#30363d"/><rect x="714" y="242" width="90" height="20" fill="#0d1117" stroke="#30363d"/><rect x="806" y="242" width="90" height="20" fill="#0d1117" stroke="#30363d"/>
+  </g>
+  <g font-size="11" fill="#8b949e" text-anchor="middle">
+    <text x="575" y="282">그래뉼 #0</text><text x="667" y="282">#1 (8,192행)</text><text x="759" y="282">#2</text><text x="851" y="282">#3</text>
+  </g>
+  <line x1="420" y1="168" x2="618" y2="144" stroke="#3b82f6" stroke-dasharray="4 3" marker-end="url(#a)"/>
+
+  <!-- query explanation -->
+  <rect x="40" y="330" width="890" height="120" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="60" y="356" fill="#22c55e" font-weight="600">SELECT sum(amount) FROM t WHERE user_id = 500</text>
+  <text x="60" y="380" fill="#e6edf3">① primary.idx 를 이진 탐색 → 500 은 #1(412) 과 #2(819) 사이 → 그래뉼 #1 만 후보   (EXPLAIN: Granules 1/4)</text>
+  <text x="60" y="402" fill="#e6edf3">② 마크로 user_id·amount 열 파일에서 그래뉼 #1 위치만 읽는다 (초록 칸). ts·event 열은 질의에 없으니 한 바이트도 안 읽는다</text>
+  <text x="60" y="424" fill="#e6edf3">③ 그래뉼 안 8,192행을 벡터화로 걸러 합산.   조건이 정렬 키 첫 열이 아니면(예: ts 만) 거의 모든 그래뉼이 후보가 된다</text>
+  <text x="60" y="442" fill="#8b949e" font-size="11">실험: ch-sort-key-skip-index (pnpm clickhouse:up)</text>
+</svg>

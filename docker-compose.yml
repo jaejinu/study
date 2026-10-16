@@ -291,20 +291,20 @@ services:
     volumes:
       - clickhouse-data:/var/lib/clickhouse
 
-  # ---- MinIO (S3 호환 객체 저장소) : pnpm lake:up — 데이터 엔지니어링 주제 ----
-  minio:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
-    container_name: study-minio
+  # ---- S3 호환 객체 저장소 (versitygw) : pnpm lake:up — 데이터 엔지니어링 주제 ----
+  # MinIO 공식 이미지는 더 이상 공개 레지스트리에서 받을 수 없어 versitygw(디렉터리 = 버킷)를 쓴다.
+  s3:
+    image: versity/versitygw:latest
+    container_name: study-s3
     profiles: ["lake"]
-    command: ["server", "/data", "--console-address", ":9001"]
+    entrypoint: ["sh", "-c", "mkdir -p /data/lake && exec versitygw posix /data"]
     ports:
-      - "127.0.0.1:19100:9000"
-      - "127.0.0.1:19101:9001"
+      - "127.0.0.1:19100:7070"
     environment:
-      MINIO_ROOT_USER: study
-      MINIO_ROOT_PASSWORD: study-secret
+      ROOT_ACCESS_KEY: study
+      ROOT_SECRET_KEY: study-secret
     volumes:
-      - minio-data:/data
+      - s3-data:/data
 
   # ---- Nginx TLS 종단 : pnpm nginx:tls (사설 CA, https://localhost:18444) ----
   nginx-tls:
@@ -321,7 +321,7 @@ services:
 
 volumes:
   clickhouse-data:
-  minio-data:
+  s3-data:
   opensearch-data:
   nats-data:
   mlflow-data:

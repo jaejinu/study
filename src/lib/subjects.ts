@@ -585,7 +585,7 @@ export const subjects: Subject[] = [
     ],
     setup: [
       { label: "엔진", cmd: "DuckDB (@duckdb/node-api, 설치됨)" },
-      { label: "저장소", cmd: "pnpm lake:up (MinIO 19100)" },
+      { label: "저장소", cmd: "pnpm lake:up (S3 호환 versitygw 19100)" },
     ],
   },
 ];

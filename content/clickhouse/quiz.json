@@ -1,1 +1,167 @@
-[]
+[
+  {
+    "note": "01-olap-columnar",
+    "q": "OLTP 와 OLAP 질의의 가장 큰 모양 차이는?",
+    "a": "OLTP 는 적은 행의 거의 모든 열을 읽고 고친다. OLAP 는 수백만 행 이상을 넓게 읽지만 몇 개 열만 집계한다."
+  },
+  {
+    "note": "01-olap-columnar",
+    "q": "열 저장이 분석 질의에 빠른 네 가지 이유는?",
+    "a": "필요한 열만 읽는다, 같은 종류 값이 붙어 있어 압축이 잘 된다, 블록 단위 벡터화 실행, 파트·그래뉼 단위 병렬화."
+  },
+  {
+    "note": "01-olap-columnar",
+    "q": "열 저장 DB 에서 행 하나를 고치는 것이 비싼 이유는?",
+    "a": "그 행의 값이 열 파일마다 흩어져 있고, 압축된 블록은 통째로 다시 써야 하기 때문이다. 그래서 갱신 대신 추가 후 병합을 쓴다."
+  },
+  {
+    "note": "01-olap-columnar",
+    "q": "ClickHouse 를 쓰지 말아야 할 대표적인 경우 두 가지는?",
+    "a": "행 단위 갱신·삭제와 다중 행 트랜잭션이 잦은 업무 데이터, 그리고 수백만 행 이하라 PostgreSQL 로 충분한 경우."
+  },
+  {
+    "note": "01-olap-columnar",
+    "q": "실험에서 ClickHouse 가 Loki 보다 행이 26배 많은데도 적게 읽은 이유는?",
+    "a": "level 열 하나만, 그것도 압축된 열 블록으로 읽었기 때문이다. Loki 는 표본 원문 전체를 풀어 JSON 을 파싱했다."
+  },
+  {
+    "note": "02-mergetree-engine",
+    "q": "MergeTree 에서 INSERT 한 번은 디스크에 무엇을 만드나?",
+    "a": "정렬 키 순으로 정렬된 불변 파트(디렉터리) 하나. 열 파일·마크·희소 인덱스·체크섬이 들어 있다."
+  },
+  {
+    "note": "02-mergetree-engine",
+    "q": "희소 기본 키 인덱스는 무엇을 저장하나?",
+    "a": "그래뉼(기본 8,192행)마다 첫 행의 정렬 키 값 하나. 그래서 항상 메모리에 올라가고, 질의는 이 배열을 이진 탐색해 읽을 그래뉼을 고른다."
+  },
+  {
+    "note": "02-mergetree-engine",
+    "q": "Too many parts 오류가 나는 원인과 해결은?",
+    "a": "작은 INSERT 를 너무 자주 보내 파트가 머지보다 빨리 쌓였기 때문이다. 배치로 묶어 보내거나 async_insert, 파티션을 거칠게 한다."
+  },
+  {
+    "note": "02-mergetree-engine",
+    "q": "MergeTree 의 PRIMARY KEY 가 OLTP 의 기본 키와 다른 점은?",
+    "a": "유일성을 보장하지 않는다. 같은 키의 행이 몇 개든 들어간다. 정렬과 그래뉼 선택용일 뿐이다."
+  },
+  {
+    "note": "02-mergetree-engine",
+    "q": "ReplacingMergeTree 로 최신 상태를 질의할 때 FINAL 이나 argMax 가 필요한 이유는?",
+    "a": "중복 제거는 머지 때 일어나고 머지 시점은 정해져 있지 않아, 질의 시점에는 같은 키의 옛 버전이 남아 있을 수 있기 때문이다."
+  },
+  {
+    "note": "03-partition-sortkey-skip-index",
+    "q": "정렬 키 열 순서를 고르는 원칙은?",
+    "a": "거의 모든 질의가 거르는 열을 앞에, 카디널리티 낮은 것부터 높은 것 순, 시간은 대개 마지막 근처. 고카디널리티 ID 는 앞에 두지 않는다."
+  },
+  {
+    "note": "03-partition-sortkey-skip-index",
+    "q": "실험에서 ORDER BY (user_id, ts) 테이블이 시간 범위 질의에 100만 행을 읽은 이유는?",
+    "a": "정렬 키 첫 열(user_id)이 조건에 없어서 희소 인덱스로 그래뉼을 건너뛸 수 없었기 때문이다."
+  },
+  {
+    "note": "03-partition-sortkey-skip-index",
+    "q": "파티션을 시간 단위처럼 잘게 나누면 안 되는 이유는?",
+    "a": "파티션끼리는 머지되지 않아 파트 수가 폭증하고 Too many parts 를 부른다. 파티션은 질의 가속이 아니라 보존·삭제 단위다."
+  },
+  {
+    "note": "03-partition-sortkey-skip-index",
+    "q": "bloom_filter 스킵 인덱스가 효과 없는 열은?",
+    "a": "값이 흔해서 거의 모든 그래뉼에 등장하는 열. '없다' 를 판정할 그래뉼이 없으니 건너뛰지 못하고 쓰기 비용만 늘어난다."
+  },
+  {
+    "note": "03-partition-sortkey-skip-index",
+    "q": "PREWHERE 는 무엇을 아끼나?",
+    "a": "싼 열로 먼저 거르고 통과한 그래뉼에서만 무거운 열(본문 등)을 읽어, 무거운 열의 읽기 바이트를 줄인다."
+  },
+  {
+    "note": "04-materialized-views-aggregation",
+    "q": "ClickHouse 의 기본 머티리얼라이즈드 뷰는 어떻게 동작하나?",
+    "a": "원본에 INSERT 되는 블록마다 그 블록에만 SELECT 를 실행해 결과를 대상 테이블에 INSERT 하는 트리거다. 원본 전체를 다시 읽지 않는다."
+  },
+  {
+    "note": "04-materialized-views-aggregation",
+    "q": "1분 p95 를 저장해 1시간 p95 를 구하면 안 되는 이유와 해결은?",
+    "a": "분위수는 나눠서 평균낼 수 없다. quantileState 로 중간 상태를 저장하고 quantileMerge 로 병합해야 한다."
+  },
+  {
+    "note": "04-materialized-views-aggregation",
+    "q": "SummingMergeTree 집계 테이블을 질의할 때 sum() 으로 다시 합쳐야 하는 이유는?",
+    "a": "머지 전에는 같은 키의 행이 여러 블록으로 나뉘어 남아 있기 때문이다."
+  },
+  {
+    "note": "04-materialized-views-aggregation",
+    "q": "MV 를 만든 뒤 과거 데이터가 집계에 빠져 있다. 왜이고 어떻게 하나?",
+    "a": "MV 는 생성 이후의 INSERT 만 본다. 생성 시각 이전 구간을 같은 SELECT 로 대상 테이블에 직접 INSERT 해 백필한다."
+  },
+  {
+    "note": "05-log-trace-analytics",
+    "q": "Loki·OpenSearch·ClickHouse 가 각각 인덱싱하는 것은?",
+    "a": "Loki 는 레이블만, OpenSearch 는 모든 단어(역색인), ClickHouse 는 정렬 키(희소)와 선택적 스킵 인덱스."
+  },
+  {
+    "note": "05-log-trace-analytics",
+    "q": "로그 속성을 고정 열과 Map 으로 나누는 기준은?",
+    "a": "자주 거르고 집계하는 속성은 고정 열(LowCardinality), 나머지는 Map. Map 의 키 하나를 읽어도 Map 전체를 읽으므로 자주 쓰는 키는 MATERIALIZED 열로 승격한다."
+  },
+  {
+    "note": "05-log-trace-analytics",
+    "q": "Kafka 엔진 테이블과 MV 로 적재하는 구조의 장점은?",
+    "a": "ClickHouse 가 토픽을 직접 소비해 배치로 쓰고, ClickHouse 가 잠깐 멈춰도 데이터가 Kafka 에 쌓여 기다린다."
+  },
+  {
+    "note": "05-log-trace-analytics",
+    "q": "Tempo 와 ClickHouse 스팬 테이블의 역할 분담은?",
+    "a": "Tempo 는 trace_id 로 트레이스 하나를 싸게 찾는 데, ClickHouse 는 모든 스팬에 대한 넓은 집계(엔드포인트별 지연 분포)에 강하다."
+  },
+  {
+    "note": "06-compression-codecs",
+    "q": "1초 간격 타임스탬프가 LZ4 단독으로는 거의 안 줄고 Delta 로는 수백 배 주는 이유는?",
+    "a": "원값은 바이트 패턴이 매번 달라 LZ4 가 반복을 못 찾지만, 차이는 늘 1 이라 Delta 후에는 같은 값의 반복이 된다."
+  },
+  {
+    "note": "06-compression-codecs",
+    "q": "LowCardinality 효과를 배율이 아니라 압축 후 바이트로 비교해야 하는 이유는?",
+    "a": "문자열 대신 사전 코드를 저장해 압축 전 크기부터 작기 때문이다. 배율만 보면 String+LZ4 가 더 잘 줄어드는 것처럼 보인다."
+  },
+  {
+    "note": "06-compression-codecs",
+    "q": "Gorilla 코덱이 잘 맞는 데이터와 무력한 경우는?",
+    "a": "천천히 변하거나 같은 값이 반복되는 실수 게이지. 잡음이 섞여 비트가 매번 바뀌면 거의 줄지 않는다(실험 1.2×)."
+  },
+  {
+    "note": "06-compression-codecs",
+    "q": "로그 테이블의 저장 용량을 실제로 지배하는 열은?",
+    "a": "trace_id·UUID 같은 고유 ID 와 본문. 엔트로피가 높아 어떤 코덱으로도 거의 줄지 않는다."
+  },
+  {
+    "note": "06-compression-codecs",
+    "q": "정렬 키가 압축률에 영향을 주는 이유는?",
+    "a": "저카디널리티 열을 앞에 두면 같은 값이 길게 이어지고, 그 안에서 시간이 증가해 Delta 가 잘 먹히기 때문이다."
+  },
+  {
+    "note": "07-distributed-replication-ops",
+    "q": "ReplicatedMergeTree 는 무엇을 복제하고, Keeper 는 무엇을 합의하나?",
+    "a": "파트 단위로 복제한다(파일을 내려받음). Keeper 는 데이터가 아니라 파트 목록·복제 로그·DDL 큐 같은 메타데이터만 합의한다."
+  },
+  {
+    "note": "07-distributed-replication-ops",
+    "q": "Keeper 과반이 죽으면 어떻게 되나?",
+    "a": "INSERT·머지·DDL 이 멈춘다. 읽기는 계속된다."
+  },
+  {
+    "note": "07-distributed-replication-ops",
+    "q": "뮤테이션(ALTER DELETE)이 비싼 이유는?",
+    "a": "파트가 불변이라 조건에 맞는 행이 하나라도 있는 파트를 통째로 다시 쓰기 때문이다."
+  },
+  {
+    "note": "07-distributed-replication-ops",
+    "q": "INSERT 재시도 때 같은 블록을 그대로 다시 보내야 하는 이유는?",
+    "a": "레플리카가 블록 해시로 중복을 제거하는데, 행을 다시 섞으면 해시가 달라져 중복 적재된다."
+  },
+  {
+    "note": "07-distributed-replication-ops",
+    "q": "샤딩 키로 user_id 해시를 쓸 때의 장단점은?",
+    "a": "같은 사용자 데이터가 한 샤드에 모여 사용자 단위 질의를 한 샤드로 보낼 수 있지만, 거대 사용자가 있으면 쏠림이 생긴다."
+  }
+]

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="430" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">윈도우 세 가지와 워터마크 — 언제 윈도우를 닫고, 늦게 온 이벤트는 어떻게 하나</text>
+
+  <!-- time axis -->
+  <line x1="120" y1="80" x2="910" y2="80" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+  <g fill="#8b949e" font-size="11" text-anchor="middle">
+    <text x="140" y="70">10:00</text><text x="320" y="70">10:01</text><text x="500" y="70">10:02</text><text x="680" y="70">10:03</text><text x="860" y="70">10:04</text>
+  </g>
+  <text x="40" y="84" fill="#8b949e" font-size="12">이벤트 시간</text>
+  <g fill="#e6edf3">
+    <circle cx="170" cy="80" r="4"/><circle cx="215" cy="80" r="4"/><circle cx="290" cy="80" r="4"/><circle cx="360" cy="80" r="4"/><circle cx="420" cy="80" r="4"/><circle cx="560" cy="80" r="4"/><circle cx="600" cy="80" r="4"/><circle cx="790" cy="80" r="4"/><circle cx="820" cy="80" r="4"/>
+  </g>
+
+  <!-- tumbling -->
+  <text x="40" y="128" fill="#22c55e" font-size="12" font-weight="600">텀블링</text>
+  <g fill="#22c55e22" stroke="#22c55e">
+    <rect x="140" y="110" width="178" height="28" rx="4"/><rect x="320" y="110" width="178" height="28" rx="4"/><rect x="500" y="110" width="178" height="28" rx="4"/><rect x="680" y="110" width="178" height="28" rx="4"/>
+  </g>
+  <text x="900" y="129" fill="#8b949e" font-size="11" text-anchor="end">겹치지 않는 1분</text>
+
+  <!-- sliding -->
+  <text x="40" y="178" fill="#3b82f6" font-size="12" font-weight="600">슬라이딩</text>
+  <g fill="#3b82f622" stroke="#3b82f6">
+    <rect x="140" y="152" width="358" height="18" rx="4"/><rect x="320" y="172" width="358" height="18" rx="4"/><rect x="500" y="152" width="358" height="18" rx="4"/>
+  </g>
+  <text x="900" y="186" fill="#8b949e" font-size="11" text-anchor="end">2분 창, 1분마다</text>
+
+  <!-- session -->
+  <text x="40" y="226" fill="#facc15" font-size="12" font-weight="600">세션</text>
+  <g fill="#facc1522" stroke="#facc15">
+    <rect x="160" y="210" width="270" height="28" rx="4"/><rect x="550" y="210" width="60" height="28" rx="4"/><rect x="780" y="210" width="50" height="28" rx="4"/>
+  </g>
+  <text x="490" y="229" fill="#8b949e" font-size="11" text-anchor="middle">← 간격(gap) &gt; 30초면 끊김 →</text>
+
+  <!-- watermark -->
+  <rect x="30" y="262" width="900" height="150" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="50" y="288" fill="#e6edf3" font-weight="600">워터마크 = 지금까지 본 최대 이벤트 시각 − 허용 지연(30초)</text>
+  <line x1="120" y1="320" x2="910" y2="320" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="40" y="324" fill="#8b949e" font-size="11">도착 순서</text>
+  <g font-size="11" text-anchor="middle">
+    <circle cx="200" cy="320" r="5" fill="#e6edf3"/><text x="200" y="344" fill="#8b949e">10:00:20</text>
+    <circle cx="300" cy="320" r="5" fill="#e6edf3"/><text x="300" y="344" fill="#8b949e">10:00:50</text>
+    <circle cx="420" cy="320" r="5" fill="#e6edf3"/><text x="420" y="344" fill="#8b949e">10:01:35</text>
+    <circle cx="560" cy="320" r="5" fill="#ef4444"/><text x="560" y="344" fill="#ef4444">10:00:45 (늦음)</text>
+    <circle cx="700" cy="320" r="5" fill="#e6edf3"/><text x="700" y="344" fill="#8b949e">10:02:10</text>
+  </g>
+  <line x1="440" y1="300" x2="440" y2="360" stroke="#22c55e" stroke-dasharray="4 3"/>
+  <text x="446" y="306" fill="#22c55e" font-size="11">워터마크 10:01:05 통과 → [10:00, 10:01) 닫고 결과 방출</text>
+  <text x="50" y="380" fill="#e6edf3" font-size="12">늦게 온 10:00:45 → ① 버린다  ② 별도 출력(side output)  ③ 허용 지연 안이면 결과를 갱신해 다시 방출 (싱크가 멱등 upsert 여야 안전)</text>
+  <text x="50" y="400" fill="#8b949e" font-size="11">허용 지연을 늘리면 정확해지지만, 결과가 늦게 나오고 열린 윈도우 상태를 오래 들고 있다</text>
+</svg>

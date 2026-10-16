@@ -2794,5 +2794,251 @@
     "subject": "github-actions",
     "def": "같은 그룹 이름의 실행을 하나만 돌게 하는 설정. cancel-in-progress: true 면 같은 브랜치에 새로 푸시할 때 이전 실행을 취소해 러너 시간을 아낀다.",
     "link": "/github-actions/notes/02-cache-matrix-artifacts"
+  },
+  {
+    "term": "OLAP",
+    "subject": "clickhouse",
+    "def": "넓게 읽고 몇 개 열만 집계하는 분석 처리. 행 단위 갱신·트랜잭션 중심의 OLTP 와 달리 열 저장·압축·벡터화 실행이 맞는다.",
+    "link": "/clickhouse/notes/01-olap-columnar"
+  },
+  {
+    "term": "MergeTree",
+    "subject": "clickhouse",
+    "def": "INSERT 마다 정렬된 불변 파트를 만들고 백그라운드에서 같은 파티션의 파트를 정렬 병합하는 ClickHouse 의 핵심 테이블 엔진.",
+    "link": "/clickhouse/notes/02-mergetree-engine"
+  },
+  {
+    "term": "파트 (part)",
+    "subject": "clickhouse",
+    "def": "MergeTree 에서 INSERT 한 번이 만드는 불변 디렉터리. 정렬된 열 파일·마크·희소 인덱스를 담고, 머지로 큰 파트로 합쳐진다.",
+    "link": "/clickhouse/notes/02-mergetree-engine"
+  },
+  {
+    "term": "그래뉼 (granule)",
+    "subject": "clickhouse",
+    "def": "MergeTree 가 읽을지 말지 정하는 최소 단위(기본 8,192행). 마크 파일이 그래뉼마다 열 파일의 위치를 가리킨다.",
+    "link": "/clickhouse/notes/02-mergetree-engine"
+  },
+  {
+    "term": "희소 기본 키 인덱스",
+    "subject": "clickhouse",
+    "def": "그래뉼마다 첫 행의 정렬 키 값 하나만 저장하는 인덱스. 항상 메모리에 올라가고, 정렬 키 앞부분 조건으로 이진 탐색해 그래뉼을 고른다. 유일성은 보장하지 않는다.",
+    "link": "/clickhouse/notes/02-mergetree-engine"
+  },
+  {
+    "term": "Too many parts",
+    "subject": "clickhouse",
+    "def": "작은 INSERT 가 너무 잦아 파티션의 활성 파트가 머지보다 빨리 쌓일 때 ClickHouse 가 INSERT 를 늦추거나 거부하는 상태. 배치·async_insert 로 막는다.",
+    "link": "/clickhouse/notes/02-mergetree-engine"
+  },
+  {
+    "term": "ReplacingMergeTree",
+    "subject": "clickhouse",
+    "def": "머지 때 같은 정렬 키의 행 중 최신 버전 하나만 남기는 엔진. 머지 시점이 정해져 있지 않아 질의 때 FINAL 이나 argMax 로 접어야 정확하다.",
+    "link": "/clickhouse/notes/02-mergetree-engine"
+  },
+  {
+    "term": "스킵 인덱스 (data skipping index)",
+    "subject": "clickhouse",
+    "def": "그래뉼 묶음마다 min/max·값 집합·블룸 필터 같은 요약을 저장해 '이 묶음엔 없다' 를 판정하는 보조 인덱스. 정렬 키에 넣을 수 없는 고카디널리티 열에 쓴다.",
+    "link": "/clickhouse/notes/03-partition-sortkey-skip-index"
+  },
+  {
+    "term": "PREWHERE",
+    "subject": "clickhouse",
+    "def": "싼 열로 먼저 거르고 통과한 그래뉼에서만 나머지(무거운) 열을 읽게 하는 ClickHouse 절. 대개 자동으로 적용된다.",
+    "link": "/clickhouse/notes/03-partition-sortkey-skip-index"
+  },
+  {
+    "term": "프로젝션 (projection)",
+    "subject": "clickhouse",
+    "def": "같은 테이블 안에 다른 정렬 순서나 사전 집계로 저장된 숨은 복사본. 옵티마이저가 질의에 맞으면 자동으로 골라 읽는다.",
+    "link": "/clickhouse/notes/03-partition-sortkey-skip-index"
+  },
+  {
+    "term": "머티리얼라이즈드 뷰 (ClickHouse)",
+    "subject": "clickhouse",
+    "def": "원본에 INSERT 되는 블록마다 그 블록에만 SELECT 를 실행해 결과를 대상 테이블에 넣는 INSERT 트리거. 원본을 다시 읽지 않으므로 생성 이전 데이터는 백필해야 한다.",
+    "link": "/clickhouse/notes/04-materialized-views-aggregation"
+  },
+  {
+    "term": "AggregatingMergeTree",
+    "subject": "clickhouse",
+    "def": "집계 함수의 중간 상태(-State)를 저장하고 머지 때 상태를 병합하는 엔진. 질의는 -Merge 조합자로 최종값을 구한다. p95·uniq 같은 비가산 집계의 사전 집계에 쓴다.",
+    "link": "/clickhouse/notes/04-materialized-views-aggregation"
+  },
+  {
+    "term": "-State / -Merge 조합자",
+    "subject": "clickhouse",
+    "def": "quantileState·uniqState 처럼 집계의 중간 상태를 만들고 quantileMerge·uniqMerge 로 상태를 병합해 최종값을 구하는 ClickHouse 집계 함수 접미사. 1분 상태로 1시간 p95 를 정확히 구할 수 있다.",
+    "link": "/clickhouse/notes/04-materialized-views-aggregation"
+  },
+  {
+    "term": "LowCardinality",
+    "subject": "clickhouse",
+    "def": "파트마다 사전을 두고 열에는 사전 코드만 저장하는 ClickHouse 타입 수식어. 종류 1만 이하 문자열의 저장·필터 비용을 크게 줄인다.",
+    "link": "/clickhouse/notes/06-compression-codecs"
+  },
+  {
+    "term": "DoubleDelta / Gorilla 코덱",
+    "subject": "clickhouse",
+    "def": "DoubleDelta 는 차이의 차이를 비트로 저장해 일정 간격 타임스탬프를, Gorilla 는 이전 값과의 XOR 로 천천히 변하는 실수를 압축하는 변환 코덱. 뒤에 LZ4·ZSTD 를 잇는다.",
+    "link": "/clickhouse/notes/06-compression-codecs"
+  },
+  {
+    "term": "ClickHouse Keeper",
+    "subject": "clickhouse",
+    "def": "ClickHouse 가 C++ 로 다시 만든 Raft 기반 ZooKeeper 호환 코디네이션 서비스. 복제 테이블의 파트 목록·복제 로그·DDL 큐를 합의하며, 과반이 죽으면 INSERT·머지가 멈춘다.",
+    "link": "/clickhouse/notes/07-distributed-replication-ops"
+  },
+  {
+    "term": "Distributed 테이블",
+    "subject": "clickhouse",
+    "def": "여러 샤드의 로컬 테이블을 하나처럼 보여 주는 논리 테이블. 읽기는 샤드별 부분 집계를 모아 병합하고, 쓰기는 샤딩 키로 행을 나눠 보낸다.",
+    "link": "/clickhouse/notes/07-distributed-replication-ops"
+  },
+  {
+    "term": "뮤테이션 (ClickHouse)",
+    "subject": "clickhouse",
+    "def": "ALTER TABLE … UPDATE/DELETE. 파트가 불변이라 조건에 맞는 행이 있는 파트를 통째로 다시 써서 비싸다. 소량은 경량 삭제, 기간 단위는 DROP PARTITION·TTL 을 쓴다.",
+    "link": "/clickhouse/notes/07-distributed-replication-ops"
+  },
+  {
+    "term": "ELT",
+    "subject": "data-engineering",
+    "def": "원천 데이터를 먼저 그대로 적재하고 웨어하우스·레이크하우스 엔진 안에서 SQL 로 변환하는 방식. 원본이 남아 변환을 다시 돌릴 수 있다.",
+    "link": "/data-engineering/notes/01-batch-vs-streaming"
+  },
+  {
+    "term": "람다 / 카파 아키텍처",
+    "subject": "data-engineering",
+    "def": "람다는 정확한 배치 계층과 빠른 스트림 계층을 함께 두고 결과를 합치는 구조(로직 중복), 카파는 모든 처리를 스트림 하나로 하고 재처리는 로그를 다시 재생하는 구조.",
+    "link": "/data-engineering/notes/01-batch-vs-streaming"
+  },
+  {
+    "term": "Parquet",
+    "subject": "data-engineering",
+    "def": "행을 행 그룹으로 나누고 그 안에서 열마다 따로 압축하며, 파일 끝 footer 에 행 그룹·열별 min/max 통계를 두는 열 지향 파일 포맷. 열 선택과 행 그룹 건너뛰기를 가능하게 한다.",
+    "link": "/data-engineering/notes/02-columnar-formats-lakehouse"
+  },
+  {
+    "term": "predicate pushdown",
+    "subject": "data-engineering",
+    "def": "질의 조건을 읽기 단계로 밀어 넣어 파일·행 그룹 통계로 조건에 맞지 않는 데이터를 읽기 전에 건너뛰는 최적화. 데이터가 그 열로 정렬돼 있어야 효과가 있다.",
+    "link": "/data-engineering/notes/02-columnar-formats-lakehouse"
+  },
+  {
+    "term": "작은 파일 문제",
+    "subject": "data-engineering",
+    "def": "스트리밍·마이크로배치로 작은 파일이 수없이 쌓여 footer 읽기·객체 저장소 요청 비용이 커지고 압축·건너뛰기 효율이 떨어지는 현상. 주기적 compaction 으로 해결한다.",
+    "link": "/data-engineering/notes/02-columnar-formats-lakehouse"
+  },
+  {
+    "term": "Apache Iceberg",
+    "subject": "data-engineering",
+    "def": "객체 저장소의 Parquet 파일 위에 메타데이터 계층(스냅샷·매니페스트)을 얹어 원자적 커밋·스키마 진화·타임 트래블·숨은 파티셔닝을 제공하는 테이블 포맷.",
+    "link": "/data-engineering/notes/02-columnar-formats-lakehouse"
+  },
+  {
+    "term": "레이크하우스",
+    "subject": "data-engineering",
+    "def": "객체 저장소의 열 파일(데이터 레이크)에 테이블 포맷을 얹어 웨어하우스처럼 트랜잭션·스키마·SQL 을 쓰는 구조.",
+    "link": "/data-engineering/notes/02-columnar-formats-lakehouse"
+  },
+  {
+    "term": "DAG (오케스트레이션)",
+    "subject": "data-engineering",
+    "def": "파이프라인 작업(또는 자산)과 그 의존을 순환 없는 방향 그래프로 표현한 것. 오케스트레이터가 순서·병렬·재시도·백필을 관리한다.",
+    "link": "/data-engineering/notes/03-orchestration"
+  },
+  {
+    "term": "논리 날짜 (data interval)",
+    "subject": "data-engineering",
+    "def": "오케스트레이터가 작업 실행마다 넘겨주는 '처리할 데이터 구간'. 작업이 now() 대신 이 구간을 써야 재시도·백필 결과가 같다.",
+    "link": "/data-engineering/notes/03-orchestration"
+  },
+  {
+    "term": "백필 (backfill)",
+    "subject": "data-engineering",
+    "def": "과거 구간의 파이프라인을 다시 돌려 결과를 재계산하는 일. 작업이 멱등해야(파티션 덮어쓰기·merge) 안전하다.",
+    "link": "/data-engineering/notes/03-orchestration"
+  },
+  {
+    "term": "dbt",
+    "subject": "data-engineering",
+    "def": "SELECT 문 하나를 모델 하나로 관리하고 ref() 로 의존 그래프를 만들어 순서대로 테이블·뷰로 구체화하는 SQL 변환 도구. 테스트·문서·계보를 함께 제공한다.",
+    "link": "/data-engineering/notes/04-transformation-dbt"
+  },
+  {
+    "term": "증분 모델 (incremental model)",
+    "subject": "data-engineering",
+    "def": "매번 전체를 다시 만들지 않고 새로 들어온 행만 추가·병합하는 dbt 구체화 방식. 늦게 온 데이터를 위해 겹치는 lookback 창과 unique_key 병합을 둔다.",
+    "link": "/data-engineering/notes/04-transformation-dbt"
+  },
+  {
+    "term": "SCD2 (천천히 변하는 차원 타입 2)",
+    "subject": "data-engineering",
+    "def": "차원 속성이 바뀔 때 덮어쓰지 않고 유효 기간(valid_from, valid_to)과 함께 새 행을 추가해 이력을 남기는 방식. dbt 스냅샷이 구현한다.",
+    "link": "/data-engineering/notes/04-transformation-dbt"
+  },
+  {
+    "term": "이벤트 시간 / 처리 시간",
+    "subject": "data-engineering",
+    "def": "이벤트 시간은 이벤트가 실제로 일어난 시각, 처리 시간은 처리기가 받은 시각. 정확하고 재현 가능한 집계는 이벤트 시간으로 한다.",
+    "link": "/data-engineering/notes/05-stream-processing"
+  },
+  {
+    "term": "워터마크 (watermark)",
+    "subject": "data-engineering",
+    "def": "스트림 처리에서 '이 시각 이전 이벤트는 다 왔다' 는 추정. 최대 이벤트 시각에서 허용 지연을 뺀 값이 윈도우 끝을 넘으면 윈도우를 닫는다.",
+    "link": "/data-engineering/notes/05-stream-processing"
+  },
+  {
+    "term": "텀블링 / 슬라이딩 / 세션 윈도우",
+    "subject": "data-engineering",
+    "def": "텀블링은 겹치지 않는 고정 크기, 슬라이딩은 일정 간격으로 겹치는 고정 크기, 세션은 활동 사이 간격으로 끊기는 가변 크기 윈도우.",
+    "link": "/data-engineering/notes/05-stream-processing"
+  },
+  {
+    "term": "체크포인트 (스트림 처리)",
+    "subject": "data-engineering",
+    "def": "스트림 엔진이 연산자 상태와 입력 오프셋을 함께 주기적으로 저장하는 것. 장애 시 둘을 함께 되돌려 엔진 내부의 정확히 한 번을 보장한다.",
+    "link": "/data-engineering/notes/05-stream-processing"
+  },
+  {
+    "term": "데이터 계약 (data contract)",
+    "subject": "data-engineering",
+    "def": "생산자와 소비자가 데이터셋의 스키마·의미·품질 규칙·신선도 SLA·변경 정책을 명시한 약속. 생산자 CI 에서 깨지는 변경을 막는다.",
+    "link": "/data-engineering/notes/06-data-quality-lineage-contracts"
+  },
+  {
+    "term": "write-audit-publish",
+    "subject": "data-engineering",
+    "def": "결과를 임시 위치에 쓰고, 품질 검사를 통과하면 그때 공개 테이블로 원자적으로 교체하는 발행 패턴.",
+    "link": "/data-engineering/notes/06-data-quality-lineage-contracts"
+  },
+  {
+    "term": "데이터 계보 (lineage)",
+    "subject": "data-engineering",
+    "def": "원천에서 대시보드까지 데이터가 어떤 작업·모델을 거쳐 흐르는지의 그래프. 장애·변경 영향 분석에 쓰며 OpenLineage 가 표준 이벤트 규격이다.",
+    "link": "/data-engineering/notes/06-data-quality-lineage-contracts"
+  },
+  {
+    "term": "신선도 (freshness)",
+    "subject": "data-engineering",
+    "def": "데이터의 최신 시각이 기준 시각보다 얼마나 늦었는지. 임계를 넘으면 warn·error 로 알린다. 데이터에 적용한 SLO.",
+    "link": "/data-engineering/notes/06-data-quality-lineage-contracts"
+  },
+  {
+    "term": "메달리온 아키텍처",
+    "subject": "data-engineering",
+    "def": "bronze(원본 그대로)·silver(정리·병합·품질 통과)·gold(질문 단위 집계) 세 계층으로 레이크하우스 데이터를 나누는 구성.",
+    "link": "/data-engineering/notes/07-tiny-lakehouse-design"
+  },
+  {
+    "term": "merge-on-read",
+    "subject": "data-engineering",
+    "def": "변경을 새 파일로 추가해 두고 읽을 때 키별 최신 버전만 남기고 삭제 표시를 빼는 방식. 쓰기는 싸고 읽기가 무겁다. 반대는 쓸 때 파일을 다시 쓰는 copy-on-write.",
+    "link": "/data-engineering/notes/07-tiny-lakehouse-design"
   }
 ]

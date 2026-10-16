@@ -66,8 +66,8 @@
     "mlflow:down": "docker compose --profile mlflow stop mlflow",
     "clickhouse:up": "docker compose -p study --profile clickhouse up -d clickhouse",
     "clickhouse:down": "docker compose -p study --profile clickhouse stop clickhouse",
-    "lake:up": "docker compose -p study --profile lake up -d minio",
-    "lake:down": "docker compose -p study --profile lake stop minio"
+    "lake:up": "docker compose -p study --profile lake up -d s3",
+    "lake:down": "docker compose -p study --profile lake stop s3"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
