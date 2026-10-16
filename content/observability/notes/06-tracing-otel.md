@@ -140,6 +140,8 @@ traces_service_graph_request_total                                              
 - Jaeger (오픈소스 트레이스 백엔드), Zipkin (원조), 상용: Datadog APM, Honeycomb, Lightstep
 - "Distributed Tracing in Practice" (Parker 외)
 
+> 트레이스 다음 단계: [연속 프로파일링](/observability/notes/10-continuous-profiling) — 느린 span 안에서 CPU 를 쓴 함수
+
 ## 실습 체크리스트
 
 - [ ] `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:14318 pnpm dev` 로 띄우고 노트 페이지를 연 뒤 Grafana → Tempo 에서 트레이스 열기

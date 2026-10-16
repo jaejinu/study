@@ -102,6 +102,8 @@ jobs:
 - 대용량 의존성(Playwright 브라우저, 모델 파일)은 캐시.
 - private 저장소는 분 단위 과금 — Actions 탭 Usage 에서 확인.
 
+> 캐시 키 설계·Docker 레이어 캐시·샤딩의 심화는 [CI 성능](/github-actions/notes/06-ci-performance).
+
 ## 실습 체크리스트
 
 - [ ] ci.yml 에 `concurrency` 를 넣고 연속 push 로 이전 실행이 취소되는지 확인

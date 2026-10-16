@@ -4,7 +4,7 @@ order: 2
 level: 심화
 summary: "실험실의 다섯 장애를 포함한 전형적 장애 15가지를 증상 → 메트릭·로그·트레이스에서 보이는 신호 → 즉시 조치 → 근본 처방 순으로 정리. 연쇄 장애(cascading failure)의 전형적 경로와 끊는 법"
 tags: [장애카탈로그, 연쇄장애, hang, OOM, 커넥션고갈, 재시도폭풍, 핫키, 포스트모템]
-experiments: [chaos-redis-hang, chaos-redis-oom, chaos-kafka-broker-restart, chaos-pg-connection-exhaustion, chaos-k8s-pod-kill-under-load]
+experiments: [chaos-redis-hang, chaos-redis-oom, chaos-kafka-broker-restart, chaos-pg-connection-exhaustion, chaos-k8s-pod-kill-under-load, chaos-retry-storm, chaos-circuit-breaker]
 ---
 
 각 항목: **증상 → 관측 신호 → 즉시 조치 → 근본 처방**. 실험실에서 재현되는 것은 ⚗ 표시.
@@ -44,7 +44,7 @@ experiments: [chaos-redis-hang, chaos-redis-oom, chaos-kafka-broker-restart, cha
 - 즉시: 없음(지나감). 재발 방지가 전부.
 - 처방: 복제본 ≥ 2, readiness, **preStop sleep + graceful 종료(SIGTERM 처리)**, PDB, 롤링 maxUnavailable 0. [k8s 롤링](/kubernetes/lab/k8s-rolling-update).
 
-## 6. 재시도 폭풍
+## 6. 재시도 폭풍 ⚗
 
 - 증상: 의존성이 살짝 느려졌는데 트래픽이 3~5배로 뛰어 완전히 죽음.
 - 신호: 요청률 급증(원인 없이), 재시도 카운터 ↑, 의존성 큐 길이 ↑.

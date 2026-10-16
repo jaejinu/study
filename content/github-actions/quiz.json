@@ -1,42 +1,82 @@
 [
- {
-  "note": "01-workflow-basics",
-  "q": "잡(job) 끼리 파일을 공유하지 못하는 이유와 해결은?",
-  "a": "잡마다 새 러너에서 실행된다. 아티팩트(upload/download-artifact)나 outputs 로 전달."
- },
- {
-  "note": "01-workflow-basics",
-  "q": "pull_request 이벤트에서 포크 PR 이 시크릿을 못 받는 이유는?",
-  "a": "외부 코드가 시크릿을 유출할 수 있어 보안상 차단된다. pull_request_target 으로 우회하면 위험."
- },
- {
-  "note": "02-cache-matrix-artifacts",
-  "q": "캐시와 아티팩트의 차이는?",
-  "a": "캐시는 실행 간 의존성 재사용(키 기반, 7일), 아티팩트는 실행 결과 보관과 잡 간 전달."
- },
- {
-  "note": "02-cache-matrix-artifacts",
-  "q": "concurrency 의 cancel-in-progress 는 언제 쓰고 언제 끄나?",
-  "a": "PR/브랜치 CI 는 켜서 중복 실행 취소, 배포 잡은 꺼서 순서만 보장(큐)."
- },
- {
-  "note": "03-secrets-deploy",
-  "q": "OIDC 로 클라우드 인증하면 좋은 점은?",
-  "a": "장기 액세스 키를 시크릿에 보관하지 않고 워크플로 신원으로 단기 자격을 받는다. 신뢰 정책으로 저장소/브랜치를 제한."
- },
- {
-  "note": "04-monorepo-release-security",
-  "q": "머지 큐가 막는 문제는?",
-  "a": "각 PR 은 통과했는데 합치면 깨지는 경우. main 에 순차 적용한 상태로 CI 를 돌린다 (on: merge_group)."
- },
- {
-  "note": "04-monorepo-release-security",
-  "q": "이미지를 태그가 아니라 다이제스트로 배포하는 이유는?",
-  "a": "태그는 덮어쓸 수 있다. 다이제스트는 스캔·서명한 바로 그 이미지를 보장한다."
- },
- {
-  "note": "04-monorepo-release-security",
-  "q": "공개 저장소에 셀프 호스티드 러너를 쓰면 안 되는 이유는?",
-  "a": "포크 PR 이 러너에서 임의 코드를 실행해 러너(와 네트워크)를 장악할 수 있다."
- }
+  {
+    "note": "01-workflow-basics",
+    "q": "잡(job) 끼리 파일을 공유하지 못하는 이유와 해결은?",
+    "a": "잡마다 새 러너에서 실행된다. 아티팩트(upload/download-artifact)나 outputs 로 전달."
+  },
+  {
+    "note": "01-workflow-basics",
+    "q": "pull_request 이벤트에서 포크 PR 이 시크릿을 못 받는 이유는?",
+    "a": "외부 코드가 시크릿을 유출할 수 있어 보안상 차단된다. pull_request_target 으로 우회하면 위험."
+  },
+  {
+    "note": "02-cache-matrix-artifacts",
+    "q": "캐시와 아티팩트의 차이는?",
+    "a": "캐시는 실행 간 의존성 재사용(키 기반, 7일), 아티팩트는 실행 결과 보관과 잡 간 전달."
+  },
+  {
+    "note": "02-cache-matrix-artifacts",
+    "q": "concurrency 의 cancel-in-progress 는 언제 쓰고 언제 끄나?",
+    "a": "PR/브랜치 CI 는 켜서 중복 실행 취소, 배포 잡은 꺼서 순서만 보장(큐)."
+  },
+  {
+    "note": "03-secrets-deploy",
+    "q": "OIDC 로 클라우드 인증하면 좋은 점은?",
+    "a": "장기 액세스 키를 시크릿에 보관하지 않고 워크플로 신원으로 단기 자격을 받는다. 신뢰 정책으로 저장소/브랜치를 제한."
+  },
+  {
+    "note": "04-monorepo-release-security",
+    "q": "머지 큐가 막는 문제는?",
+    "a": "각 PR 은 통과했는데 합치면 깨지는 경우. main 에 순차 적용한 상태로 CI 를 돌린다 (on: merge_group)."
+  },
+  {
+    "note": "04-monorepo-release-security",
+    "q": "이미지를 태그가 아니라 다이제스트로 배포하는 이유는?",
+    "a": "태그는 덮어쓸 수 있다. 다이제스트는 스캔·서명한 바로 그 이미지를 보장한다."
+  },
+  {
+    "note": "04-monorepo-release-security",
+    "q": "공개 저장소에 셀프 호스티드 러너를 쓰면 안 되는 이유는?",
+    "a": "포크 PR 이 러너에서 임의 코드를 실행해 러너(와 네트워크)를 장악할 수 있다."
+  },
+  {
+    "note": "05-runners-and-security",
+    "q": "self-hosted 러너를 공개 저장소에 쓰면 안 되는 이유는?",
+    "a": "포크 PR 의 임의 코드가 내 인프라 안에서 실행된다. 쓰더라도 에페메럴(잡마다 폐기)로, 사설 저장소에서만."
+  },
+  {
+    "note": "05-runners-and-security",
+    "q": "OIDC 로 클라우드에 인증하면 무엇이 사라지나?",
+    "a": "저장소에 보관하는 장기 액세스 키. 잡 실행 시 GitHub 가 짧은 JWT 를 발급하고 클라우드가 클레임(repo·ref·environment)을 신뢰 정책과 대조해 임시 자격 증명을 준다."
+  },
+  {
+    "note": "05-runners-and-security",
+    "q": "pull_request_target 이 위험한 조합은?",
+    "a": "베이스 브랜치 컨텍스트(시크릿·쓰기 토큰)로 실행되면서 PR 의 head 코드를 체크아웃해 실행하는 것. 포크의 코드가 시크릿을 들고 돈다."
+  },
+  {
+    "note": "05-runners-and-security",
+    "q": "액션을 @v4 태그가 아니라 커밋 SHA 로 고정하는 이유는?",
+    "a": "태그는 옮길 수 있다. 메인테이너 계정이 털리면 태그가 악성 커밋을 가리켜 다음 실행부터 시크릿이 유출된다(tj-actions 사건). SHA 는 불변."
+  },
+  {
+    "note": "06-ci-performance",
+    "q": "node_modules 대신 pnpm store 를 캐시하는 이유는?",
+    "a": "node_modules 는 플랫폼·Node 버전에 묶이고 pnpm 의 하드링크 구조가 깨진다. store 를 캐시하면 install 이 네트워크 없이 하드링크만 만든다."
+  },
+  {
+    "note": "06-ci-performance",
+    "q": "Dockerfile 에서 COPY . . 를 의존성 설치보다 뒤에 두는 이유는?",
+    "a": "변하지 않는 것(락파일)부터 복사해야 의존성 레이어가 캐시된다. 소스를 먼저 복사하면 소스가 바뀔 때마다 모든 레이어가 무효화된다."
+  },
+  {
+    "note": "06-ci-performance",
+    "q": "buildx 의 cache-to 에 mode=max 가 필요한 이유는?",
+    "a": "기본(min)은 최종 스테이지 레이어만 저장해 multi-stage 의 builder 레이어 캐시가 날아간다. max 는 모든 중간 레이어를 저장한다."
+  },
+  {
+    "note": "06-ci-performance",
+    "q": "concurrency 의 cancel-in-progress 를 배포 워크플로엔 왜 끄나?",
+    "a": "배포 중간에 취소되면 반쯤 배포된 상태가 남는다. PR CI 는 밀려난 실행을 취소해도 안전하지만 배포는 끝까지 가야 한다."
+  }
 ]

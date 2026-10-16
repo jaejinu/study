@@ -74,3 +74,5 @@ Study 앱 OTel SDK ──OTLP──▶ Tempo (트레이스) ──────�
 - [Redis 메모리와 성능 진단](/redis/notes/12-memory-performance) — INFO·SLOWLOG 가 exporter 메트릭의 원천
 - [Kubernetes 운영과 디버깅](/kubernetes/notes/08-ops-debugging) — 관측 스택을 어디에 두는가
 - [Linux 네트워크 진단 도구](/linux-network/notes/05-tools)
+
+> 네 번째 신호: [연속 프로파일링](/observability/notes/10-continuous-profiling)

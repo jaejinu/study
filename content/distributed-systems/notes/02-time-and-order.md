@@ -4,7 +4,7 @@ order: 2
 level: 중급
 summary: 벽시계·단조 시계·NTP 의 한계, "동시" 의 정의와 happens-before 관계, Lamport 시계와 벡터 시계의 동작·한계, 하이브리드 논리 시계(HLC), Google Spanner 의 TrueTime 과 commit-wait, 그리고 Redis·Kafka·PostgreSQL 이 순서를 정하는 실제 방식
 tags: [시계, NTP, 단조 시계, happens-before, Lamport, 벡터 시계, HLC, TrueTime, 순서]
-experiments: []
+experiments: [ds-lamport-vector-clock]
 ---
 
 ## 왜 "순서" 가 문제인가

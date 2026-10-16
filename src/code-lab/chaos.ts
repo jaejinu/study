@@ -377,3 +377,187 @@ kubectl -n study logs lab-load | sort | uniq -c       # 200 이 몇 개, 000/5xx
     await exec("kubectl", K("delete", "pod", "lab-load", "--ignore-not-found", "--grace-period=0", "--force"));
   },
 };
+
+// ---------------------------------------------------------------- 서킷 브레이커
+type BreakerState = "closed" | "open" | "half-open";
+
+/** 교과서적 서킷 브레이커: 연속 실패 N 회 → open(fail-fast) → openMs 뒤 half-open(1회 시도) → 성공이면 closed */
+class CircuitBreaker {
+  state: BreakerState = "closed";
+  failures = 0;
+  openedAt = 0;
+  transitions: { at: number; from: BreakerState; to: BreakerState; why: string }[] = [];
+  constructor(private threshold: number, private openMs: number, private t0 = performance.now()) {}
+  private go(to: BreakerState, why: string) {
+    if (to === this.state) return;
+    this.transitions.push({ at: Math.round(performance.now() - this.t0), from: this.state, to, why });
+    this.state = to;
+  }
+  async call<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.state === "open") {
+      if (performance.now() - this.openedAt >= this.openMs) this.go("half-open", `open 유지 ${this.openMs}ms 경과 → 시험 호출 1회 허용`);
+      else throw new Error("circuit open (fail-fast)");
+    }
+    try {
+      const r = await fn();
+      this.failures = 0;
+      if (this.state === "half-open") this.go("closed", "시험 호출 성공");
+      return r;
+    } catch (e) {
+      this.failures++;
+      if (this.state === "half-open") {
+        this.openedAt = performance.now();
+        this.go("open", "시험 호출 실패 → 다시 open");
+      } else if (this.failures >= this.threshold) {
+        this.openedAt = performance.now();
+        this.go("open", `연속 실패 ${this.failures}회 ≥ 임계 ${this.threshold}`);
+      }
+      throw e;
+    }
+  }
+}
+
+export const chaosCircuitBreaker: CodeExperiment = {
+  id: "chaos-circuit-breaker",
+  subject: "chaos",
+  title: "서킷 브레이커: Redis 가 멈추면 open 으로 끊어 fail-fast, 살아나면 half-open 시험 후 closed",
+  category: "복원력 패턴",
+  summary: "commandTimeout 300ms 의 ioredis 호출을 서킷 브레이커로 감싸고 study-redis 를 docker pause. 연속 실패 3회에 open 되어 이후 호출이 0ms 에 거부되는 것(타임아웃을 기다리지 않음), unpause 뒤 half-open 시험 호출로 closed 복귀까지의 상태 전이 타임라인을 기록",
+  notes: ["03-resilience-patterns-verified", "02-failure-catalog"],
+  description: `
+타임아웃만 있으면 장애 중 **모든 요청이 타임아웃만큼 기다린다**. 300ms × 요청 수가 그대로 지연이 되고, 멈춘 의존성에 계속 부하를 준다.
+서킷 브레이커는 "이미 죽은 걸 안다" 를 상태로 기억해 **즉시 거부(fail-fast)** 하고, 일정 시간 뒤 **시험 호출 한 번**으로 복구를 감지한다. 상태 머신은 세 개: closed(정상) → open(차단) → half-open(시험).
+이 실험은 그 전이를 실제 Redis 멈춤으로 만들어 타임라인으로 보여 준다. 사전 준비: Docker 의 study-redis.
+`,
+  code: `// closed: 호출 통과, 실패 카운트
+// open:   즉시 throw (의존성에 요청 안 보냄), openMs 뒤 half-open
+// half-open: 1회 시험 → 성공 closed / 실패 open
+const breaker = new CircuitBreaker({ threshold: 3, openMs: 2000 });
+await breaker.call(() => redis.get("k"));   // Redis 멈춤 중: 1~3회는 300ms 타임아웃, 4회부터 0ms 거부
+docker pause study-redis / docker unpause study-redis`,
+  requires: async () => ((await containerRunning("study-redis")) ? null : "Docker 의 study-redis 컨테이너가 실행 중이어야 합니다 (`pnpm redis:docker`). 이 실험은 그 컨테이너를 약 4초 멈춥니다."),
+  async run({ rec }) {
+    const redis = createRedis({ host: "127.0.0.1", port: 6379, commandTimeout: 300, enableOfflineQueue: false, maxRetriesPerRequest: 0 });
+    await ensureConnected(redis);
+    const breaker = new CircuitBreaker(3, 2000);
+    const attempt = async (label: string) => {
+      const t = performance.now();
+      try {
+        await breaker.call(() => redis.get("chaos:cb"));
+        return { label, ok: true, ms: Math.round(performance.now() - t), state: breaker.state };
+      } catch (e) {
+        return { label, ok: false, ms: Math.round(performance.now() - t), state: breaker.state, err: (e as Error).message.slice(0, 40) };
+      }
+    };
+    await redis.set("chaos:cb", "1", "EX", 60);
+    rec.check("정상: closed 상태에서 호출 성공", (await attempt("정상")).ok);
+
+    rec.note("Redis 를 얼린다 (docker pause). 타임아웃 300ms 인 호출이 연속 실패한다");
+    const rows: { label: string; ok: boolean; ms: number; state: string; err?: string }[] = [];
+    try {
+      await exec("docker", ["pause", "study-redis"]);
+      for (let i = 1; i <= 6; i++) rows.push(await attempt(`멈춤 중 #${i}`));
+      const slow = rows.slice(0, 3), fast = rows.slice(3);
+      rec.steps.push({ cmd: "멈춤 중 호출 6회 (지연 ms / 상태)", result: rows.map((r) => `${r.label}: ${r.ms}ms ${r.state}${r.err ? ` (${r.err})` : ""}`), ms: 0 });
+      rec.check("처음 3회는 타임아웃(≈300ms)을 기다렸다", slow.every((r) => !r.ok && r.ms >= 250));
+      rec.check("4회째부터 open — 거의 0ms 에 fail-fast (Redis 에 요청을 보내지 않음)", fast.every((r) => !r.ok && r.ms < 20 && r.state === "open"), fast.map((r) => r.ms));
+      const tOpen = performance.now();
+      const burst = await Promise.all(Array.from({ length: 50 }, () => attempt("burst")));
+      const burstMs = Math.round(performance.now() - tOpen);
+      rec.steps.push({ cmd: "open 상태에서 50개 동시 호출", result: `${burstMs}ms 에 전부 거부 — 타임아웃만 있었다면 ≥300ms + 멈춘 Redis 에 50 요청 적재`, ms: burstMs });
+      rec.check("open 중 50 요청이 수십 ms 안에 끝난다", burstMs < 100 && burst.every((b) => !b.ok));
+      await new Promise((r) => setTimeout(r, 2100));
+      const trial = await attempt("open 2초 경과 후 시험 호출 (Redis 아직 멈춤)");
+      rec.steps.push({ cmd: trial.label, result: `${trial.ms}ms → ${trial.state} (${trial.err})`, ms: trial.ms });
+      rec.check("half-open 시험 호출이 실패하면 다시 open", trial.state === "open" && !trial.ok);
+    } finally {
+      await exec("docker", ["unpause", "study-redis"]);
+    }
+    rec.note("Redis 복구(unpause). 다음 시험 호출이 성공하면 closed 로 돌아온다");
+    await new Promise((r) => setTimeout(r, 2100));
+    const recover = await attempt("복구 후 시험 호출");
+    rec.steps.push({ cmd: recover.label, result: `${recover.ms}ms → ${recover.state}`, ms: recover.ms });
+    rec.check("half-open 시험 성공 → closed", recover.ok && breaker.state === "closed");
+    rec.check("이후 호출은 정상 통과", (await attempt("정상 복귀")).ok);
+    rec.steps.push({ cmd: "상태 전이 타임라인 (ms, from → to, 이유)", result: breaker.transitions.map((t) => `${t.at}ms ${t.from} → ${t.to}: ${t.why}`), ms: 0 });
+    rec.check("전이 순서: closed→open→half-open→open→half-open→closed", breaker.transitions.map((t) => t.to).join(",") === "open,half-open,open,half-open,closed", breaker.transitions.map((t) => t.to));
+    rec.note("실무 포인트: 임계는 '연속 실패' 보다 '최근 N초 실패율' 이 낫다(간헐 실패에 과민하지 않음). open 중엔 폴백(캐시된 값·기본값·빈 결과)을 돌려주고, 상태 전이를 메트릭(circuit_state)으로 내보내 대시보드·알림에 쓴다. opossum·resilience4j 가 이 상태 머신을 구현한다.");
+    redis.disconnect();
+    await getRedis().del("chaos:cb").catch(() => {});
+  },
+};
+
+// ---------------------------------------------------------------- 재시도 폭풍
+export const chaosRetryStorm: CodeExperiment = {
+  id: "chaos-retry-storm",
+  subject: "chaos",
+  title: "재시도 폭풍: 백오프 없는 즉시 재시도 vs 지수 백오프+지터 — 장애 중 Redis 가 받는 요청 수",
+  category: "복원력 패턴",
+  summary: "Redis 가 멈춘(docker pause) 3초 동안 30개 클라이언트가 각각 실패하면 바로 재시도(성공할 때까지, 최대 60회)하는 경우와 지수 백오프+풀 지터로 재시도하는 경우의 총 시도 횟수·초당 최대 시도·복구 직후 동시 도착(thundering herd)을 비교한다. 시도는 commandTimeout 100ms 의 실제 ioredis 호출",
+  notes: ["03-resilience-patterns-verified", "02-failure-catalog"],
+  description: `
+재시도는 **일시적** 실패를 숨기는 도구다. 하지만 의존성이 **정말** 죽었을 때 모두가 즉시 재시도하면 요청이 N×재시도 배로 불어나 복구 중인 시스템을 다시 눕힌다 — **재시도 폭풍**. 그리고 같은 간격으로 재시도하면 복구 순간 모두가 **동시에** 몰린다(thundering herd).
+처방은 **지수 백오프 + 지터**(간격을 늘리고 무작위로 흩뿌림) 와 **재시도 예산**(전체 트래픽의 10% 이상이면 재시도 중단). 이 실험은 둘을 같은 장애에 걸어 숫자로 비교한다. 사전 준비: Docker 의 study-redis.
+`,
+  code: `// A: 즉시 재시도           for (i<60) { try { await redis.get(k); break } catch { /* 바로 다시 */ } }
+// B: 지수 백오프 + 풀 지터   delay = random(0, min(cap, base * 2^attempt))
+docker pause study-redis   # 3초
+docker unpause study-redis
+# 비교: 총 시도 수, 초당 피크 시도, 복구 후 1초 안에 몰린 시도 수`,
+  requires: async () => ((await containerRunning("study-redis")) ? null : "Docker 의 study-redis 컨테이너가 실행 중이어야 합니다 (`pnpm redis:docker`). 이 실험은 그 컨테이너를 두 번, 각 3초 멈춥니다."),
+  async run({ rec }) {
+    const clients = Array.from({ length: 30 }, () => createRedis({ host: "127.0.0.1", port: 6379, commandTimeout: 100, enableOfflineQueue: false, maxRetriesPerRequest: 0 }));
+    await Promise.all(clients.map((c) => ensureConnected(c)));
+    type Attempt = { at: number; ok: boolean };
+    const runScenario = async (label: string, backoff: (attempt: number) => number) => {
+      const attempts: Attempt[] = [];
+      const t0 = performance.now();
+      await exec("docker", ["pause", "study-redis"]);
+      const unpauseAt = 3000;
+      const unpauser = new Promise<void>((r) => setTimeout(async () => { await exec("docker", ["unpause", "study-redis"]); r(); }, unpauseAt));
+      try {
+        await Promise.all(
+          clients.map(async (c) => {
+            for (let attempt = 0; attempt < 60; attempt++) {
+              const t = performance.now() - t0;
+              try {
+                await c.get("chaos:retry");
+                attempts.push({ at: t, ok: true });
+                return;
+              } catch {
+                attempts.push({ at: t, ok: false });
+                await new Promise((r) => setTimeout(r, backoff(attempt)));
+              }
+            }
+          }),
+        );
+      } finally {
+        await unpauser;
+        await exec("docker", ["unpause", "study-redis"]);
+      }
+      const total = attempts.length;
+      const perSec = new Map<number, number>();
+      for (const a of attempts) perSec.set(Math.floor(a.at / 1000), (perSec.get(Math.floor(a.at / 1000)) ?? 0) + 1);
+      const peak = Math.max(...perSec.values());
+      const herd = attempts.filter((a) => a.at >= unpauseAt && a.at < unpauseAt + 500).length;
+      const succeeded = attempts.filter((a) => a.ok).length;
+      const spread = attempts.filter((a) => a.at >= unpauseAt);
+      const lastOk = Math.max(0, ...attempts.filter((a) => a.ok).map((a) => a.at));
+      rec.steps.push({ cmd: `${label}: 초별 시도 수`, result: [...perSec.entries()].sort((x, y) => x[0] - y[0]).map(([s, n]) => `${s}s: ${n}`), ms: 0 });
+      return { label, total, peak, herd, succeeded, recoveredBy: Math.round(lastOk), after: spread.length };
+    };
+    rec.note("시나리오 A — 실패하면 즉시 재시도 (성공할 때까지, 간격 0ms)");
+    const a = await runScenario("A 즉시 재시도", () => 0);
+    await new Promise((r) => setTimeout(r, 1000));
+    rec.note("시나리오 B — 지수 백오프 + 풀 지터 (base 200ms, cap 2s)");
+    const b = await runScenario("B 백오프+지터", (n) => Math.floor(Math.random() * Math.min(2000, 200 * 2 ** n)));
+    rec.steps.push({ cmd: "비교", result: { A: a, B: b }, ms: 0 });
+    rec.check("즉시 재시도는 백오프보다 총 시도가 훨씬 많다 (멈춘 Redis 에 부하)", a.total > b.total * 1.5, { A: a.total, B: b.total });
+    rec.check("즉시 재시도의 초당 피크가 더 높다", a.peak > b.peak, { A: a.peak, B: b.peak });
+    rec.check("두 시나리오 모두 30 클라이언트가 결국 성공했다", a.succeeded === 30 && b.succeeded === 30, { A: a.succeeded, B: b.succeeded });
+    rec.note(`복구 직후 0.5초 안에 몰린 시도: A=${a.herd}, B=${b.herd} — 지터가 복구 순간의 몰림을 흩뿌린다`);
+    rec.note("실무 포인트: 재시도는 멱등 요청에만, 횟수보다 총 시간 예산으로 제한, 상위 계층과 중첩 재시도 금지(3×3×3=27배), 재시도율 메트릭을 알림에. 서킷 브레이커와 함께 쓰면 open 중엔 재시도조차 하지 않는다.");
+    for (const c of clients) c.disconnect();
+    await getRedis().del("chaos:retry").catch(() => {});
+  },
+};

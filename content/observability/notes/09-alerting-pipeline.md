@@ -158,6 +158,8 @@ sum by (alertname) (increase(study_alerts_received_total{status="firing"}[7d])) 
 | 점검 중 알림 | 침묵 미설정 | amtool silence |
 | 깨웠는데 조치 불가 | 런북 없음 | 런북 필수 |
 
+> 다음: [SLO 대시보드와 번레이트 패널](/observability/notes/11-slo-dashboard-burn-rate)
+
 ## 실습 체크리스트
 
 - [ ] 관측성 대시보드에 Watchdog(info) 가 도착해 있는지 확인

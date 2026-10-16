@@ -4,7 +4,7 @@ order: 5
 level: 심화
 summary: 합의 문제의 정의와 FLP 불가능성, 왜 그래도 Paxos·Raft 가 동작하는지(부분 동기·무작위 타임아웃), Paxos 의 두 단계 직관, Raft 상세(텀·리더 선출·로그 복제·커밋 규칙·안전성 증명의 핵심·스냅샷·멤버십 변경·선형화 읽기), etcd·ZooKeeper(ZAB)·Kafka KRaft 비교, 그리고 합의를 직접 구현하지 말아야 하는 이유
 tags: [합의, FLP, Paxos, Raft, 리더 선출, 로그 복제, 쿼럼, etcd, ZooKeeper, KRaft]
-experiments: []
+experiments: [ds-fencing-token]
 ---
 
 ## 합의(consensus)란

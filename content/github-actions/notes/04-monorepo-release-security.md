@@ -136,6 +136,8 @@ jobs:
 3. 릴리스: release-please 로 태그, 태그 시 이미지 푸시 + cosign.
 4. 배포: `k8s/` 를 별도 manifests 저장소로 분리하고 ArgoCD 연결.
 
+> 더 깊이: [러너와 보안](/github-actions/notes/05-runners-and-security) · [CI 성능](/github-actions/notes/06-ci-performance)
+
 ## 실습 체크리스트
 
 - [ ] ci.yml 에 `merge_group` 트리거와 `dependency-review-action` 추가
