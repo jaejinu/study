@@ -127,3 +127,101 @@ ZREMRANGEBYSCORE delayed -inf <now>   # 만료된 지연 작업 꺼내기
 6. ID 가 조밀한 정수이고 true/false 만? → Bitmap
 
 > 실험실에서 **내부 인코딩과 SCAN** 실험을 돌려 보면 같은 타입이 값 크기에 따라 다른 인코딩을 쓰는 것을 직접 볼 수 있다.
+
+## 인코딩 — 같은 타입, 다른 몸
+
+Redis 는 각 타입을 **작을 때는 압축 형태로, 커지면 빠른 형태로** 저장한다. 이 전환은 자동이고 한 방향(작게 → 크게)이다. 다시 줄어도 작은 인코딩으로 돌아가지 않는다(재작성 전까지).
+
+![인코딩 전환](/diagrams/redis-encodings.svg)
+
+| 타입 | 작을 때 | 커지면 | 전환 기준(기본값) |
+|---|---|---|---|
+| String | `int` / `embstr` | `raw` | 정수 아님 + 44바이트 초과 |
+| List | `listpack` | `quicklist` | 원소 128개 또는 원소 64바이트 초과 |
+| Hash | `listpack` | `hashtable` | 필드 128개(`hash-max-listpack-entries`) 또는 값 64바이트 초과 |
+| Set | `intset` / `listpack` | `hashtable` | 정수 아니고 128개 초과, 또는 정수 512개 초과 |
+| ZSet | `listpack` | `skiplist` + `hashtable` | 원소 128개 또는 멤버 64바이트 초과 |
+
+> 버전마다 기본값이 조금 다르다(512 → 128 등). `CONFIG GET *max-listpack*` 로 내 서버 값을 확인하자.
+
+**listpack** 은 원소들을 한 줄로 이어 붙인 바이트 배열이다. 포인터가 없어 메모리를 1/5~1/10 로 쓰지만, 조회가 O(N) 이다. N 이 128 이하면 캐시에 한 번에 올라와서 O(N) 이라도 해시 테이블보다 빠르기까지 하다. 기준값을 1만으로 올리면 메모리는 더 아끼지만 `HGET` 이 선형 탐색이 되어 CPU 가 튄다.
+
+```
+127.0.0.1:6379> HSET small f1 v1
+(integer) 1
+127.0.0.1:6379> OBJECT ENCODING small
+"listpack"
+127.0.0.1:6379> HSET small f2 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+(integer) 1
+127.0.0.1:6379> OBJECT ENCODING small
+"hashtable"          ← 값 하나가 64바이트를 넘자 전체가 전환
+127.0.0.1:6379> MEMORY USAGE small
+(integer) 352        ← listpack 일 때 ~80 에서 4배
+```
+
+## 시간 복잡도 — "N 이 뭐냐" 를 늘 물어라
+
+| 명령 | 복잡도 | N 의 정체 | 위험한 경우 |
+|---|---|---|---|
+| `LRANGE k 0 -1` | O(S+N) | 반환 원소 수 | 100만 원소 리스트 전체 |
+| `LINDEX k 50000` | O(N) | 인덱스까지 거리 | 큰 리스트 중간 접근 |
+| `HGETALL` | O(N) | 필드 수 | 필드 10만 개 해시 |
+| `SMEMBERS` | O(N) | 멤버 수 | 큰 집합 |
+| `SINTER a b` | O(N·M) | 가장 작은 집합 크기 × 집합 수 | 큰 집합끼리 |
+| `ZRANGEBYSCORE` | O(log N + M) | M = 반환 수 | `LIMIT` 없이 넓은 범위 |
+| `DEL big` | O(N) | 원소 수 | 큰 컬렉션 → `UNLINK` 사용 |
+| `ZADD` / `ZRANK` | O(log N) | 원소 수 | 거의 안전 |
+
+**큰 키(big key)** 는 그 자체로 장애 원인이다. 한 명령이 수십 ms 를 잡고, 복제·마이그레이션·삭제가 모두 느려진다. 찾는 법:
+
+```
+$ redis-cli --bigkeys          # 타입별 가장 큰 키 (SCAN 기반, 운영에서도 비교적 안전)
+$ redis-cli --memkeys          # 메모리 기준 상위
+127.0.0.1:6379> MEMORY USAGE timeline:global SAMPLES 0
+```
+
+## 타입별 함정 모음
+
+| 타입 | 함정 | 대처 |
+|---|---|---|
+| String | 큰 JSON 을 통째로 GET/SET → 일부만 바꿔도 전체 전송 | 필드 갱신이 잦으면 Hash, 중첩이면 RedisJSON |
+| String | `SET` 이 TTL 을 지움 | `SET … KEEPTTL` 또는 `SET … EX` 를 항상 함께 |
+| List | 끝없이 커지는 타임라인 | `LPUSH` 직후 `LTRIM 0 999` 로 캡 |
+| List | `RPOP` 후 처리 중 죽으면 작업 유실 | `BLMOVE` 로 처리 중 리스트, 또는 Stream |
+| Hash | 필드별 TTL 이 없다고 생각 | Redis 7.4+ `HEXPIRE` 로 필드 TTL 가능 |
+| Set | 집합 연산 결과를 매번 계산 | `SINTERSTORE` + TTL 로 결과 캐시 |
+| ZSet | score 가 double — 큰 정수(2^53 초과)는 정밀도 손실 | ID 는 멤버로, 시간은 ms 정수 정도로 |
+| ZSet | 같은 score 동률 정렬이 멤버 사전순 | 동률 처리 규칙을 score 에 인코딩(예: 점수·10^6 + 역시간) |
+
+## Stream 은 왜 따로 있나
+
+List 로도 큐를 만들 수 있지만, 메시지가 **한 번 꺼내면 사라진다**. Stream 은 로그처럼 남고 컨슈머 그룹이 읽은 위치를 기억한다. Kafka 의 아이디어를 메모리 안에 작게 옮긴 것이다.
+
+| 비교 | List 큐 | Pub/Sub | Stream |
+|---|---|---|---|
+| 메시지 보존 | 꺼내면 삭제 | 저장 안 함 | 보존(`MAXLEN` 으로 캡) |
+| 소비자 여럿 | 경쟁(한 명만) | 팬아웃(모두) | 그룹별 경쟁 + 그룹 간 팬아웃 |
+| 처리 확인 | 없음 | 없음 | `XACK`, 미확인 목록 `XPENDING` |
+| 재처리 | 불가 | 불가 | ID 로 다시 읽기 |
+
+자세한 비교는 [Pub/Sub 과 Stream](/redis/notes/07-pubsub-streams)과 [메시징 — 큐·토픽·로그 모델](/messaging/notes/01-queue-topic-log-models)에 있다.
+
+## 예시로 보기 — 이 프로젝트에서
+
+| 쓰임 | 이 사이트의 키 | 왜 이 타입인가 |
+|---|---|---|
+| 읽은 노트 목록 | `progress:read` (Set) | "읽었나?" 는 멤버십, 중복 불가 |
+| 체크리스트 상태 | `progress:checks:redis/02-data-types` (Hash) | 줄 번호별 on/off, 필드 단위 HDEL |
+| 퀴즈 복습 상태 | `quiz:stats:redis` (Hash, 값은 JSON) | 카드 키로 바로 찾고 통째로 갱신 |
+| 노트 학습 시간 | `study:time:redis/02-data-types` (String) | INCRBY 원자 카운터 |
+| 최근 알림 | List + LTRIM | 최신 N 개만, 순서 유지 |
+
+만약 "주제별 읽은 수" 를 자주 센다면 지금처럼 Set 하나를 전부 읽어 접두어로 나누는 대신 `progress:read:<주제>` 로 나누고 `SCARD` 만 쓰는 편이 O(1) 이다. 이 사이트는 노트가 수백 개 수준이라 하나의 Set 으로 충분하다 — 타입 선택은 항상 **규모**와 **접근 패턴**의 함수다.
+
+## 실습 체크리스트
+
+- [ ] `HSET` 으로 작은 해시를 만들고 64바이트 넘는 값을 넣어 `OBJECT ENCODING` 이 바뀌는 순간 보기
+- [ ] 같은 데이터를 String(JSON) 과 Hash 로 저장해 `MEMORY USAGE` 비교하기
+- [ ] `redis-cli --bigkeys` 를 실행해 가장 큰 키를 찾기
+- [ ] `ZADD` 로 동점자를 만들고 정렬 순서가 멤버 사전순인지 확인하기
+- [ ] 실험실의 내부 인코딩·SCAN 실험과 리더보드 실험을 돌리고 결과를 이 노트의 표와 맞춰 보기

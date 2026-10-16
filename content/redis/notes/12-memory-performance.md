@@ -97,3 +97,94 @@ SCAN 0 MATCH user:* COUNT 1000
 redis-benchmark -q -n 100000 -t set,get,incr,lpush,zadd -P 16
 # -P 16 : 파이프라인 16
 ```
+
+## 메모리 내역 읽기 — MEMORY STATS
+
+```
+127.0.0.1:6379> MEMORY STATS
+ 1) "peak.allocated"        → 8.2MB  역대 최대
+ 3) "total.allocated"       → 6.1MB  = used_memory
+ 5) "startup.allocated"     → 0.9MB  빈 서버 기본
+ 7) "replication.backlog"   → 1.0MB
+ 9) "clients.normal"        → 0.2MB  클라이언트 버퍼
+13) "keys.count"            → 412
+15) "keys.bytes-per-key"    → 9800   ← 키 하나 평균. 작아야 정상
+17) "dataset.bytes"         → 3.6MB  실제 데이터
+19) "dataset.percentage"    → 70%
+21) "fragmentation"         → 1.32
+```
+
+| 항목이 크면 | 의심 |
+|---|---|
+| `clients.normal` | 느린 클라이언트, 큰 응답(`HGETALL` 대량), Pub/Sub 구독자 지연 |
+| `replication.backlog` | 설정한 크기 그대로 — 정상 |
+| `overhead.hashtable.main` | 키가 아주 많음 → 작은 Hash 로 묶기 검토 |
+| `fragmentation` > 1.5 | 할당·해제 패턴으로 생긴 구멍 → `activedefrag` |
+| `fragmentation` < 1 | **스왑 중** — 즉시 조치(지연 수십 배) |
+
+## 단편화는 왜 생기고 어떻게 없애나
+
+Redis 는 jemalloc 으로 크기별 구간(bin)에 메모리를 할당한다. 키를 대량으로 지우면 used_memory 는 줄지만, 페이지 안에 산 객체가 하나라도 남으면 OS 에 돌려주지 못한다. 그래서 RSS 는 그대로고 비율이 올라간다.
+
+```
+CONFIG SET activedefrag yes
+CONFIG SET active-defrag-ignore-bytes 100mb      # 낭비가 이만큼 넘을 때만
+CONFIG SET active-defrag-threshold-lower 10      # 단편화 10% 넘으면 시작
+CONFIG SET active-defrag-cycle-max 25            # CPU 최대 25%
+INFO memory | grep -E "defrag|fragmentation"
+```
+
+액티브 디프래그는 살아 있는 객체를 새 위치로 옮기고 빈 페이지를 반환한다. CPU 를 쓰므로 트래픽 피크 때는 상한을 낮게 둔다.
+
+## 키를 Hash 로 묶는 계산
+
+1천만 사용자의 "마지막 접속 시각" 을 저장한다고 하자.
+
+| 설계 | 키 수 | 키당 크기 | 총합(대략) |
+|---|---|---|---|
+| `last:<userId>` String | 1천만 | ~60B | ~600MB |
+| `last:<userId/100>` Hash(필드 = userId%100) | 10만 | 필드 100개 listpack ~1.2KB | ~120MB |
+
+5배 차이다. 대신 필드별 TTL 이 없고(7.4 의 `HEXPIRE` 이전), 한 Hash 의 필드 수가 `hash-max-listpack-entries` 를 넘지 않게 버킷 크기를 맞춰야 한다. 이 기법은 인스타그램이 사진 → 사용자 매핑 3억 건을 21GB 에서 5GB 로 줄인 것으로 유명하다.
+
+## 지연의 정체를 가르는 법
+
+```
+redis-cli --latency-history -i 5      # 5초 단위 지연 추이
+LATENCY LATEST                         # 이벤트별 최근 최대
+LATENCY HISTORY fork
+LATENCY DOCTOR                         # 원인 추정 문장
+```
+
+| 지연 원인 | 증거 | 대처 |
+|---|---|---|
+| O(N) 명령 | SLOWLOG 에 `HGETALL`/`KEYS` | SCAN 계열, 데이터 분할 |
+| fork | `latest_fork_usec` 크고 BGSAVE 시각과 일치 | 레플리카에서 영속화, 메모리 작게 |
+| 대량 만료 | `expired_time_cap_reached_count` 증가 | TTL 지터 |
+| 축출 | `evicted_keys` 급증과 쓰기 지연 | 메모리 증설, 정책 검토 |
+| 스왑 | `fragmentation` < 1, `sar -W` | 메모리 확보, `vm.swappiness` |
+| 호스트 노이즈 | `--intrinsic-latency` 큼 | VM·컨테이너 CPU 스로틀링 확인([운영체제 — cgroup](/os-internals/notes/03-scheduler-cgroups)) |
+| 네트워크 | 서버 SLOWLOG 는 깨끗한데 앱은 느림 | RTT·커넥션 풀 대기([성능 — 꼬리 지연](/performance/notes/08-tail-latency-at-scale)) |
+
+eBPF 주제의 `ebpf-bpftrace-syscalls` 실험은 Redis 프로세스의 시스템 콜 분포(write 45%·read 34%·epoll_wait 21%)와 지연 히스토그램을 커널에서 직접 본다 — "Redis 가 무엇을 하며 시간을 쓰는가" 를 SLOWLOG 밖에서 확인하는 방법이다.
+
+## 예시로 보기 — 이 프로젝트에서
+
+```
+127.0.0.1:6379> MEMORY USAGE progress:read
+(integer) 1408
+127.0.0.1:6379> OBJECT ENCODING progress:read
+"listpack"                   ← 멤버가 적어 압축 인코딩
+127.0.0.1:6379> OBJECT ENCODING quiz:stats:redis
+"listpack"                   ← JSON 값이 64바이트 넘으면 hashtable 로 바뀐다
+```
+
+`quiz:stats:<주제>` 의 값은 `{"right":..,"wrong":..,"streak":..,"box":..,"due":..,"last":..}` JSON 이라 100바이트 안팎이다. 카드가 몇 장만 기록돼도 `hash-max-listpack-value`(64)를 넘어 hashtable 로 바뀐다. 주제당 카드가 수십 장이라 문제는 없지만, 수백만 사용자 규모라면 값을 `box|due` 처럼 짧게 인코딩하거나 필드를 분리해 listpack 을 유지하는 편이 메모리를 몇 배 아낀다. 이 판단을 직접 해 보는 것이 이 노트의 목표다.
+
+## 실습 체크리스트
+
+- [ ] `MEMORY STATS` 에서 `keys.bytes-per-key`, `dataset.percentage`, `fragmentation` 읽기
+- [ ] 같은 1만 건을 String 키 1만 개와 Hash 100개로 저장해 `INFO memory` 의 used_memory 비교하기
+- [ ] `OBJECT ENCODING quiz:stats:redis` 를 확인하고 왜 그 인코딩인지 설명하기
+- [ ] `redis-cli --latency-history` 를 켠 상태에서 BGSAVE 를 실행해 지연 변화 관찰하기
+- [ ] eBPF 주제의 시스템 콜 실험을 돌려 Redis 가 시간을 어디에 쓰는지 확인하기

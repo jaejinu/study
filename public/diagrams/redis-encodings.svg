@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="420" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">같은 타입, 다른 인코딩 — 작을 땐 압축, 커지면 빠른 구조로 (한 방향)</text>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <g>
+    <text x="40" y="78" fill="#8b949e" font-weight="600">타입</text>
+    <text x="200" y="78" fill="#3fb950" font-weight="600">작을 때 (메모리 효율, O(N) 탐색)</text>
+    <text x="640" y="78" fill="#58a6ff" font-weight="600">커지면 (O(1)·O(log N), 메모리↑)</text>
+  </g>
+  <g>
+    <text x="40" y="122" fill="#e6edf3" font-weight="600">String</text>
+    <rect x="160" y="100" width="280" height="36" rx="6" fill="#161b22" stroke="#3fb950"/>
+    <text x="300" y="123" text-anchor="middle" fill="#e6edf3">int · embstr (≤ 44B, 객체와 한 블록)</text>
+    <line x1="445" y1="118" x2="595" y2="118" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+    <text x="520" y="110" text-anchor="middle" fill="#8b949e" font-size="11">정수 아님 + 44B 초과</text>
+    <rect x="600" y="100" width="300" height="36" rx="6" fill="#161b22" stroke="#58a6ff"/>
+    <text x="750" y="123" text-anchor="middle" fill="#e6edf3">raw (별도 SDS 할당)</text>
+  </g>
+  <g>
+    <text x="40" y="177" fill="#e6edf3" font-weight="600">Hash</text>
+    <rect x="160" y="155" width="280" height="36" rx="6" fill="#161b22" stroke="#3fb950"/>
+    <text x="300" y="178" text-anchor="middle" fill="#e6edf3">listpack [f1|v1|f2|v2 …]</text>
+    <line x1="445" y1="173" x2="595" y2="173" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+    <text x="520" y="165" text-anchor="middle" fill="#8b949e" font-size="11">필드 128개 또는 값 64B 초과</text>
+    <rect x="600" y="155" width="300" height="36" rx="6" fill="#161b22" stroke="#58a6ff"/>
+    <text x="750" y="178" text-anchor="middle" fill="#e6edf3">hashtable (dict, 점진적 리해싱)</text>
+  </g>
+  <g>
+    <text x="40" y="232" fill="#e6edf3" font-weight="600">List</text>
+    <rect x="160" y="210" width="280" height="36" rx="6" fill="#161b22" stroke="#3fb950"/>
+    <text x="300" y="233" text-anchor="middle" fill="#e6edf3">listpack 하나</text>
+    <line x1="445" y1="228" x2="595" y2="228" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+    <text x="520" y="220" text-anchor="middle" fill="#8b949e" font-size="11">노드 크기 초과</text>
+    <rect x="600" y="210" width="300" height="36" rx="6" fill="#161b22" stroke="#58a6ff"/>
+    <text x="750" y="233" text-anchor="middle" fill="#e6edf3">quicklist (listpack 노드의 연결 리스트)</text>
+  </g>
+  <g>
+    <text x="40" y="287" fill="#e6edf3" font-weight="600">Set</text>
+    <rect x="160" y="265" width="280" height="36" rx="6" fill="#161b22" stroke="#3fb950"/>
+    <text x="300" y="288" text-anchor="middle" fill="#e6edf3">intset (정수만) · listpack</text>
+    <line x1="445" y1="283" x2="595" y2="283" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+    <text x="520" y="275" text-anchor="middle" fill="#8b949e" font-size="11">정수 512 / 일반 128 초과</text>
+    <rect x="600" y="265" width="300" height="36" rx="6" fill="#161b22" stroke="#58a6ff"/>
+    <text x="750" y="288" text-anchor="middle" fill="#e6edf3">hashtable (값 없는 dict)</text>
+  </g>
+  <g>
+    <text x="40" y="342" fill="#e6edf3" font-weight="600">ZSet</text>
+    <rect x="160" y="320" width="280" height="36" rx="6" fill="#161b22" stroke="#3fb950"/>
+    <text x="300" y="343" text-anchor="middle" fill="#e6edf3">listpack [m1|s1|m2|s2 …] (정렬 유지)</text>
+    <line x1="445" y1="338" x2="595" y2="338" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+    <text x="520" y="330" text-anchor="middle" fill="#8b949e" font-size="11">멤버 128개 또는 64B 초과</text>
+    <rect x="600" y="320" width="300" height="36" rx="6" fill="#161b22" stroke="#58a6ff"/>
+    <text x="750" y="343" text-anchor="middle" fill="#e6edf3">skiplist + dict (ZRANK O(log N), ZSCORE O(1))</text>
+  </g>
+  <text x="480" y="395" text-anchor="middle" fill="#d29922">되돌아가지 않는다 — 원소를 지워 작아져도 큰 인코딩 유지. 확인: OBJECT ENCODING key · 기준값: CONFIG GET *max-listpack*</text>
+</svg>

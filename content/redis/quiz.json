@@ -1,127 +1,372 @@
 [
- {
-  "note": "01-redis-overview",
-  "q": "Redis 명령 실행이 단일 스레드라서 좋은 점과 조심할 점은?",
-  "a": "좋은 점: INCR·ZADD 등 단일 명령이 원자적이고 락 경합이 없다. 조심할 점: KEYS *, 큰 SMEMBERS, 긴 Lua 처럼 느린 명령 하나가 모든 클라이언트를 막는다."
- },
- {
-  "note": "02-data-types",
-  "q": "리더보드(순위·점수 범위 조회)에 적합한 자료형과 그 이유는?",
-  "a": "Sorted Set. 멤버마다 score 를 가지며 skiplist+hash 로 삽입·순위·범위 조회가 O(log N) 이다."
- },
- {
-  "note": "03-keys-expiration",
-  "q": "SET 으로 값을 덮어쓰면 TTL 은 어떻게 되나? 유지하려면?",
-  "a": "TTL 이 제거된다. SET key value KEEPTTL 을 쓰거나, 값만 수정하는 INCR/HSET 류를 쓴다."
- },
- {
-  "note": "03-keys-expiration",
-  "q": "allkeys-lru 와 volatile-lru 의 차이는?",
-  "a": "allkeys-lru 는 모든 키 중 LRU 로 축출, volatile-lru 는 TTL 이 있는 키만 대상. TTL 키가 없으면 volatile-* 는 noeviction 처럼 동작한다."
- },
- {
-  "note": "04-persistence",
-  "q": "appendfsync everysec 에서 유실될 수 있는 데이터 범위는?",
-  "a": "최대 1초 분량. always 는 거의 없지만 매우 느리고, no 는 OS 버퍼(보통 30초)만큼."
- },
- {
-  "note": "05-transactions-lua",
-  "q": "MULTI/EXEC 안에서 런타임 에러가 나면 나머지 명령은?",
-  "a": "그대로 실행된다. Redis 트랜잭션에는 롤백이 없다. 문법 오류만 EXEC 전체를 거부한다."
- },
- {
-  "note": "05-transactions-lua",
-  "q": "WATCH 한 키가 EXEC 전에 바뀌면?",
-  "a": "EXEC 가 null 을 반환하고 아무것도 실행되지 않는다. 클라이언트가 재시도한다(낙관적 락)."
- },
- {
-  "note": "06-pipelining",
-  "q": "파이프라인과 MULTI 의 차이는?",
-  "a": "파이프라인은 RTT 를 줄일 뿐 원자성이 없다. MULTI/EXEC 는 명령 묶음을 원자적으로 실행한다. 둘을 함께 쓸 수 있다."
- },
- {
-  "note": "07-pubsub-streams",
-  "q": "구독자가 없을 때 PUBLISH 한 메시지는?",
-  "a": "사라진다. Pub/Sub 은 저장하지 않는 fire-and-forget. 유실이 안 되려면 Stream 을 쓴다."
- },
- {
-  "note": "07-pubsub-streams",
-  "q": "Stream 컨슈머 그룹에서 PEL 은 무엇인가?",
-  "a": "전달됐지만 XACK 되지 않은 메시지 목록(Pending Entries List). XPENDING/XAUTOCLAIM 으로 죽은 소비자의 메시지를 넘겨받는다."
- },
- {
-  "note": "08-caching-patterns",
-  "q": "Cache-Aside 에서 쓰기 시 캐시를 갱신(SET)하지 않고 삭제(DEL)하는 이유는?",
-  "a": "동시 갱신 순서가 꼬여 오래된 값이 남는 경쟁을 줄이기 위해. 삭제하면 다음 읽기가 최신 값을 채운다."
- },
- {
-  "note": "09-distributed-lock",
-  "q": "분산 락 해제에 Lua 가 필요한 이유는?",
-  "a": "GET 으로 내 토큰인지 확인하고 DEL 하는 사이에 락이 만료되고 남이 획득할 수 있다. Lua 로 확인+삭제를 원자적으로 해야 남의 락을 지우지 않는다."
- },
- {
-  "note": "10-rate-limiting",
-  "q": "고정 윈도우 카운터의 경계 문제란?",
-  "a": "윈도우 경계 양쪽에 요청이 몰리면 짧은 시간에 한도의 2배가 통과한다. 슬라이딩 윈도우나 토큰 버킷으로 완화."
- },
- {
-  "note": "11-replication-sentinel-cluster",
-  "q": "Cluster 에서 MGET a b 가 CROSSSLOT 에러를 내는 이유와 해결은?",
-  "a": "a, b 가 다른 해시 슬롯(노드)에 있기 때문. {tag}:a, {tag}:b 처럼 해시태그로 같은 슬롯에 둔다."
- },
- {
-  "note": "12-memory-performance",
-  "q": "운영에서 KEYS * 대신 무엇을 써야 하나?",
-  "a": "SCAN cursor MATCH pattern COUNT n 으로 나눠 순회. 중복 반환 가능하니 클라이언트에서 제거."
- },
- {
-  "note": "13-probabilistic",
-  "q": "HyperLogLog 로 할 수 없는 질문은?",
-  "a": "특정 멤버가 포함되어 있는지(멤버십). 카디널리티(고유 개수)만 근사한다."
- },
- {
-  "note": "16-internals-deep-dive",
-  "q": "I/O 스레드를 켜도 '느린 명령 = 전체 정지' 인 이유는?",
-  "a": "I/O 스레드는 읽기·파싱·쓰기만 나눈다. 명령 실행은 여전히 메인 스레드 하나에서 순차 실행된다."
- },
- {
-  "note": "16-internals-deep-dive",
-  "q": "dict 리해싱이 수억 개 키에서도 서버를 멈추지 않는 이유는?",
-  "a": "점진적 리해싱: 명령마다 버킷 몇 개, serverCron 에서 1ms 씩 옮긴다. 그동안 두 테이블을 모두 조회해 SCAN 이 중복을 줄 수 있다."
- },
- {
-  "note": "16-internals-deep-dive",
-  "q": "큰 해시에서 필드를 지워 작아지면 listpack 으로 돌아가나?",
-  "a": "아니다. 인코딩 전환은 작→큼 한 방향이다."
- },
- {
-  "note": "17-client-design",
-  "q": "ioredis 에서 commandTimeout 을 꼭 설정해야 하는 이유는?",
-  "a": "기본이 무제한이라 네트워크 블랙홀 시 요청이 영원히 걸려 이벤트 루프/커넥션을 점유한다."
- },
- {
-  "note": "17-client-design",
-  "q": "캐시 용도의 클라이언트에 enableOfflineQueue: false 가 적합한 이유는?",
-  "a": "Redis 가 죽었을 때 명령을 큐에 쌓지 않고 즉시 실패해 DB 로 폴백(fail-open)하고 메모리 폭발을 막는다."
- },
- {
-  "note": "18-design-recipes",
-  "q": "지연 큐를 ZSET 으로 만들 때 score 와 claim 방법은?",
-  "a": "score = 실행 시각(ms). ZRANGEBYSCORE 로 후보를 뽑고 ZREM 반환값 1 로 내가 가져감을 원자적으로 확정(또는 Lua)."
- },
- {
-  "note": "18-design-recipes",
-  "q": "1억 멤버 리더보드가 단일 ZSET 이면 생기는 문제와 해법은?",
-  "a": "약 10GB 빅 키·핫 키. uid % N 으로 샤딩하고 상위 100 은 샤드별 top-100 병합, 전역 순위는 구간 카운트로 근사."
- },
- {
-  "note": "19-performance-tuning",
-  "q": "LATENCY LATEST 에 fork 이벤트가 뜨면 무엇을 의심하나?",
-  "a": "BGSAVE/AOF rewrite 의 fork 지연. 큰 인스턴스, THP 켜짐, 메모리 부족. 인스턴스 축소·THP 끄기·rewrite 시간대 조정."
- },
- {
-  "note": "19-performance-tuning",
-  "q": "CLIENT TRACKING 이 TTL 기반 로컬 캐시보다 나은 점은?",
-  "a": "서버가 내가 읽은 키의 변경을 푸시해 정확한 시점에 무효화한다. RESP3 필요, BCAST 모드로 서버 메모리 절약."
- }
+  {
+    "note": "01-redis-overview",
+    "q": "Redis 명령 실행이 단일 스레드라서 좋은 점과 조심할 점은?",
+    "a": "좋은 점: INCR·ZADD 등 단일 명령이 원자적이고 락 경합이 없다. 조심할 점: KEYS *, 큰 SMEMBERS, 긴 Lua 처럼 느린 명령 하나가 모든 클라이언트를 막는다."
+  },
+  {
+    "note": "02-data-types",
+    "q": "리더보드(순위·점수 범위 조회)에 적합한 자료형과 그 이유는?",
+    "a": "Sorted Set. 멤버마다 score 를 가지며 skiplist+hash 로 삽입·순위·범위 조회가 O(log N) 이다."
+  },
+  {
+    "note": "03-keys-expiration",
+    "q": "SET 으로 값을 덮어쓰면 TTL 은 어떻게 되나? 유지하려면?",
+    "a": "TTL 이 제거된다. SET key value KEEPTTL 을 쓰거나, 값만 수정하는 INCR/HSET 류를 쓴다."
+  },
+  {
+    "note": "03-keys-expiration",
+    "q": "allkeys-lru 와 volatile-lru 의 차이는?",
+    "a": "allkeys-lru 는 모든 키 중 LRU 로 축출, volatile-lru 는 TTL 이 있는 키만 대상. TTL 키가 없으면 volatile-* 는 noeviction 처럼 동작한다."
+  },
+  {
+    "note": "04-persistence",
+    "q": "appendfsync everysec 에서 유실될 수 있는 데이터 범위는?",
+    "a": "최대 1초 분량. always 는 거의 없지만 매우 느리고, no 는 OS 버퍼(보통 30초)만큼."
+  },
+  {
+    "note": "05-transactions-lua",
+    "q": "MULTI/EXEC 안에서 런타임 에러가 나면 나머지 명령은?",
+    "a": "그대로 실행된다. Redis 트랜잭션에는 롤백이 없다. 문법 오류만 EXEC 전체를 거부한다."
+  },
+  {
+    "note": "05-transactions-lua",
+    "q": "WATCH 한 키가 EXEC 전에 바뀌면?",
+    "a": "EXEC 가 null 을 반환하고 아무것도 실행되지 않는다. 클라이언트가 재시도한다(낙관적 락)."
+  },
+  {
+    "note": "06-pipelining",
+    "q": "파이프라인과 MULTI 의 차이는?",
+    "a": "파이프라인은 RTT 를 줄일 뿐 원자성이 없다. MULTI/EXEC 는 명령 묶음을 원자적으로 실행한다. 둘을 함께 쓸 수 있다."
+  },
+  {
+    "note": "07-pubsub-streams",
+    "q": "구독자가 없을 때 PUBLISH 한 메시지는?",
+    "a": "사라진다. Pub/Sub 은 저장하지 않는 fire-and-forget. 유실이 안 되려면 Stream 을 쓴다."
+  },
+  {
+    "note": "07-pubsub-streams",
+    "q": "Stream 컨슈머 그룹에서 PEL 은 무엇인가?",
+    "a": "전달됐지만 XACK 되지 않은 메시지 목록(Pending Entries List). XPENDING/XAUTOCLAIM 으로 죽은 소비자의 메시지를 넘겨받는다."
+  },
+  {
+    "note": "08-caching-patterns",
+    "q": "Cache-Aside 에서 쓰기 시 캐시를 갱신(SET)하지 않고 삭제(DEL)하는 이유는?",
+    "a": "동시 갱신 순서가 꼬여 오래된 값이 남는 경쟁을 줄이기 위해. 삭제하면 다음 읽기가 최신 값을 채운다."
+  },
+  {
+    "note": "09-distributed-lock",
+    "q": "분산 락 해제에 Lua 가 필요한 이유는?",
+    "a": "GET 으로 내 토큰인지 확인하고 DEL 하는 사이에 락이 만료되고 남이 획득할 수 있다. Lua 로 확인+삭제를 원자적으로 해야 남의 락을 지우지 않는다."
+  },
+  {
+    "note": "10-rate-limiting",
+    "q": "고정 윈도우 카운터의 경계 문제란?",
+    "a": "윈도우 경계 양쪽에 요청이 몰리면 짧은 시간에 한도의 2배가 통과한다. 슬라이딩 윈도우나 토큰 버킷으로 완화."
+  },
+  {
+    "note": "11-replication-sentinel-cluster",
+    "q": "Cluster 에서 MGET a b 가 CROSSSLOT 에러를 내는 이유와 해결은?",
+    "a": "a, b 가 다른 해시 슬롯(노드)에 있기 때문. {tag}:a, {tag}:b 처럼 해시태그로 같은 슬롯에 둔다."
+  },
+  {
+    "note": "12-memory-performance",
+    "q": "운영에서 KEYS * 대신 무엇을 써야 하나?",
+    "a": "SCAN cursor MATCH pattern COUNT n 으로 나눠 순회. 중복 반환 가능하니 클라이언트에서 제거."
+  },
+  {
+    "note": "13-probabilistic",
+    "q": "HyperLogLog 로 할 수 없는 질문은?",
+    "a": "특정 멤버가 포함되어 있는지(멤버십). 카디널리티(고유 개수)만 근사한다."
+  },
+  {
+    "note": "16-internals-deep-dive",
+    "q": "I/O 스레드를 켜도 '느린 명령 = 전체 정지' 인 이유는?",
+    "a": "I/O 스레드는 읽기·파싱·쓰기만 나눈다. 명령 실행은 여전히 메인 스레드 하나에서 순차 실행된다."
+  },
+  {
+    "note": "16-internals-deep-dive",
+    "q": "dict 리해싱이 수억 개 키에서도 서버를 멈추지 않는 이유는?",
+    "a": "점진적 리해싱: 명령마다 버킷 몇 개, serverCron 에서 1ms 씩 옮긴다. 그동안 두 테이블을 모두 조회해 SCAN 이 중복을 줄 수 있다."
+  },
+  {
+    "note": "16-internals-deep-dive",
+    "q": "큰 해시에서 필드를 지워 작아지면 listpack 으로 돌아가나?",
+    "a": "아니다. 인코딩 전환은 작→큼 한 방향이다."
+  },
+  {
+    "note": "17-client-design",
+    "q": "ioredis 에서 commandTimeout 을 꼭 설정해야 하는 이유는?",
+    "a": "기본이 무제한이라 네트워크 블랙홀 시 요청이 영원히 걸려 이벤트 루프/커넥션을 점유한다."
+  },
+  {
+    "note": "17-client-design",
+    "q": "캐시 용도의 클라이언트에 enableOfflineQueue: false 가 적합한 이유는?",
+    "a": "Redis 가 죽었을 때 명령을 큐에 쌓지 않고 즉시 실패해 DB 로 폴백(fail-open)하고 메모리 폭발을 막는다."
+  },
+  {
+    "note": "18-design-recipes",
+    "q": "지연 큐를 ZSET 으로 만들 때 score 와 claim 방법은?",
+    "a": "score = 실행 시각(ms). ZRANGEBYSCORE 로 후보를 뽑고 ZREM 반환값 1 로 내가 가져감을 원자적으로 확정(또는 Lua)."
+  },
+  {
+    "note": "18-design-recipes",
+    "q": "1억 멤버 리더보드가 단일 ZSET 이면 생기는 문제와 해법은?",
+    "a": "약 10GB 빅 키·핫 키. uid % N 으로 샤딩하고 상위 100 은 샤드별 top-100 병합, 전역 순위는 구간 카운트로 근사."
+  },
+  {
+    "note": "19-performance-tuning",
+    "q": "LATENCY LATEST 에 fork 이벤트가 뜨면 무엇을 의심하나?",
+    "a": "BGSAVE/AOF rewrite 의 fork 지연. 큰 인스턴스, THP 켜짐, 메모리 부족. 인스턴스 축소·THP 끄기·rewrite 시간대 조정."
+  },
+  {
+    "note": "19-performance-tuning",
+    "q": "CLIENT TRACKING 이 TTL 기반 로컬 캐시보다 나은 점은?",
+    "a": "서버가 내가 읽은 키의 변경을 푸시해 정확한 시점에 무효화한다. RESP3 필요, BCAST 모드로 서버 메모리 절약."
+  },
+  {
+    "note": "01-redis-overview",
+    "q": "Redis 명령 실행은 1µs 미만인데 앱에서 보는 지연이 수 ms 인 흔한 이유는?",
+    "a": "대부분 왕복(RTT)·커넥션 풀 대기·직렬화·앱 이벤트 루프 지연이다. redis-cli --latency 로 서버까지의 왕복을 먼저 확인해 서버 문제인지 가른다."
+  },
+  {
+    "note": "01-redis-overview",
+    "q": "SET a 1 처럼 작은 키 하나가 실제로 쓰는 메모리는 대략?",
+    "a": "50~70바이트. dict 엔트리·키 SDS·robj 헤더 오버헤드 때문이다. 작은 키가 수천만 개면 오버헤드가 데이터보다 커진다."
+  },
+  {
+    "note": "01-redis-overview",
+    "q": "Redis 를 '원본' 으로 쓸지 '캐시' 로 쓸지 가르는 질문은?",
+    "a": "이 데이터가 날아가면 다시 만들 수 있나? 예라면 캐시로, 아니라면 원본은 DB 에 두거나 영속성·복제를 제대로 설계한다."
+  },
+  {
+    "note": "02-data-types",
+    "q": "Hash 가 listpack 에서 hashtable 로 바뀌는 조건과 되돌아가는지 여부는?",
+    "a": "필드 수가 hash-max-listpack-entries(기본 128) 또는 값 길이가 64바이트를 넘으면 바뀌고, 작아져도 되돌아가지 않는다."
+  },
+  {
+    "note": "02-data-types",
+    "q": "listpack 이 O(N) 탐색인데도 작은 크기에서 빠른 이유는?",
+    "a": "원소가 연속 메모리에 있어 CPU 캐시에 한 번에 올라오고 포인터 추적이 없다. N 이 작으면 해시 계산보다 싸다."
+  },
+  {
+    "note": "02-data-types",
+    "q": "큰 키(big key)를 찾는 비교적 안전한 방법 두 가지는?",
+    "a": "redis-cli --bigkeys(타입별 최대, SCAN 기반)와 --memkeys(MEMORY USAGE 기준). KEYS 는 쓰지 않는다."
+  },
+  {
+    "note": "03-keys-expiration",
+    "q": "능동 만료가 '25% 규칙' 으로 반복된다는 것은 무엇을 뜻하나?",
+    "a": "무작위 20개 샘플 중 만료된 비율이 25% 를 넘으면 시간 예산 안에서 다시 샘플링한다. 대량 동시 만료 시 루프가 길어져 지연 스파이크가 생긴다."
+  },
+  {
+    "note": "03-keys-expiration",
+    "q": "컨테이너 메모리 한도를 maxmemory 와 같게 잡으면 안 되는 이유는?",
+    "a": "maxmemory 는 데이터 메모리 기준이고 복제·클라이언트 버퍼와 fork 의 COW 복사는 포함하지 않는다. BGSAVE 중 OOMKilled 가 난다. 한도의 60~75% 로 둔다."
+  },
+  {
+    "note": "04-persistence",
+    "q": "appendfsync everysec 인데 유실이 최대 2초가 될 수 있는 이유는?",
+    "a": "이전 fsync 가 아직 안 끝났으면 최대 1초 더 기다렸다가 fsync 없이 write 만 하고 넘어간다(aof_delayed_fsync 증가)."
+  },
+  {
+    "note": "04-persistence",
+    "q": "BGSAVE 중 메모리가 크게 늘어나는 원리와 완화책은?",
+    "a": "fork 후 쓰기가 일어난 페이지만 copy-on-write 로 복사된다. 쓰기가 많으면 최대 2배. THP 를 끄고, 메모리 여유를 두고, 레플리카에서 영속화한다."
+  },
+  {
+    "note": "04-persistence",
+    "q": "Redis 가 재시작 후 데이터를 로딩하는 동안 PING 헬스체크만 쓰면 생기는 문제는?",
+    "a": "로딩 중엔 -LOADING 에러를 주지만 PING 은 응답해 '살아 있음' 으로 오판한다. INFO persistence 의 loading 을 함께 본다."
+  },
+  {
+    "note": "05-transactions-lua",
+    "q": "MULTI 안에서 문자열 키에 INCR 을 넣으면 EXEC 결과는?",
+    "a": "그 명령만 에러로 돌아오고 나머지 명령은 실행된다. 실행 시 에러는 롤백되지 않는다."
+  },
+  {
+    "note": "05-transactions-lua",
+    "q": "Redis 7 Functions 가 EVAL 스크립트와 다른 점은?",
+    "a": "FUNCTION LOAD 로 서버에 등록되어 RDB·AOF·복제에 포함되고 재시작 후에도 남는다. 스키마처럼 버전 관리·배포한다."
+  },
+  {
+    "note": "06-pipelining",
+    "q": "파이프라인이 서버 처리량까지 올리는 이유는?",
+    "a": "명령마다 하던 read/write 시스템 콜과 이벤트 루프 순회가 묶음 단위로 줄어든다. redis-benchmark -P 16 에서 10배 가까이 오른다."
+  },
+  {
+    "note": "06-pipelining",
+    "q": "ioredis enableAutoPipelining 은 무엇을 묶나?",
+    "a": "같은 이벤트 루프 틱에 호출된 명령들을 자동으로 하나의 파이프라인으로 보낸다. 코드 변경 없이 동시 요청의 RTT 를 줄인다."
+  },
+  {
+    "note": "06-pipelining",
+    "q": "배치 크기를 무작정 키우면 안 되는 이유는?",
+    "a": "100~1000 부근에서 이득이 포화되고, 그 이상은 시간은 안 줄면서 서버 응답 버퍼와 클라이언트 메모리만 커진다."
+  },
+  {
+    "note": "07-pubsub-streams",
+    "q": "XPENDING 의 전달 횟수(delivery count)가 계속 오르는 메시지는 무엇을 의심하나?",
+    "a": "처리할 때마다 워커를 실패시키는 독 메시지. 일정 횟수 넘으면 DLQ 스트림으로 옮기고 ACK 한다."
+  },
+  {
+    "note": "07-pubsub-streams",
+    "q": "Pub/Sub 의 느린 구독자가 만드는 문제는?",
+    "a": "서버가 그 구독자의 출력 버퍼에 메시지를 쌓다가 client-output-buffer-limit pubsub 에 걸리면 연결을 끊고, 메시지는 영영 사라진다."
+  },
+  {
+    "note": "08-caching-patterns",
+    "q": "cache-aside 에서 옛 값이 캐시에 남는 경쟁 조건은?",
+    "a": "읽기 요청이 DB 에서 옛 값을 읽은 뒤, 쓰기 요청이 DB 갱신·DEL 을 끝내고, 그다음 읽기 요청이 옛 값을 SET 하면 TTL 동안 옛 값이 보인다."
+  },
+  {
+    "note": "08-caching-patterns",
+    "q": "스탬피드 방지에서 물리 TTL 을 논리 만료보다 길게 두는 이유는?",
+    "a": "논리적으로 만료된 뒤에도 옛 값을 즉시 돌려주면서 한 요청만 백그라운드로 갱신(stale-while-revalidate)하기 위해서다."
+  },
+  {
+    "note": "08-caching-patterns",
+    "q": "원본 데이터와 캐시를 한 Redis 에 둘 때 안전한 축출 정책은?",
+    "a": "캐시 키에만 TTL 을 주고 volatile-lru 를 쓴다. TTL 없는 원본 키는 축출 대상이 아니다. 더 안전한 건 인스턴스 분리."
+  },
+  {
+    "note": "09-distributed-lock",
+    "q": "토큰+Lua 해제로도 막지 못하는 사고는?",
+    "a": "GC 멈춤 등으로 락이 만료된 줄 모르고 옛 소유자가 쓰는 사고. 스토리지가 더 작은 펜싱 토큰의 쓰기를 거부해야 막힌다."
+  },
+  {
+    "note": "09-distributed-lock",
+    "q": "워치독(TTL 연장)이 있어도 펜싱이 필요한 이유는?",
+    "a": "프로세스가 살아 있지만 멈추면(GC·스왑) 연장도 멈춰 락이 만료되고, 깨어난 뒤 옛 소유자가 그대로 쓸 수 있다."
+  },
+  {
+    "note": "09-distributed-lock",
+    "q": "'같은 요청 두 번 처리 금지' 를 락 없이 푸는 방법은?",
+    "a": "멱등 키: SET idem:<key> <결과> NX EX 86400. 이미 있으면 저장된 결과를 돌려준다."
+  },
+  {
+    "note": "10-rate-limiting",
+    "q": "고정 윈도우에서 INCR 과 EXPIRE 를 따로 보내면 생기는 사고는?",
+    "a": "그 사이 프로세스가 죽으면 TTL 없는 카운터가 남아 그 사용자가 영원히 차단된다. Lua 로 묶는다."
+  },
+  {
+    "note": "10-rate-limiting",
+    "q": "GET 으로 읽고 앱에서 판단한 뒤 SET 하는 레이트리미터를 속성 기반 테스트가 깨뜨리는 최소 반례는?",
+    "a": "한도 1 에 동시 요청 2개({limit:1, bursts:[2]}). 둘이 같은 값을 읽고 둘 다 통과한다."
+  },
+  {
+    "note": "10-rate-limiting",
+    "q": "Nginx limit_req 만으로 부족해 Redis 레이트리밋을 쓰는 이유는?",
+    "a": "Nginx 는 인스턴스별 메모리라 여러 대의 합산이 안 되고, 사용자·플랜·엔드포인트별 비즈니스 규칙을 표현하기 어렵다."
+  },
+  {
+    "note": "11-replication-sentinel-cluster",
+    "q": "부분 재동기화(PSYNC CONTINUE)가 가능하려면?",
+    "a": "레플리카의 replid 가 같고 그 offset 이 마스터의 복제 백로그 안에 있어야 한다. 아니면 RDB 전체를 보내는 full sync."
+  },
+  {
+    "note": "11-replication-sentinel-cluster",
+    "q": "Sentinel 장애 조치에서 클라이언트가 체감하는 다운타임 구성은?",
+    "a": "감지(down-after-milliseconds) + 리더 선출·승격(1~3초) + 클라이언트 재연결."
+  },
+  {
+    "note": "11-replication-sentinel-cluster",
+    "q": "Redis 복제가 선형화 가능하지 않은 이유는?",
+    "a": "비동기 복제라 OK 를 받은 쓰기가 레플리카에 없을 때 장애 조치되면 사라질 수 있고, 레플리카 읽기는 옛 값일 수 있다."
+  },
+  {
+    "note": "12-memory-performance",
+    "q": "mem_fragmentation_ratio 가 1 보다 작으면 무엇을 뜻하나?",
+    "a": "RSS 가 used_memory 보다 작다 = 일부가 스왑으로 나갔다. 지연이 수십 배가 되므로 즉시 조치한다."
+  },
+  {
+    "note": "12-memory-performance",
+    "q": "1천만 개의 작은 String 키를 작은 Hash 로 묶으면 메모리가 줄어드는 이유는?",
+    "a": "키마다 붙던 dict 엔트리·robj 오버헤드가 사라지고, Hash 가 listpack 으로 압축 저장된다. 수 배 절감."
+  },
+  {
+    "note": "13-probabilistic",
+    "q": "HyperLogLog 가 12KB 고정인 이유는?",
+    "a": "해시 앞 14비트로 16384개 버킷을 나누고 각 버킷에 선행 0 최대 길이(6비트)만 기록하기 때문이다."
+  },
+  {
+    "note": "13-probabilistic",
+    "q": "Bloom filter 의 오차를 1% 에서 0.1% 로 낮추는 비용은?",
+    "a": "비트 수가 약 1.5배. m = −n·ln(p)/(ln2)² 라 오차에 로그로만 늘어난다."
+  },
+  {
+    "note": "13-probabilistic",
+    "q": "비트맵으로 D7 리텐션을 구하는 명령은?",
+    "a": "BITOP AND 로 가입일 코호트 비트맵과 7일 뒤 DAU 비트맵을 교집합한 뒤 BITCOUNT 를 코호트 BITCOUNT 로 나눈다."
+  },
+  {
+    "note": "14-ops-commands",
+    "q": "INFO commandstats 에서 최적화 1순위를 고르는 기준은?",
+    "a": "호출 수가 아니라 calls × usec_per_call 인 총 점유 시간. 호출이 적어도 느린 HGETALL 이 1위일 수 있다."
+  },
+  {
+    "note": "14-ops-commands",
+    "q": "Redis 가 hang 일 때 redis_up == 0 알림이 안 울리는 이유와 대책은?",
+    "a": "익스포터가 응답을 못 받아 시계열 자체가 사라진다. absent(redis_up) 나 up{job=\"redis\"} == 0 을 함께 건다."
+  },
+  {
+    "note": "14-ops-commands",
+    "q": "CLIENT LIST 에서 omem 이 큰 연결은 무엇을 뜻하나?",
+    "a": "출력 버퍼가 쌓인 느린 소비자 — 큰 응답을 천천히 읽거나 따라가지 못하는 Pub/Sub 구독자."
+  },
+  {
+    "note": "14-ops-commands",
+    "q": "대량 키 삭제를 안전하게 하는 방법은?",
+    "a": "redis-cli --scan --pattern 으로 키를 나눠 받아 UNLINK 로 묶음 삭제하고 사이사이 쉰다. KEYS 와 큰 키 DEL 은 쓰지 않는다."
+  },
+  {
+    "note": "15-redis8-modules",
+    "q": "Redis Search 인덱스가 OpenSearch 와 달리 쓰기 직후 바로 검색되는 이유는?",
+    "a": "HSET 같은 쓰기 명령 안에서 동기적으로 인덱스를 갱신하기 때문이다(refresh 지연 없음). 대신 쓰기 비용이 늘어난다."
+  },
+  {
+    "note": "15-redis8-modules",
+    "q": "HNSW 의 EF_RUNTIME 을 키우면?",
+    "a": "질의 시 탐색 폭이 넓어져 재현율이 오르고 지연이 늘어난다."
+  },
+  {
+    "note": "15-redis8-modules",
+    "q": "brew 로 설치한 redis-server 에서 JSON·Search 실험이 건너뛰어지는 이유는?",
+    "a": "brew 빌드에는 모듈이 없다. MODULE LIST 가 비어 있다. Docker redis:8 이미지를 써야 한다."
+  },
+  {
+    "note": "16-internals-deep-dive",
+    "q": "ZSet 이 skiplist 와 dict 를 함께 두는 이유는?",
+    "a": "skiplist 로 순위·범위를 O(log N) 에, dict 로 ZSCORE 를 O(1) 에 처리하기 위해서다. 대신 멤버당 두 구조라 메모리를 더 쓴다."
+  },
+  {
+    "note": "17-client-design",
+    "q": "ioredis 에 commandTimeout 이 없을 때 Redis 가 hang 되면?",
+    "a": "명령이 오래 걸려 요청이 묶인다. 이 사이트에서 /api/metrics 가 멈춰 StudyAppDown 알림까지 울린 원인이다."
+  },
+  {
+    "note": "17-client-design",
+    "q": "명령 타임아웃 후 재시도하면 안 되는 명령은?",
+    "a": "INCR 처럼 멱등하지 않은 명령. 서버에선 이미 실행됐을 수 있어 두 번 반영된다."
+  },
+  {
+    "note": "18-design-recipes",
+    "q": "간격 반복 퀴즈에서 '지금 복습할 카드' 를 빠르게 찾는 구조는?",
+    "a": "ZSet 인덱스(score = 다음 복습 시각)에 ZRANGEBYSCORE -inf <now> LIMIT. 상세는 Hash 에 두고 둘을 Lua/MULTI 로 함께 갱신한다."
+  },
+  {
+    "note": "18-design-recipes",
+    "q": "DB 와 Redis 에 동시에 쓰는 대신 아웃박스를 쓰는 이유는?",
+    "a": "두 저장소 동시 쓰기는 중간에 죽으면 불일치(이중 쓰기 문제). DB 트랜잭션에 outbox 행을 넣고 릴레이가 Stream 으로 옮긴다."
+  },
+  {
+    "note": "19-performance-tuning",
+    "q": "요청 하나가 Redis 를 10번 호출하고 각 호출의 p99 가 1% 라면 요청의 몇 % 가 p99 를 맞나?",
+    "a": "1 − 0.99^10 ≈ 9.6%. 증폭 계수를 줄이는 것이 꼬리 지연 대책의 첫걸음이다."
+  },
+  {
+    "note": "19-performance-tuning",
+    "q": "연결 수를 늘려도 처리량은 그대로이고 지연만 늘면?",
+    "a": "서버 단일 스레드가 포화된 것이다. O(N) 제거·파이프라인·io-threads·샤딩 순으로 본다."
+  }
 ]

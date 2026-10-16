@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  serverExternalPackages: ["ioredis"],
+  serverExternalPackages: ["ioredis", "@duckdb/node-api", "@duckdb/node-bindings", "@clickhouse/client"],
   // Docker 이미지용: 필요한 node_modules 만 모은 standalone 서버 생성
   output: "standalone",
 };

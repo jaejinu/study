@@ -71,3 +71,107 @@ DB 갱신과 캐시 삭제 사이의 작은 창에서 다른 요청이 옛 값�
 INFO stats     # keyspace_hits / keyspace_misses → 히트율
 ```
 히트율이 낮다면 TTL 이 너무 짧거나, 키 설계가 분산돼 있거나, 캐시할 가치가 없는 데이터일 수 있다. 대시보드에서 현재 히트율을 볼 수 있다.
+
+## 패턴별 일관성과 실패 모드
+
+| 패턴 | 읽기 지연 | 쓰기 지연 | 불일치 창 | 캐시 장애 시 |
+|---|---|---|---|---|
+| Cache-aside + 쓰기 시 DEL | 첫 미스만 느림 | DB 만큼 | 짧음(경쟁 시 TTL 까지) | DB 로 우회, 부하 급증 |
+| Read-through(라이브러리가 대신 조회) | 동일 | 동일 | 동일 | 라이브러리 정책 |
+| Write-through | 빠름 | DB + 캐시 | 거의 없음 | 쓰기 실패 처리 필요 |
+| Write-behind | 빠름 | 아주 빠름 | DB 반영 지연 | **데이터 유실** |
+| Refresh-ahead(만료 전 갱신) | 항상 빠름 | DB 만큼 | 갱신 주기 | DB 로 우회 |
+
+## Cache-aside 의 경쟁 조건 — 시간축으로
+
+```
+요청 A (읽기)                     요청 B (쓰기)
+GET user:1  → miss
+DB 읽기 → v1 (옛 값)
+                                  DB 쓰기 → v2
+                                  DEL user:1
+SET user:1 v1 EX 300   ← 옛 값을 캐시에 넣음! TTL 동안 v1 이 보인다
+```
+
+이 창은 "A 의 DB 읽기가 B 의 쓰기보다 먼저인데, A 의 SET 은 B 의 DEL 보다 늦게" 일 때만 생긴다. 드물지만 트래픽이 많으면 반드시 일어난다. 대응:
+
+| 대응 | 원리 | 비용 |
+|---|---|---|
+| 짧은 TTL | 틀려도 금방 회복 | 적중률↓ |
+| 지연 이중 삭제 | B 가 수백 ms 후 한 번 더 DEL | 지연 큐 필요 |
+| 버전 비교 | 값에 version 을 넣고 SET 은 더 큰 버전만(Lua) | 구현 복잡 |
+| CDC 무효화 | DB 커밋 로그(binlog/WAL)를 보고 DEL | Debezium 등 인프라([Kafka — CDC 와 Outbox](/kafka/notes/08-cdc-outbox-debezium)) |
+
+## 스탬피드 방지 코드 — 뮤텍스 + stale 응답
+
+```ts
+async function getCached(key: string, load: () => Promise<string>, ttl = 300) {
+  const raw = await redis.get(key);
+  if (raw) {
+    const { v, softExp } = JSON.parse(raw);
+    if (Date.now() < softExp) return v;                     // 신선
+    // 논리적으로 만료 → 한 명만 갱신, 나머지는 stale 반환
+    if (await redis.set(`lock:${key}`, "1", "PX", 5000, "NX")) {
+      void load().then((nv) => redis.set(key, JSON.stringify({ v: nv, softExp: Date.now() + ttl * 1000 }), "EX", ttl * 2));
+    }
+    return v;
+  }
+  // 완전 미스: 락을 얻은 요청만 DB, 나머지는 잠깐 기다렸다 재시도
+  if (await redis.set(`lock:${key}`, "1", "PX", 5000, "NX")) {
+    const v = await load();
+    await redis.set(key, JSON.stringify({ v, softExp: Date.now() + ttl * 1000 }), "EX", ttl * 2);
+    return v;
+  }
+  await new Promise((r) => setTimeout(r, 50));
+  return getCached(key, load, ttl);
+}
+```
+
+핵심은 **물리 TTL(ttl×2) > 논리 만료(ttl)** 로 두어, 만료 직후에도 옛 값을 돌려줄 수 있게 하는 것이다. 실험실의 **캐시 스탬피드** 실험이 이 차이를 DB 호출 수로 보여 준다(보호 없음 vs 뮤텍스).
+
+## 무엇을 키에 넣을 것인가
+
+| 키 설계 | 문제 |
+|---|---|
+| `page:/products?sort=price&page=2` 그대로 | 쿼리 파라미터 순서만 달라도 다른 키 → 적중률↓ |
+| 정규화(파라미터 정렬, 기본값 제거) | ✓ |
+| 사용자별 데이터를 공용 키에 | **다른 사람 데이터 노출** — 보안 사고 |
+| 버전 접두어 `v3:product:42` | 배포 시 스키마가 바뀌어도 옛 캐시와 충돌 없음 ✓ |
+
+캐시 계층 전체(브라우저·CDN·앱·Redis)에서의 키와 무효화는 [아키텍처 — 캐시 계층과 CDN](/architecture/notes/10-cache-layers-cdn)에서 이어진다.
+
+## 측정 — 적중률만으로는 부족하다
+
+| 지표 | 계산 | 해석 |
+|---|---|---|
+| 적중률 | hits / (hits + misses) | 80~95% 가 흔함. 낮으면 TTL·키 설계 점검 |
+| 바이트 적중률 | 캐시로 아낀 바이트 / 전체 | 큰 값 위주면 이게 더 중요 |
+| DB 부하 절감 | 캐시 도입 전후 DB QPS | 진짜 목적 |
+| p99 지연 | 미스 경로의 지연 | 미스가 드물어도 p99 를 지배 |
+| `evicted_keys` | 축출 속도 | 메모리 부족으로 적중률이 떨어지는 중인지 |
+
+```
+127.0.0.1:6379> INFO stats
+keyspace_hits:182733
+keyspace_misses:20419       ← 적중률 89.9%
+evicted_keys:0
+```
+
+`keyspace_hits/misses` 는 **서버 전체** 기준이다. 캐시가 아닌 키(세션·카운터)의 GET 도 섞인다. 캐시 적중률은 앱에서 캐시 레이어별로 메트릭을 내는 것이 정확하다(`study_cache_hits_total{cache="product"}` 같은 카운터, [관측성 — 계측](/observability/notes/03-instrumentation-exporters)).
+
+## 예시로 보기 — 이 프로젝트에서
+
+이 사이트는 Redis 를 캐시로 쓰지 않는다 — 노트는 파일에서 읽고, Redis 는 학습 기록의 **원본**이다. 그래서 축출 정책이 `allkeys-lru` 인 환경에서 메모리가 차면 학습 기록이 지워질 수 있다. 원본 데이터와 캐시를 같은 인스턴스에 두는 흔한 실수다. 해결 방법은 둘 중 하나다:
+
+1. 인스턴스를 나눈다(캐시용 `allkeys-lru`, 원본용 `noeviction`).
+2. 같이 쓴다면 캐시 키에만 TTL 을 주고 `volatile-lru` 로 둔다 — TTL 없는 원본 키는 축출 대상이 아니다.
+
+이 사이트가 노트 렌더링 결과를 캐시하게 된다면 2번이 가장 간단하다.
+
+## 실습 체크리스트
+
+- [ ] 실험실의 캐시 어사이드 실험과 스탬피드 실험을 돌리고 DB 호출 수 차이 기록하기
+- [ ] 위 경쟁 조건 시간축을 두 콘솔로 재현해 옛 값이 캐시에 남는 것 확인하기
+- [ ] `INFO stats` 로 적중률을 계산하고, 캐시가 아닌 키가 섞여 있다는 점을 설명하기
+- [ ] `volatile-lru` 와 `allkeys-lru` 에서 TTL 없는 키가 축출되는지 비교하기
+- [ ] 이 사이트에서 캐시할 만한 것(예: 노트 목록)을 하나 골라 키 설계와 TTL 을 정하기

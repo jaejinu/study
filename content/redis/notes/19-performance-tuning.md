@@ -97,6 +97,61 @@ ulimit -n 65536
 - 변화는 한 번에 하나. 측정 → 변경 → 측정.
 - 네트워크 포함 측정: 앱 서버에서 Redis 로. 로컬 루프백은 비현실적으로 빠르다 (Docker Desktop 의 가상 네트워크는 반대로 느리다 — 벤치마크 페이지에서 30k vs 450k 차이의 원인).
 
+## 꼬리 지연 — p99 를 만드는 것들
+
+평균 0.2ms 인 Redis 에서 p99 가 20ms 라면, 100번에 한 번은 무언가에 막힌다는 뜻이다. 흔한 범인:
+
+| 범인 | 주기성 | 증거 |
+|---|---|---|
+| BGSAVE fork | `save` 조건마다 | `latest_fork_usec`, 지연 그래프의 규칙적 스파이크 |
+| AOF rewrite | 파일이 2배 될 때 | `aof_rewrite_in_progress` 시각 |
+| 대량 만료 | 같은 TTL 로 만든 키들 | `expired_time_cap_reached_count` |
+| 다른 클라이언트의 O(N) 명령 | 배치 작업 시각 | SLOWLOG 의 명령·클라이언트 |
+| GC·이벤트 루프 지연(클라이언트) | 앱 부하 | Node `monitorEventLoopDelay` p99 |
+| CPU 스로틀링(컨테이너 limit) | 100ms 주기 | `cpu.stat` 의 `nr_throttled`([운영체제 — cgroup](/os-internals/notes/03-scheduler-cgroups)) |
+
+요청 하나가 Redis 를 10번 부르면, 각 호출의 p99 가 1% 라도 **요청의 약 10% 가 어딘가에서 p99 를 맞는다**(1 − 0.99^10 ≈ 9.6%). 증폭 계수를 줄이는 것이 꼬리 지연 대책의 첫걸음이다([성능 — 꼬리 지연](/performance/notes/08-tail-latency-at-scale)).
+
+## 부하 테스트로 한계 찾기
+
+```bash
+# 실제 워크로드에 가깝게: GET 80% / SET 20%, 값 512B, 키 10만 개 무작위, 연결 50
+redis-benchmark -t get,set -n 1000000 -r 100000 -d 512 -c 50 -P 1 --csv
+# 지연 분포까지
+redis-benchmark -t get -n 200000 -c 50 --precision 3
+```
+
+| 관찰 | 의미 |
+|---|---|
+| 연결 수를 늘려도 처리량이 그대로, 지연만 증가 | 서버 단일 스레드 포화(INFO cpu 확인) |
+| `-P 16` 에서 처리량 10배 | 병목은 RTT·시스템 콜 — 앱에 파이프라인/자동 파이프라이닝 |
+| 값 크기 512B → 16KB 에서 급락 | 네트워크 대역폭·메모리 복사 |
+
+앱 경로 전체(HTTP → 앱 → Redis)를 재려면 k6 를 쓴다. 성능 주제의 `perf-k6-redis-path` 실험이 이 사이트의 HTTP 요청당 Redis 명령 수(증폭 계수)와 `INFO` 샘플을 함께 잰다([k6 부하 테스트](/performance/notes/03-k6-load-testing)).
+
+## 튜닝 결정 표
+
+| 증상 | 먼저 볼 것 | 손잡이 |
+|---|---|---|
+| CPU 100%, ops 정체 | `INFO commandstats` 총시간 1위 | O(N) 제거 → 파이프라인 → `io-threads` → 샤딩 |
+| 메모리 부족 | `MEMORY STATS`, `--bigkeys` | 인코딩 유지, TTL, 큰 키 분할, 압축 |
+| 주기적 스파이크 | `LATENCY LATEST` | 영속화 시간대·레플리카로 이동, THP 끄기 |
+| 앱에서만 느림 | 트레이스의 Redis span vs SLOWLOG | 커넥션 풀·이벤트 루프·직렬화 |
+| 장애 조치 후 느림 | `sync_full`, 레플리카 lag | 백로그 크기, 버퍼 한도 |
+
+## 예시로 보기 — 이 프로젝트에서
+
+이 사이트에서 직접 해 볼 수 있는 측정 루프:
+
+1. **기준선**: `/redis/benchmark` 에서 파이프라인 유무 결과를 기록한다.
+2. **관찰**: `/redis/monitor` 를 띄워 두고 실험 하나(예: 캐시 스탬피드)를 돌린다 — ops/sec 와 SLOWLOG 변화.
+3. **커널 시점**: eBPF 주제의 시스템 콜 실험으로 같은 부하에서 Redis 가 무엇을 하는지 본다.
+4. **앱 시점**: Grafana(13000) 의 Tempo 트레이스에서 페이지 요청 하나에 Redis span 이 몇 개인지 센다.
+5. **변경 하나**: 예를 들어 첫 화면의 주제별 조회를 `MGET`·파이프라인으로 묶는다.
+6. **재측정**: 1~4 를 반복해 숫자로 개선을 확인한다.
+
+"측정 → 한 가지 변경 → 측정" 의 원칙은 Redis 에만 해당하지 않는다. [성능 — 측정 방법론](/performance/notes/02-measurement-methodology)이 이 루프를 일반화한다.
+
 ## 실습 체크리스트
 
 - [ ] `LATENCY LATEST` 가 비어 있는 상태에서 `redis-cli --bigkeys` 와 1MB 값 SET/GET 을 돌려 이벤트가 생기는지

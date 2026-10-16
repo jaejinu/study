@@ -106,3 +106,89 @@ pnpm redis:cluster:down
 ```
 
 실험실의 **복제**, **Sentinel failover**, **Cluster 해시 슬롯** 실험이 이 환경에서 실제 장애 조치와 MOVED 리다이렉트를 재현한다.
+
+## 복제 버퍼와 PSYNC — 끊겼다 붙을 때 무슨 일이
+
+마스터는 레플리카로 보낸 명령 스트림을 **복제 백로그(repl-backlog)** 라는 원형 버퍼에 남긴다. 레플리카는 자신이 받은 위치(**replication offset**)를 기억한다.
+
+```
+레플리카 재접속: PSYNC <replid> <offset>
+ ├─ replid 가 같고 offset 이 백로그 안 → +CONTINUE (빠진 부분만 전송, 부분 동기화)
+ └─ 아니면                              → +FULLRESYNC (RDB 전체 생성·전송, 비쌈)
+```
+
+| 설정 / 지표 | 의미 |
+|---|---|
+| `repl-backlog-size` (기본 1MB) | 끊긴 동안 쌓일 쓰기량보다 커야 부분 동기화 가능. 쓰기 10MB/s × 끊김 30초 = 300MB |
+| `master_repl_offset` vs 레플리카 `slave_repl_offset` | 차이가 복제 지연(바이트) |
+| `sync_full`, `sync_partial_ok` | 전체·부분 동기화 횟수 — full 이 늘면 백로그가 작다는 신호 |
+| `client-output-buffer-limit replica 256mb 64mb 60` | full sync 중 쌓이는 버퍼 한도 — 넘으면 끊기고 다시 full sync(무한 루프 위험) |
+
+```
+127.0.0.1:6381> INFO replication
+role:master
+connected_slaves:2
+slave0:ip=127.0.0.1,port=6382,state=online,offset=88231,lag=0
+slave1:ip=127.0.0.1,port=6383,state=online,offset=88231,lag=1
+master_repl_offset:88231
+repl_backlog_size:1048576
+```
+
+## 복제가 보장하지 않는 것
+
+비동기 복제에서 마스터가 OK 를 돌려준 쓰기는 레플리카에 아직 없을 수 있다. 그 순간 마스터가 죽고 레플리카가 승격되면 **확인 응답한 쓰기가 사라진다**. 이걸 막을 수 없으므로 Redis 는 **선형화 가능(linearizable)** 하지 않다.
+
+| 질문 | Redis(복제+Sentinel) |
+|---|---|
+| 확인된 쓰기가 장애 조치 후 사라질 수 있나 | 예(마지막 수 ms) |
+| 레플리카 읽기가 최신인가 | 아니오(복제 지연만큼 옛 값) |
+| 분단 시 두 마스터가 동시에 쓰기를 받나 | 짧게 가능 → `min-replicas-to-write` 로 완화 |
+| `WAIT 2 100` 이면 안전한가 | 더 안전하지만 장애 조치가 그 레플리카를 고른다는 보장은 없음 |
+
+일관성 모델과 쿼럼으로 이 한계를 정확히 말하는 법은 [분산 시스템 — 일관성 모델](/distributed-systems/notes/03-consistency-models)과 [복제](/distributed-systems/notes/04-replication)에 있다.
+
+## Sentinel 장애 조치 타임라인
+
+| 시각 | 이벤트 | 로그 |
+|---|---|---|
+| 0s | 마스터 정지 | — |
+| 5s (`down-after-milliseconds`) | 각 Sentinel 이 주관적 다운 판정 | `+sdown master mymaster` |
+| 5~6s | quorum 동의 | `+odown master mymaster #quorum 2/2` |
+| 6s | Sentinel 리더 선출(Raft 와 비슷한 투표) | `+vote-for-leader`, `+elected-leader` |
+| 6~7s | 레플리카 선택(우선순위·offset·runid) → 승격 | `+selected-slave`, `+promoted-slave` |
+| 7~8s | 나머지 재지정, 클라이언트에 새 주소 | `+switch-master mymaster 127.0.0.1 6381 127.0.0.1 6382` |
+
+**클라이언트 관점의 다운타임 = 감지(5s) + 승격(1~3s) + 클라이언트 재연결**. `down-after-milliseconds` 를 줄이면 빨라지지만 일시적 지연(GC·네트워크)에 오판(불필요한 장애 조치)이 늘어난다. 실험실의 **Sentinel failover** 실험이 이 구간을 실제로 재고, 장애 실험실·SRE 주제는 이를 알림·SLO 관점에서 다룬다.
+
+## Cluster 리샤딩과 장애
+
+| 동작 | 명령 | 클라이언트가 보는 것 |
+|---|---|---|
+| 슬롯 이동 | `redis-cli --cluster reshard` | 이동 중 키는 `-ASK`, 끝나면 `-MOVED` |
+| 노드 추가 | `--cluster add-node` + reshard | 슬롯 맵 갱신 |
+| 마스터 장애 | 레플리카 자동 승격(`cluster-node-timeout`, 기본 15s) | 그 슬롯만 잠시 실패 |
+| 과반 마스터 장애 | 클러스터 전체 `CLUSTERDOWN` | 전체 실패(`cluster-require-full-coverage` 설정 따라) |
+
+**슬롯 불균형**은 키 분포가 아니라 **트래픽** 기준으로 봐야 한다. 해시태그를 남용해 `{tenant:big}` 하나에 모든 키를 몰면 그 슬롯의 노드만 바쁘다. 파티셔닝의 일반 원리(핫스팟·리밸런스)는 [분산 시스템 — 파티셔닝](/distributed-systems/notes/07-partitioning)에 있다.
+
+## 예시로 보기 — 이 프로젝트에서
+
+| 환경 | 포트 | 무엇을 연습하나 |
+|---|---|---|
+| `pnpm redis:ha` | 6381~6383, 26381~26383 | 비동기 복제, Sentinel 장애 조치, `WAIT` |
+| `pnpm redis:cluster` | 7001~7006 | 해시 슬롯, MOVED/ASK, 해시태그, CROSSSLOT |
+| kind `study` 클러스터의 Redis StatefulSet | 클러스터 안 6379 | Pod 재시작 후 PVC 로 데이터 유지 |
+
+```bash
+# 복제 지연을 눈으로 보기: 마스터에 쓰고 레플리카에서 바로 읽기
+redis-cli -p 6381 SET k v1 && redis-cli -p 6382 GET k   # 대개 v1, 부하 중엔 nil 일 수도
+redis-cli -p 6381 SET k v2 && redis-cli -p 6381 WAIT 2 100 && redis-cli -p 6382 GET k   # WAIT 후엔 v2
+```
+
+## 실습 체크리스트
+
+- [ ] `pnpm redis:ha` 로 띄우고 `INFO replication` 의 offset 과 lag 읽기
+- [ ] 마스터를 죽인 뒤 Sentinel 로그에서 sdown → odown → switch-master 까지의 시간 재기
+- [ ] 레플리카를 잠깐 끊었다 붙여 `sync_partial_ok` 가 오르는지, 백로그를 줄였을 때 `sync_full` 이 오르는지 비교하기
+- [ ] `pnpm redis:cluster` 에서 `MGET` 으로 CROSSSLOT 에러를 내고 해시태그로 해결하기
+- [ ] 실험실의 복제·Sentinel·Cluster 실험 세 개를 차례로 돌리기

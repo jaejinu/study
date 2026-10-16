@@ -109,6 +109,81 @@ new Cluster([{ host, port: 7001 }], {
 - 통합: 실제 Redis (Docker, CI 서비스 컨테이너). 이 프로젝트의 vitest 가 그렇다 — 실험이 곧 통합 테스트.
 - 장애: 테스트 중 `CLIENT KILL`, `DEBUG SLEEP`, 컨테이너 일시정지(`docker pause`) 로 타임아웃·재연결 경로 검증.
 
+## 이 프로젝트의 클라이언트 설정 해부
+
+`src/lib/redis.ts` 의 기본 옵션:
+
+```ts
+const baseOptions: RedisOptions = {
+  lazyConnect: true,          // Redis 없이도 앱이 뜬다 (학습 사이트는 Redis 가 꺼져 있을 수 있음)
+  maxRetriesPerRequest: 1,    // 끊김 중 명령은 1번만 재시도하고 실패
+  enableOfflineQueue: false,  // 연결 안 됐으면 큐에 쌓지 않고 즉시 에러
+  connectTimeout: 1500,
+  retryStrategy: (times) => (times > 3 ? null : Math.min(times * 200, 1000)),   // 4번째엔 포기
+};
+```
+
+| 선택 | 이유 | 트레이드오프 |
+|---|---|---|
+| `enableOfflineQueue: false` | Redis 가 꺼져도 페이지가 즉시 그려져야 함(진행률만 빈칸) | 짧은 끊김에도 그 순간 명령은 실패 |
+| `retryStrategy` 4회 후 포기 | 로그 폭주·무한 재연결 방지 | 다시 붙으려면 `ensureConnected` 가 `connect()` 를 다시 부름 |
+| 전역 싱글턴(`globalThis.__redisClient`) | Next.js dev HMR 마다 연결이 새로 생기는 것 방지 | 커넥션 1개 — 블로킹 명령은 `createRedis()` 로 따로 |
+| `commandTimeout` 없음 | (개선 여지) | 서버가 멈춘(hang) 경우 명령이 오래 걸림 |
+
+마지막 줄이 실제로 사고를 냈다. 장애 주입 실험이 `docker pause study-redis` 로 Redis 를 멈춘 채 남았을 때, 앱의 `/api/metrics` 가 Redis 핑을 기다리며 멈춰 **StudyAppDown 알림까지** 울렸다. `commandTimeout: 500` 을 두고 메트릭·진행률 조회를 fail-open 으로 처리했다면 앱은 살아 있었을 것이다([SRE — 사고와 포스트모템](/sre/notes/05-incident-postmortem)). 장애 실험실의 `chaos-redis-hang` 실험이 바로 이 상황(연결은 살아 있는데 응답 없음)을 재현한다.
+
+## 타임아웃 예산 짜기
+
+사용자 요청 하나에 300ms SLO 가 있다면 그 안에서 Redis 몫을 나눈다.
+
+| 구간 | 예산 | 설정 |
+|---|---|---|
+| 전체 요청 | 300ms | 게이트웨이 타임아웃 |
+| Redis 조회(캐시) | 20ms | `commandTimeout: 20`, 실패 시 DB |
+| DB 조회 | 150ms | 쿼리 타임아웃 |
+| 나머지(렌더링 등) | 130ms | |
+
+타임아웃이 짧으면 일시적 지연에 오탐(불필요한 DB 폴백)이 늘고, 길면 장애 시 스레드·이벤트 루프가 묶인다. **p99.9 지연의 2~3배** 가 출발점이다. 하위 호출로 남은 시간을 넘기는 데드라인 전파는 [API 설계 — 에러·재시도·데드라인](/api-design/notes/04-errors-retries-deadlines)에서 다룬다.
+
+## 재시도는 언제 해로운가
+
+| 상황 | 재시도 | 이유 |
+|---|---|---|
+| 연결 거부·리셋, `LOADING`, `READONLY`(failover 중) | 지수 백오프 + 지터로 | 일시적, 곧 회복 |
+| 명령 타임아웃 | **멱등 명령만** | `INCR` 이 서버에선 실행됐을 수 있음 → 두 번 증가 |
+| `OOM`, `WRONGTYPE`, `NOSCRIPT` 외 스크립트 에러 | 하지 않음 | 다시 해도 같음 |
+| 모든 클라이언트가 동시에 | 재시도 예산 필요 | 재시도 폭풍으로 복구 중인 서버를 다시 눕힘 |
+
+장애 실험실의 `chaos-retry-storm` 실험은 Redis 를 3초 멈춘 동안 백오프 없는 재시도와 지수 백오프+지터의 요청 수 차이를, `chaos-circuit-breaker` 는 서킷 브레이커가 open → half-open → closed 로 바뀌며 fail-fast 하는 것을 보여 준다([복원력 패턴 실측](/chaos/notes/03-resilience-patterns-verified)).
+
+## 커넥션 수 계산
+
+```
+필요 커넥션 = 인스턴스 수 × (일반 1 + 구독 1 + 블로킹 워커 수) × (Cluster 면 노드 수)
+예: Pod 50개 × (1 + 1 + 4) × 6노드 = 1,800
+```
+
+`maxclients`(기본 10000)는 여유가 있어 보이지만, 오토스케일로 Pod 가 늘거나 재시작 루프로 커넥션이 정리되기 전에 새로 생기면 금방 찬다. `INFO clients` 의 `connected_clients` 추이와 Pod 수를 같은 대시보드에 둔다.
+
+## 예시로 보기 — 개선안 정리
+
+이 사이트에 적용할 만한 변경(학습용 제안):
+
+```ts
+const baseOptions: RedisOptions = {
+  lazyConnect: true,
+  enableOfflineQueue: false,
+  maxRetriesPerRequest: 1,
+  connectTimeout: 1500,
+  commandTimeout: 500,                    // hang 대비
+  connectionName: "study-web",            // CLIENT LIST 에서 식별
+  retryStrategy: (t) => Math.min(t * 200, 2000),   // 포기하지 않고 계속 (지터 추가 권장)
+  enableAutoPipelining: true,             // 첫 화면의 여러 조회를 자동 묶음
+};
+```
+
+바꾼 뒤에는 장애 실험실의 Redis hang 실험을 다시 돌려 `/api/metrics` 가 500ms 안에 응답하는지 확인한다 — **설정 변경을 실험으로 검증**하는 것이 이 사이트의 학습 방식이다.
+
 ## 실습 체크리스트
 
 - [ ] `commandTimeout` 을 50ms 로 두고 `DEBUG SLEEP 0.2` 중 명령을 보내 타임아웃 에러 확인 (터미널)

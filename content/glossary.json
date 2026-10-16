@@ -2284,5 +2284,107 @@
     "subject": "os-internals",
     "def": "이미 있는 프로세스의 네임스페이스(네트워크·PID·마운트 등)에 들어가 명령을 실행하는 도구. 셸 없는 컨테이너를 호스트 도구로 디버깅할 때 쓴다.",
     "link": "/os-internals/notes/07-containers-are-processes"
+  },
+  {
+    "term": "skiplist",
+    "subject": "redis",
+    "def": "여러 레벨의 연결 리스트로 위에서 크게 건너뛰고 아래로 내려가며 찾는 정렬 구조. 링크마다 span 을 저장해 ZRANK 도 O(log N). ZSet 은 skiplist 와 dict 를 함께 둔다.",
+    "link": "/redis/notes/16-internals-deep-dive"
+  },
+  {
+    "term": "quicklist",
+    "subject": "redis",
+    "def": "listpack 노드들을 이중 연결 리스트로 이은 List 의 큰 인코딩. 양 끝 삽입·삭제는 O(1), 노드 안은 압축 저장.",
+    "link": "/redis/notes/02-data-types"
+  },
+  {
+    "term": "embstr",
+    "subject": "redis",
+    "def": "44바이트 이하 문자열을 객체 헤더(robj)와 한 번의 할당으로 붙여 저장하는 String 인코딩. 넘으면 raw 로 바뀐다.",
+    "link": "/redis/notes/02-data-types"
+  },
+  {
+    "term": "능동 만료 (active expire)",
+    "subject": "redis",
+    "def": "serverCron 이 hz 주기로 TTL 키 20개를 무작위 샘플링해 만료된 것을 지우고, 비율이 25% 를 넘으면 시간 예산까지 반복하는 삭제 방식. 대량 동시 만료 시 지연 스파이크.",
+    "link": "/redis/notes/03-keys-expiration"
+  },
+  {
+    "term": "LRU / LFU (Redis 축출)",
+    "subject": "redis",
+    "def": "maxmemory 초과 시 지울 키를 고르는 근사 정책. LRU 는 오래 안 쓴 키, LFU 는 로그 카운터로 센 사용 빈도가 낮은 키를 maxmemory-samples 개 샘플 중에서 고른다.",
+    "link": "/redis/notes/03-keys-expiration"
+  },
+  {
+    "term": "복제 백로그 / PSYNC",
+    "subject": "redis",
+    "def": "마스터가 레플리카로 보낸 명령 스트림을 담는 원형 버퍼. 재접속한 레플리카의 offset 이 그 안에 있으면 빠진 부분만 보내는 부분 동기화, 아니면 RDB 전체를 보내는 full sync.",
+    "link": "/redis/notes/11-replication-sentinel-cluster"
+  },
+  {
+    "term": "큰 키 (big key)",
+    "subject": "redis",
+    "def": "멤버 수나 크기가 지나치게 큰 키. 한 명령이 오래 잡고 삭제·복제·마이그레이션이 느려진다. redis-cli --bigkeys/--memkeys 로 찾고 분할·UNLINK·SCAN 계열로 다룬다.",
+    "link": "/redis/notes/12-memory-performance"
+  },
+  {
+    "term": "핫 키 (hot key)",
+    "subject": "redis",
+    "def": "초당 요청이 한 키에 몰려 클러스터여도 한 노드·한 스레드가 바쁜 상태. 로컬 캐시, 키 복제, 레플리카 읽기로 완화한다.",
+    "link": "/redis/notes/19-performance-tuning"
+  },
+  {
+    "term": "PEL (Pending Entries List)",
+    "subject": "redis",
+    "def": "Stream 컨슈머 그룹에서 전달됐지만 XACK 되지 않은 메시지 목록. 소비자·전달 횟수·마지막 전달 시각을 담고 XPENDING 으로 보고 XAUTOCLAIM 으로 넘긴다.",
+    "link": "/redis/notes/07-pubsub-streams"
+  },
+  {
+    "term": "독 메시지 (poison message)",
+    "subject": "redis",
+    "def": "처리할 때마다 소비자를 실패시키는 메시지. 전달 횟수가 계속 오르며, 일정 횟수 넘으면 DLQ 로 옮기고 ACK 한다.",
+    "link": "/redis/notes/07-pubsub-streams"
+  },
+  {
+    "term": "자동 파이프라이닝 (auto-pipelining)",
+    "subject": "redis",
+    "def": "ioredis enableAutoPipelining 처럼 같은 이벤트 루프 틱에 호출된 명령을 클라이언트가 자동으로 한 파이프라인으로 묶어 보내는 기능.",
+    "link": "/redis/notes/06-pipelining"
+  },
+  {
+    "term": "INFO commandstats",
+    "subject": "redis",
+    "def": "명령별 호출 수·총 µs·평균 µs·실패 수 통계. calls × usec_per_call 의 총 점유 시간 순으로 최적화 대상을 고른다.",
+    "link": "/redis/notes/14-ops-commands"
+  },
+  {
+    "term": "액티브 디프래그 (active defrag)",
+    "subject": "redis",
+    "def": "살아 있는 객체를 새 위치로 옮겨 빈 메모리 페이지를 OS 에 돌려주는 Redis 기능. mem_fragmentation_ratio 가 높을 때 CPU 상한을 두고 켠다.",
+    "link": "/redis/notes/12-memory-performance"
+  },
+  {
+    "term": "Redis Functions",
+    "subject": "redis",
+    "def": "FUNCTION LOAD 로 서버에 등록하는 Lua 함수 라이브러리. RDB·AOF·복제에 포함돼 재시작 후에도 남고 FCALL 로 호출한다. 스키마처럼 버전 관리·배포한다.",
+    "link": "/redis/notes/05-transactions-lua"
+  },
+  {
+    "term": "t-digest",
+    "subject": "redis",
+    "def": "경계를 미리 정하지 않고 임의 분위수(p99 등)를 근사하는 스케치. Redis 8 의 TDIGEST.* 로 지연 분포를 저장하고 MERGE 로 합친다.",
+    "link": "/redis/notes/15-redis8-modules"
+  },
+  {
+    "term": "Bloom filter",
+    "subject": "redis",
+    "def": "'없다' 는 확실히, '있다' 는 거짓 양성 확률로 답하는 비트 배열 구조. 크기 m = −n·ln(p)/(ln2)², 삭제 불가. Redis 8 의 BF.*.",
+    "link": "/redis/notes/13-probabilistic"
+  },
+  {
+    "term": "BLMOVE (reliable queue)",
+    "subject": "redis",
+    "def": "List 에서 원소를 꺼내 다른 List(처리 중)로 원자적으로 옮기는 블로킹 명령. 처리 후 LREM 해 워커가 죽어도 작업을 복구할 수 있다.",
+    "link": "/redis/notes/07-pubsub-streams"
   }
 ]

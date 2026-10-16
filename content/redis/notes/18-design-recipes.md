@@ -1,8 +1,8 @@
 ---
-title: 심화 — 실전 설계 레시피 10가지
+title: 심화 — 실전 설계 레시피 14가지
 order: 18
 level: 심화
-summary: 세션 저장소, 지연 큐, 중복 제거, 좌석 선점, 활동 피드, 샤딩된 리더보드, 최근 본 상품, 온라인 상태, 카운터 집계, 기능 플래그 — 각각의 자료구조 선택·키 설계·명령·만료·실패 처리·메모리 추정을 코드와 함께
+summary: 세션 저장소, 지연 큐, 중복 제거, 좌석 선점, 활동 피드, 샤딩된 리더보드, 최근 본 상품, 온라인 상태, 카운터 집계, 기능 플래그, 간격 반복 복습 큐, 학습 연속 기록, 캡드 로그, 아웃박스 릴레이 — 각각의 자료구조 선택·키 설계·명령·만료·실패 처리·메모리 추정을 코드와 함께
 tags: [설계, 레시피, 세션, 지연큐, 중복제거, 피드, 리더보드, 온라인상태, 카운터]
 experiments: [zset-leaderboard, list-queue, distributed-lock, streams, bitmap-dau]
 ---
@@ -108,6 +108,87 @@ HSET flags new-checkout enabled 1 percent 10 allow "1,2,3"
 ```
 사용자 % 롤아웃: `hash(uid) % 100 < percent`. 플래그는 작고 읽기가 압도적 → 로컬 캐시가 핵심, Redis 는 원천.
 
+## 11. 간격 반복 복습 큐 (이 사이트의 퀴즈)
+
+요구: 카드마다 다음 복습 시각, "지금 복습할 카드" 를 빠르게, 사용자·주제별.
+
+현재 구현(`src/lib/study.ts`): `quiz:stats:<주제>` Hash 에 카드 키 → JSON(`box`, `due` …). 기한 지난 카드를 찾으려면 Hash 를 통째로 읽어 앱에서 거른다 — 카드가 수십 장이라 충분하다.
+
+카드가 수만 장이 되면 ZSet 인덱스를 추가한다.
+
+```
+HSET quiz:stats:redis <cardKey> <json>               # 상세 (원본)
+ZADD quiz:due:redis <due_ms> <cardKey>               # 인덱스: score = 다음 복습 시각
+ZRANGEBYSCORE quiz:due:redis -inf <now> LIMIT 0 20   # 지금 복습할 20장 — O(log N + 20)
+ZCOUNT quiz:due:redis -inf <now>                     # 기한 지난 수 (첫 화면 배지)
+```
+
+함정: Hash 와 ZSet 두 키를 함께 바꿔야 하므로 Lua 나 MULTI 로 묶는다(같은 주제 = 같은 해시태그 `{quiz:redis}` 로 클러스터 대비). 레시피 2(지연 큐)와 같은 구조다.
+
+## 12. 학습 연속 기록(streak)
+
+```
+SETBIT streak:{uid} <dayIndex> 1          # dayIndex = 서비스 시작일로부터 일수
+BITPOS streak:{uid} 0 -1 BIT              # (거꾸로) 마지막 0 위치 → 연속 일수 계산
+BITCOUNT streak:{uid}                     # 총 학습 일수
+```
+
+1년 365비트 = 46바이트. 사용자 100만이면 46MB. 연속 일수 계산은 앱에서 오늘부터 거꾸로 `GETBIT` 하거나 `BITFIELD` 로 8일치를 한 번에 읽는다.
+
+## 13. 최근 N개 로그 (이 사이트의 알림 목록)
+
+```
+LPUSH alerts:recent <json>
+LTRIM alerts:recent 0 199              # 200개만
+LRANGE alerts:recent 0 49              # 최근 50개
+```
+
+`src/lib/alerts.ts` 가 이렇게 한다(파이프라인으로 두 명령을 한 번에). 순서만 필요하고 재처리가 필요 없는 **캡드 로그**의 정석. 소비자가 확인(ACK)해야 하는 작업이면 Stream 으로([레시피 비교는 Pub/Sub·Stream 노트](/redis/notes/07-pubsub-streams)).
+
+## 14. 아웃박스 릴레이 큐
+
+요구: DB 커밋과 이벤트 발행을 일치시키되 Kafka 는 없다.
+
+```
+# 앱: DB 트랜잭션 안에서 outbox 테이블에 INSERT (Redis 아님!)
+# 릴레이 워커: outbox 미발행 행을 읽어 Redis Stream 에 XADD → 행에 published=true
+XADD events:order MAXLEN ~ 100000 * type OrderCreated id 42
+# 소비자 그룹이 처리, 멱등 키로 중복 흡수
+```
+
+원본은 DB, Redis Stream 은 전달 통로다. "DB 와 Redis 에 동시에 쓰기" 는 이중 쓰기 문제를 만든다([Kafka — CDC 와 Outbox](/kafka/notes/08-cdc-outbox-debezium), [아키텍처 — 비동기 메시징과 일관성](/architecture/notes/03-async-messaging-consistency)).
+
+## 레시피를 고르는 표
+
+| 요구 | 레시피 | 핵심 자료구조 |
+|---|---|---|
+| 공유 세션 | 1 | Hash + TTL + 역인덱스 Set |
+| 나중에 실행 | 2, 11 | ZSet(score=시각) |
+| 중복 제거 | 3 | String `SET NX EX` |
+| 선점·좌석 | 4 | `SET NX PX` + Lua |
+| 피드 | 5 | List + LTRIM |
+| 순위 | 6 | ZSet(+샤딩) |
+| 최근 본 것 | 7 | ZSet(score=시각) |
+| 온라인 | 8 | String TTL / Bitmap |
+| 카운터 | 9 | String INCR / Hash HINCRBY / HLL |
+| 플래그 | 10 | Hash + 로컬 캐시 |
+| 연속 기록 | 12 | Bitmap |
+| 최근 로그 | 13 | List + LTRIM |
+| 이벤트 전달 | 14 | Stream + 컨슈머 그룹 |
+
+## 용량 추정 연습
+
+"일 활성 10만 명, 사용자당 세션 2개(300B), 최근 본 상품 50개, 노트 학습 기록" 이라면:
+
+| 항목 | 계산 | 크기 |
+|---|---|---|
+| 세션 | 10만 × 2 × (300B + 오버헤드 100B) | 80MB |
+| 최근 본 상품 | 10만 × 50 × 25B(listpack) | 125MB |
+| 일별 UV(HLL) | 노트 200 × 90일 × 평균 2KB(sparse/dense 혼합) | 36MB |
+| 여유(단편화 1.3 + fork COW) | ×2 | ~480MB |
+
+→ maxmemory 512MB, 컨테이너 1GB 가 출발점. 실제로는 [용량 계획](/performance/notes/07-capacity-planning)처럼 부하 테스트로 확인한다.
+
 ## 공통 체크리스트
 
 - [ ] 키마다 TTL 또는 정리 경로가 있는가 (영원히 자라는 키 없음)
@@ -116,3 +197,11 @@ HSET flags new-checkout enabled 1 percent 10 allow "1,2,3"
 - [ ] 원천이 Redis 인가 DB 인가 — 복구 방법
 - [ ] 클러스터 전환을 대비한 해시태그
 - [ ] 메모리 추정: 키 수 × (키 길이 + 값 + ~50B 오버헤드)
+
+## 실습 체크리스트
+
+- [ ] 레시피 2(지연 큐)를 콘솔로 구현해 `ZRANGEBYSCORE … <now>` 로 기한 지난 작업만 꺼내기
+- [ ] 레시피 11 처럼 `quiz:due:redis` ZSet 인덱스를 만들어 기한 지난 카드 수를 `ZCOUNT` 로 세기
+- [ ] 레시피 13 의 `LPUSH` + `LTRIM` 으로 최근 5개만 남는 캡드 로그 만들기
+- [ ] 용량 추정 표를 자신의 서비스 숫자로 다시 계산하기
+- [ ] 실험실의 리더보드·리스트 큐·분산 락·스트림·비트맵 DAU 실험을 레시피 번호와 짝지어 돌리기

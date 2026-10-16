@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="420" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">RDB 는 가끔 찍는 사진, AOF 는 쉬지 않고 쓰는 일기 — 장애 시점에 잃는 것</text>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <line x1="60" y1="90" x2="900" y2="90" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="905" y="94" fill="#8b949e" font-size="12">시간</text>
+  <g fill="#e6edf3" font-size="11">
+    <circle cx="120" cy="90" r="4" fill="#58a6ff"/><circle cx="170" cy="90" r="4" fill="#58a6ff"/><circle cx="230" cy="90" r="4" fill="#58a6ff"/>
+    <circle cx="300" cy="90" r="4" fill="#58a6ff"/><circle cx="380" cy="90" r="4" fill="#58a6ff"/><circle cx="450" cy="90" r="4" fill="#58a6ff"/>
+    <circle cx="530" cy="90" r="4" fill="#58a6ff"/><circle cx="600" cy="90" r="4" fill="#58a6ff"/><circle cx="680" cy="90" r="4" fill="#58a6ff"/>
+    <circle cx="740" cy="90" r="4" fill="#58a6ff"/><circle cx="790" cy="90" r="4" fill="#58a6ff"/>
+    <text x="60" y="72" fill="#58a6ff">● 쓰기 명령</text>
+  </g>
+  <line x1="820" y1="60" x2="820" y2="380" stroke="#f85149" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="820" y="55" text-anchor="middle" fill="#f85149" font-weight="600">장애</text>
+  <text x="40" y="150" fill="#e6edf3" font-weight="600">RDB</text>
+  <rect x="200" y="132" width="20" height="28" rx="3" fill="#3fb950"/>
+  <rect x="560" y="132" width="20" height="28" rx="3" fill="#3fb950"/>
+  <text x="210" y="178" text-anchor="middle" fill="#8b949e" font-size="11">BGSAVE</text>
+  <text x="570" y="178" text-anchor="middle" fill="#8b949e" font-size="11">BGSAVE (fork + COW)</text>
+  <rect x="580" y="136" width="240" height="20" fill="#f85149" fill-opacity="0.25"/>
+  <text x="700" y="151" text-anchor="middle" fill="#f85149" font-size="12">마지막 스냅샷 이후 전부 유실</text>
+  <text x="40" y="230" fill="#e6edf3" font-weight="600">AOF</text>
+  <text x="40" y="246" fill="#8b949e" font-size="11">everysec</text>
+  <g fill="#3fb950">
+    <rect x="160" y="216" width="6" height="28"/><rect x="260" y="216" width="6" height="28"/><rect x="360" y="216" width="6" height="28"/>
+    <rect x="460" y="216" width="6" height="28"/><rect x="560" y="216" width="6" height="28"/><rect x="660" y="216" width="6" height="28"/>
+    <rect x="760" y="216" width="6" height="28"/>
+  </g>
+  <text x="460" y="262" text-anchor="middle" fill="#8b949e" font-size="11">초당 1번 백그라운드 fsync (bio 스레드)</text>
+  <rect x="766" y="220" width="54" height="20" fill="#f85149" fill-opacity="0.25"/>
+  <text x="793" y="282" text-anchor="middle" fill="#f85149" font-size="12">≤ 1~2초 유실</text>
+  <text x="40" y="320" fill="#e6edf3" font-weight="600">AOF</text>
+  <text x="40" y="336" fill="#8b949e" font-size="11">always</text>
+  <g fill="#3fb950">
+    <rect x="118" y="306" width="4" height="28"/><rect x="168" y="306" width="4" height="28"/><rect x="228" y="306" width="4" height="28"/>
+    <rect x="298" y="306" width="4" height="28"/><rect x="378" y="306" width="4" height="28"/><rect x="448" y="306" width="4" height="28"/>
+    <rect x="528" y="306" width="4" height="28"/><rect x="598" y="306" width="4" height="28"/><rect x="678" y="306" width="4" height="28"/>
+    <rect x="738" y="306" width="4" height="28"/><rect x="788" y="306" width="4" height="28"/>
+  </g>
+  <text x="460" y="352" text-anchor="middle" fill="#8b949e" font-size="11">명령마다 fsync — 유실 거의 0, 대신 처리량이 수천 ops/s 로</text>
+  <text x="480" y="400" text-anchor="middle" fill="#d29922" font-size="12">재시작 시 AOF 가 있으면 AOF 우선 (base RDB + 증분 AOF 재실행) · 확인: INFO persistence</text>
+</svg>

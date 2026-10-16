@@ -79,3 +79,87 @@ Lua 로 읽기-계산-쓰기를 원자적으로 처리한다. 시각 `now` 는 �
 - 응답 헤더 `X-RateLimit-Remaining`, `Retry-After` 를 위해 남은 수와 리셋 시각을 함께 반환하도록 Lua 를 짠다.
 - Redis 장애 시 fail-open(허용) 할지 fail-closed(거부) 할지 미리 정한다.
 - 클러스터에선 키 하나가 한 슬롯이므로 자연스럽게 분산된다. 글로벌 한도는 단일 키라 핫 키가 될 수 있다.
+
+## 알고리즘을 그림으로 비교
+
+같은 한도(분당 10회)에서 59초에 10번, 61초에 10번 요청이 오면:
+
+| 방식 | 59~61초 사이 통과 | 이유 |
+|---|---|---|
+| 고정 윈도우 | 20 | 61초는 새 윈도우라 카운터 0 부터 |
+| 슬라이딩 로그 | 10 | 61초 시점에 직전 60초 안에 이미 10개 |
+| 슬라이딩 카운터 | 약 10~11 | 직전 윈도우 10 × (1 − 1/60) + 현재 0 ≈ 9.8 |
+| 토큰 버킷(용량 10, 초당 1/6) | 10 + 약 0.3 | 59초에 버킷을 비우고 2초 동안 0.33개만 참 |
+
+## 원자적 고정 윈도우 — Lua 한 방
+
+`INCR` 후 `EXPIRE` 를 따로 보내면, 그 사이 프로세스가 죽을 때 TTL 없는 카운터가 남아 **그 사용자는 영원히 차단**된다.
+
+```lua
+-- KEYS[1]=rl:{user}:{window}, ARGV[1]=limit, ARGV[2]=window_sec
+local n = redis.call('INCR', KEYS[1])
+if n == 1 then redis.call('EXPIRE', KEYS[1], ARGV[2]) end
+local ttl = redis.call('TTL', KEYS[1])
+return { n <= tonumber(ARGV[1]) and 1 or 0, math.max(0, tonumber(ARGV[1]) - n), ttl }
+--      허용 여부,                         남은 횟수,                         리셋까지 초
+```
+
+반환한 세 값을 그대로 응답 헤더로 쓴다.
+
+```
+HTTP/1.1 429 Too Many Requests
+RateLimit-Limit: 100
+RateLimit-Remaining: 0
+RateLimit-Reset: 23
+Retry-After: 23
+```
+
+## 비원자 구현이 실제로 깨지는 모습
+
+테스트 전략 주제의 `test-property-ratelimit` 실험은 fast-check 로 "어떤 요청 순서든 윈도우당 허용 ≤ 한도" 라는 성질을 수백 가지 입력으로 검사한다. `GET` 으로 읽고 앱에서 판단한 뒤 `SET` 하는 구현은 첫 실행에서 반례를 내고, 그 반례를 `{limit: 1, bursts: [2]}` — "한도 1 에 동시 요청 2개" — 까지 줄여 준다. 동시 요청 두 개가 같은 값을 읽고 둘 다 통과하는 경쟁이다. Lua 버전은 같은 검사를 통과한다([테스트 — 속성 기반 테스트](/testing/notes/05-property-based-testing)).
+
+## 어디서 제한할 것인가
+
+| 계층 | 장점 | 한계 |
+|---|---|---|
+| CDN·WAF | 앱 앞에서 차단, 공격 흡수 | 사용자 단위 비즈니스 규칙 어려움 |
+| API 게이트웨이·Nginx(`limit_req`) | 설정만으로, 빠름 | 인스턴스별 메모리라 분산 시 합산 안 됨 |
+| 앱 + Redis | 사용자·플랜·엔드포인트별 정교한 규칙, 전체 인스턴스 공유 | Redis 왕복 추가, Redis 장애 시 정책 결정 필요 |
+| 서비스 메시 | 서비스 간 보호 | 설정 복잡 |
+
+실무에서는 층을 겹친다 — Nginx 가 IP 당 거친 상한을 걸고, 앱이 Redis 로 사용자·플랜별 한도를 건다([API 설계 — 게이트웨이·인증·레이트리밋](/api-design/notes/06-gateway-auth-ratelimit)).
+
+## 운영 함정
+
+| 함정 | 증상 | 대처 |
+|---|---|---|
+| 글로벌 한도 하나의 키 | 그 키가 핫 키, 클러스터 한 노드 과부하 | 키를 N 개로 쪼개 한도/N 씩 (근사) |
+| 시계가 서버마다 다름 | 토큰 버킷 계산이 튐 | `now` 를 Redis `TIME` 으로 통일하거나 단조 증가 보장 |
+| Redis 장애 | 모든 요청 실패(fail-closed) 또는 무제한(fail-open) | 엔드포인트별로 정책 결정, 로컬 대체 한도 |
+| 거부된 요청도 저장(슬라이딩 로그) | 공격 시 ZSet 폭증 | 먼저 세고 허용일 때만 ZADD |
+| 재시도 폭풍 | 429 받은 클라이언트가 즉시 재시도 | `Retry-After` 존중, 지터 백오프([장애 실험실 — 재시도 폭풍](/chaos/notes/03-resilience-patterns-verified)) |
+
+## 예시로 보기 — 이 프로젝트에서
+
+이 사이트의 `/api/ask`(AI 에게 묻기)는 요청마다 모델 토큰 비용이 든다. 레이트리밋을 붙인다면:
+
+```ts
+// 사용자(또는 IP)별 분당 10회, 일 200회 — 두 윈도우를 함께
+const minute = Math.floor(Date.now() / 60000);
+const day = new Date().toISOString().slice(0, 10);
+const [m, d] = await Promise.all([
+  redis.fixedWindow(`rl:ask:${ip}:m:${minute}`, 10, 60),
+  redis.fixedWindow(`rl:ask:${ip}:d:${day}`, 200, 86400),
+]);
+if (!m[0] || !d[0]) return new Response("too many", { status: 429, headers: { "Retry-After": String(m[0] ? d[2] : m[2]) } });
+```
+
+`fixedWindow` 는 위 Lua 를 `defineCommand` 로 등록한 것이다. 실험실의 **레이트 리미터** 실험이 고정 윈도우와 슬라이딩 로그의 경계 동작 차이를 숫자로 보여 준다.
+
+## 실습 체크리스트
+
+- [ ] 실험실의 레이트 리미터 실험을 돌려 경계에서 고정 윈도우가 2배 통과시키는 것 확인하기
+- [ ] 위 Lua 고정 윈도우를 `EVAL` 로 실행해 세 반환값(허용·남은 수·리셋 초) 확인하기
+- [ ] `INCR` 만 하고 `EXPIRE` 를 빠뜨린 키가 영원히 남는 것(`TTL` -1) 재현하기
+- [ ] 테스트 주제의 속성 기반 레이트리밋 실험을 돌려 비원자 구현의 반례 읽기
+- [ ] 토큰 버킷 Lua 에 `now` 를 서버 `TIME` 으로 바꾸는 방법 적어 보기

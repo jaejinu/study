@@ -98,6 +98,69 @@ redis-cli --latency-dist           # 지연 분포 히트맵
 redis-cli --bigkeys --memkeys
 ```
 
+## serverCron 이 하는 일
+
+이벤트 루프는 소켓 이벤트 외에 **시간 이벤트**도 처리한다. 대표가 `serverCron` 으로, `hz`(기본 10) 마다 돈다.
+
+| 작업 | 내용 | 관련 지표 |
+|---|---|---|
+| 능동 만료 | expires 샘플링 삭제([키 만료](/redis/notes/03-keys-expiration)) | `expired_keys`, `expire_cycle_cpu_milliseconds` |
+| 점진적 리해싱 | 1ms 예산으로 버킷 이동 | `DEBUG HTSTATS` |
+| 클라이언트 정리 | 타임아웃·큰 버퍼 축소 | `connected_clients` |
+| 통계 갱신 | ops/sec 표본, 메모리 피크 | `instantaneous_*` |
+| 영속화 트리거 | `save` 조건 확인 → BGSAVE, AOF rewrite 조건 | `rdb_changes_since_last_save` |
+| 복제 | 레플리카 핑, 타임아웃 | `master_link_status` |
+| 액티브 디프래그 | 조각 모음 | `active_defrag_running` |
+
+`hz` 를 100 으로 올리면 만료가 더 정확하고 클라이언트 타임아웃이 빨리 감지되지만, 유휴 상태에서도 CPU 를 더 쓴다. `dynamic-hz yes`(기본)는 클라이언트 수에 따라 자동으로 올린다.
+
+## skiplist — ZSet 이 O(log N) 인 이유
+
+```
+레벨 3:  head ─────────────────────────────▶ 70 ──────────────▶ nil
+레벨 2:  head ──────────▶ 30 ──────────────▶ 70 ──────▶ 90 ──▶ nil
+레벨 1:  head ──▶ 10 ──▶ 30 ──▶ 50 ──▶ 60 ──▶ 70 ──▶ 80 ──▶ 90 ──▶ nil
+```
+
+- 노드는 1/4 확률로 한 레벨씩 올라간다(최대 32). 위 레벨에서 크게 건너뛰고 아래로 내려가며 찾으므로 평균 O(log N).
+- 각 링크에 **span**(건너뛰는 노드 수)을 저장해 `ZRANK` 를 O(log N) 에 계산한다 — 균형 트리보다 구현이 단순하고 범위 순회(`ZRANGE`)가 연결 리스트라 빠르다.
+- skiplist 와 별도로 **dict(멤버 → score)** 를 같이 둔다. `ZSCORE` 가 O(1) 인 이유이고, ZSet 이 메모리를 많이 쓰는 이유다(멤버당 두 구조).
+
+## listpack 의 실제 바이트
+
+```
+[총 바이트 4B][원소 수 2B][원소1][원소2]…[끝 0xFF]
+원소 = [인코딩+길이 1~5B][내용][역방향 길이 1~5B]
+```
+
+- 앞뒤 어느 방향으로도 순회할 수 있게 원소 끝에 자기 길이를 다시 적는다(예전 ziplist 의 "연쇄 갱신" 문제를 없앤 설계).
+- 작은 정수는 인코딩 바이트 안에 값까지 넣는다 — `HSET h f 7` 의 값 7 은 1바이트.
+- 삽입·삭제는 뒤쪽 바이트를 `memmove` 해야 해서 O(N). 그래서 크기 상한이 있다.
+
+## eBPF 로 본 Redis
+
+커널 밖에서 보는 INFO·SLOWLOG 와 달리, eBPF 는 Redis 프로세스의 **시스템 콜과 스택**을 직접 본다. eBPF 주제의 실험 결과를 보면 이 노트의 설명이 숫자로 확인된다.
+
+| 관찰 | 결과(이 Mac, redis-benchmark 부하) | 해석 |
+|---|---|---|
+| 시스템 콜 분포 | write 45% · read 34% · epoll_pwait 21% | 명령 실행보다 **소켓 I/O 가 일의 대부분** |
+| CPU 스택 프로파일 | 커널 샘플 69%, `connSocketWrite` 52% | 응답 쓰기가 가장 비싸다 → 파이프라인·I/O 스레드의 근거 |
+| TCP 연결 수명 | `-k 0`(매번 연결) 2,017개 vs `-k 1` 20개 | 커넥션 재사용의 차이 |
+
+[eBPF — bpftrace 한 줄 관측](/ebpf/notes/02-bpftrace-one-liners)과 [프로파일링](/ebpf/notes/06-profiling-continuous)에서 같은 측정을 직접 해 볼 수 있다. "단일 스레드가 병목" 이라는 말의 실체는 대개 **그 한 스레드가 네트워크 시스템 콜을 하느라 바쁘다** 는 뜻이다.
+
+## 예시로 보기 — 이 프로젝트에서
+
+| 이 사이트의 동작 | 내부에서 일어나는 일 |
+|---|---|
+| 노트 하단 "읽음" 클릭 → `SADD progress:read` | Set 이 작으면 listpack 에 append(memmove 없이 끝에) |
+| 첫 화면 → `SMEMBERS progress:read` 한 번 | listpack 순회 O(N), 결과를 출력 버퍼에 |
+| 퀴즈 답 → `HGET`·`HSET quiz:stats:<주제>` | 값이 64B 넘어 hashtable — dict 조회 O(1) |
+| 학습 시간 30초마다 `INCRBY` | 정수 String 은 `int` 인코딩, 내용 변경만 |
+| `study:day:*` 60일 TTL | expires dict 에 등록, serverCron 샘플링 대상 |
+
+`OBJECT ENCODING` 으로 위 표를 콘솔에서 하나씩 확인해 보면, 같은 "Hash" 라도 이 사이트에서 이미 두 가지 인코딩이 공존한다는 것을 알 수 있다.
+
 ## 실습 체크리스트
 
 - [ ] `CONFIG SET hash-max-listpack-entries 1024` 후 600 필드 해시가 listpack 으로 남는지 인코딩 실험으로 확인
