@@ -11,10 +11,13 @@ import * as finops from "./finops";
 import * as osi from "./os-internals";
 import * as nginx from "./nginx";
 import * as gha from "./github-actions";
+import * as mesh from "./service-mesh";
+import * as netp from "./network-protocols";
+import * as plat from "./platform-engineering";
 import type { ShellExperiment, ShellSubject } from "./types";
 
 const isExp = (v: unknown): v is ShellExperiment => typeof v === "object" && v !== null && "run" in v && "subject" in v;
-export const shellExperiments: ShellExperiment[] = [docker, k8s, net, obs, security, iac, perf, sre, ebpf, finops, osi, nginx, gha].flatMap((m) => Object.values(m as Record<string, unknown>).filter(isExp));
+export const shellExperiments: ShellExperiment[] = [docker, k8s, net, obs, security, iac, perf, sre, ebpf, finops, osi, nginx, gha, mesh, netp, plat].flatMap((m) => Object.values(m as Record<string, unknown>).filter(isExp));
 
 export function listShellExperiments(subject: ShellSubject): ShellExperiment[] {
   return shellExperiments.filter((e) => e.subject === subject);

@@ -319,8 +319,36 @@ export async function checkDataEngineering(): Promise<EnvStatus> {
   return checkSimple("데이터 파이프라인 구성 요소", [{ label: "DuckDB (내장)", ok: true }, { label: "S3 호환 저장소 versitygw (19100, 선택 — CDC 실험은 자체 컨테이너를 띄움)", ok: s3ok }, { label: "Kafka(19092)", ok: kafka.ok && kafka.out === "running" }, { label: "Kafka Connect/Debezium(18083)", ok: connect.ok }], connect.ok ? undefined : "pnpm cdc:up   # CDC → 레이크 실험용 (S3 저장소는 pnpm lake:up)", [{ label: "DuckDB 문서", href: "https://duckdb.org/docs" }]);
 }
 
+export async function checkServiceMesh(): Promise<EnvStatus> {
+  const [cli, cp, kind] = await Promise.all([version("linkerd", ["version", "--client", "--short"]), run("kubectl", ["--context", "kind-study", "-n", "linkerd", "get", "deploy", "linkerd-destination", "-o", "jsonpath={.status.readyReplicas}", "--request-timeout=4s"]), run("kubectl", ["--context", "kind-study", "get", "ns", "study", "--request-timeout=4s"])]);
+  return checkSimple(cp.ok && Number(cp.out) > 0 ? "Linkerd 컨트롤 플레인 실행 중 (kind-study)" : "Linkerd 가 아직 없습니다", [{ label: "linkerd CLI", ok: !!cli, detail: cli ?? undefined }, { label: "Linkerd 컨트롤 플레인", ok: cp.ok && Number(cp.out) > 0 }, { label: "kind-study · study 네임스페이스", ok: kind.ok }], cli ? undefined : "brew install linkerd && linkerd check --pre", [{ label: "Linkerd 문서", href: "https://linkerd.io/2/overview/" }]);
+}
+export async function checkEventSourcing(): Promise<EnvStatus> {
+  const [pg, kafka] = await Promise.all([run("docker", ["inspect", "-f", "{{.State.Status}}", "study-postgres"]), run("docker", ["inspect", "-f", "{{.State.Status}}", "study-kafka"])]);
+  return checkSimple("이벤트 스토어 실험 대상", [{ label: "PostgreSQL(15432, 이벤트 스토어)", ok: pg.ok && pg.out === "running" }, { label: "Kafka(19092, 발행 — 선택)", ok: kafka.ok && kafka.out === "running" }], pg.ok && pg.out === "running" ? undefined : "pnpm pg:up");
+}
+export async function checkNetworkProtocols(): Promise<EnvStatus> {
+  const [docker, curl] = await Promise.all([version("docker", ["--version"]), run("curl", ["--version"])]);
+  const http3 = /HTTP3/.test(curl.out);
+  return checkSimple("손실·지연 주입 실험 준비", [{ label: "docker (tc netem 은 컨테이너 안에서 NET_ADMIN 으로)", ok: !!docker }, { label: "호스트 curl HTTP/3", ok: http3, detail: http3 ? undefined : "없으면 컨테이너 curl 을 사용" }], docker ? undefined : "Docker Desktop 실행");
+}
+export async function checkSystemDesign(): Promise<EnvStatus> {
+  const [redis, pg, kafka, k6] = await Promise.all([run("docker", ["inspect", "-f", "{{.State.Status}}", "study-redis"]), run("docker", ["inspect", "-f", "{{.State.Status}}", "study-postgres"]), run("docker", ["inspect", "-f", "{{.State.Status}}", "study-kafka"]), version("k6", ["version"])]);
+  const up = (r: { ok: boolean; out: string }) => r.ok && r.out === "running";
+  return checkSimple("사례 검증 구성 요소", [{ label: "Redis", ok: up(redis) }, { label: "PostgreSQL", ok: up(pg) }, { label: "Kafka", ok: up(kafka) }, { label: "k6", ok: !!k6 }], up(redis) ? undefined : "pnpm redis:docker && pnpm pg:up && pnpm kafka:up");
+}
+export async function checkPlatformEngineering(): Promise<EnvStatus> {
+  const gh = await run("gh", ["auth", "status"]);
+  return checkSimple("DORA 계산 데이터", [{ label: "gh CLI 인증 (이 저장소의 커밋·CI 기록)", ok: gh.ok }], gh.ok ? undefined : "gh auth login", [{ label: "DORA", href: "https://dora.dev" }, { label: "Backstage", href: "https://backstage.io" }]);
+}
+
 export async function checkEnv(subject: string): Promise<EnvStatus> {
   switch (subject) {
+    case "service-mesh": return checkServiceMesh();
+    case "event-sourcing": return checkEventSourcing();
+    case "network-protocols": return checkNetworkProtocols();
+    case "system-design": return checkSystemDesign();
+    case "platform-engineering": return checkPlatformEngineering();
     case "ai-agents": return checkAiAgents();
     case "clickhouse": return checkClickhouse();
     case "data-engineering": return checkDataEngineering();

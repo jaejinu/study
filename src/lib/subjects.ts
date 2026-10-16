@@ -1,4 +1,4 @@
-export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network" | "ai-systems" | "architecture" | "chaos" | "security" | "iac" | "distributed-systems" | "performance" | "sre" | "ebpf" | "opensearch" | "db-internals" | "api-design" | "messaging" | "mlops" | "testing" | "finops" | "os-internals" | "ai-agents" | "clickhouse" | "data-engineering";
+export type SubjectId = "redis" | "docker" | "kubernetes" | "kafka" | "postgres" | "observability" | "github-actions" | "nginx" | "linux-network" | "ai-systems" | "architecture" | "chaos" | "security" | "iac" | "distributed-systems" | "performance" | "sre" | "ebpf" | "opensearch" | "db-internals" | "api-design" | "messaging" | "mlops" | "testing" | "finops" | "os-internals" | "ai-agents" | "clickhouse" | "data-engineering" | "service-mesh" | "event-sourcing" | "network-protocols" | "system-design" | "platform-engineering";
 
 export interface NavItem {
   href: string;
@@ -586,6 +586,101 @@ export const subjects: Subject[] = [
     setup: [
       { label: "엔진", cmd: "DuckDB (@duckdb/node-api, 설치됨)" },
       { label: "저장소", cmd: "pnpm lake:up (S3 호환 versitygw 19100)" },
+    ],
+  },
+  {
+    id: "service-mesh",
+    track: "infra",
+    name: "서비스 메시",
+    tagline: "mTLS · 트래픽 정책 · 관측을 인프라 계층에서",
+    description: "사이드카와 ambient(노드 프록시) 모델, 자동 mTLS 와 서비스 신원, 재시도·타임아웃·서킷 브레이커 같은 트래픽 정책, 골든 시그널 자동 수집, 카나리 트래픽 분할, Linkerd·Istio·Cilium 비교와 운영 비용. kind 클러스터에 Linkerd 를 올려 직접 확인합니다.",
+    mark: "SM",
+    color: "bg-[#2563eb]",
+    nav: [
+      { href: "/service-mesh", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/service-mesh/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/service-mesh/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/service-mesh/lab", label: "실험실", icon: "⚗", desc: "Linkerd mTLS · 재시도 예산 · 트래픽 분할" },
+    ],
+    setup: [
+      { label: "CLI", cmd: "brew install linkerd" },
+      { label: "대상", cmd: "pnpm k8s:up (kind-study)" },
+    ],
+  },
+  {
+    id: "event-sourcing",
+    track: "design",
+    name: "이벤트 소싱 · CQRS",
+    tagline: "상태 대신 사실을 저장한다",
+    description: "이벤트 모델링, PostgreSQL 이벤트 스토어와 낙관적 동시성, 프로젝션과 재생, 스냅샷, 스키마 진화(업캐스팅), 사가·프로세스 매니저, 운영(재구축·GDPR 삭제·감사). 아키텍처 노트의 CQRS·사가를 실제 구현으로 측정합니다.",
+    mark: "ES",
+    color: "bg-[#9333ea]",
+    nav: [
+      { href: "/event-sourcing", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/event-sourcing/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/event-sourcing/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/event-sourcing/lab", label: "실험실", icon: "⚗", desc: "이벤트 스토어 · 프로젝션 재구축 · 업캐스팅" },
+    ],
+    setup: [
+      { label: "저장소", cmd: "pnpm pg:up" },
+      { label: "발행", cmd: "pnpm kafka:up (선택)" },
+    ],
+  },
+  {
+    id: "network-protocols",
+    track: "infra",
+    name: "네트워크 프로토콜 심화",
+    tagline: "HTTP/2·3 · QUIC · TLS 1.3 · 혼잡 제어",
+    description: "HTTP/1.1→2→3 의 진화와 머리 막힘, QUIC 의 연결 수립·0-RTT·연결 이전, TLS 1.3 핸드셰이크 지연, 혼잡 제어(CUBIC·BBR), 손실·지연이 처리량에 미치는 영향, L4/L7 로드밸런싱과 CDN·애니캐스트 개요. 손실·지연을 주입해 직접 잽니다.",
+    mark: "NP",
+    color: "bg-[#0d9488]",
+    nav: [
+      { href: "/network-protocols", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/network-protocols/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/network-protocols/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/network-protocols/lab", label: "실험실", icon: "⚗", desc: "netem 손실·지연 · HTTP/2 vs 3 · 혼잡 제어" },
+    ],
+    setup: [
+      { label: "도구", cmd: "docker (tc netem · curl --http3)" },
+      { label: "서버", cmd: "nginx:1.27-alpine" },
+    ],
+  },
+  {
+    id: "system-design",
+    track: "design",
+    name: "시스템 디자인 사례집",
+    tagline: "배운 것을 설계 문제로 종합한다",
+    description: "요구사항·부하 추정·API·데이터 모델·확장·병목·장애 대응 순서의 설계 방법, 그리고 URL 단축·레이트리미터·뉴스피드·채팅·결제·검색 자동완성·알림 시스템 사례. 각 사례를 이 사이트의 Redis·Kafka·PostgreSQL·OpenSearch 실험과 부하 테스트로 검증합니다.",
+    mark: "SD",
+    color: "bg-[#be123c]",
+    nav: [
+      { href: "/system-design", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/system-design/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/system-design/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/system-design/lab", label: "실험실", icon: "⚗", desc: "부하 추정 검증 · 사례별 핵심 경로 측정" },
+    ],
+    setup: [
+      { label: "구성 요소", cmd: "pnpm redis:docker · pg:up · kafka:up" },
+      { label: "부하", cmd: "k6 (설치됨)" },
+    ],
+  },
+  {
+    id: "platform-engineering",
+    track: "ops",
+    name: "플랫폼 엔지니어링",
+    tagline: "내부 개발자 플랫폼 · 골든 패스 · DORA",
+    description: "플랫폼을 제품으로 운영하기, 서비스 카탈로그(Backstage), 템플릿과 골든 패스, 셀프서비스 인프라(Crossplane·Terraform 모듈), DORA 지표와 개발자 경험 측정, 플랫폼 자체의 관측과 SLO. 이 저장소의 GitHub 기록으로 DORA 를 계산합니다.",
+    mark: "PE",
+    color: "bg-[#4338ca]",
+    nav: [
+      { href: "/platform-engineering", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
+      { href: "/platform-engineering/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/platform-engineering/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/platform-engineering/lab", label: "실험실", icon: "⚗", desc: "DORA 계산 · 템플릿 스캐폴드 · 카탈로그" },
+    ],
+    setup: [
+      { label: "데이터", cmd: "gh CLI (이 저장소 기록)" },
+      { label: "도구", cmd: "pnpm · OpenTofu" },
     ],
   },
 ];
