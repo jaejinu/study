@@ -29,6 +29,10 @@ export async function runExperiment(id: string): Promise<ExperimentResult> {
   const t0 = performance.now();
 
   try {
+    if (exp.requires) {
+      const problem = await exp.requires();
+      if (problem) return { id, ok: false, steps: [], durationMs: 0, error: problem, ranAt };
+    }
     await ensureConnected(base);
     await deleteByPattern(base, `${prefix}*`);
     await exp.run({
@@ -36,8 +40,8 @@ export async function runExperiment(id: string): Promise<ExperimentResult> {
       raw: base,
       rec,
       k: (name) => `${prefix}${name}`,
-      newClient: async (alias) => {
-        const c = createRedis();
+      newClient: async (alias, options) => {
+        const c = createRedis(options);
         await ensureConnected(c);
         extra.push(c);
         return rec.wrap(c, alias);
@@ -48,7 +52,7 @@ export async function runExperiment(id: string): Promise<ExperimentResult> {
     const message = e instanceof Error ? e.message : String(e);
     return { id, ok: false, steps: rec.steps, durationMs: Math.round(performance.now() - t0), error: message, ranAt };
   } finally {
-    await Promise.allSettled(extra.map((c) => c.quit()));
+    await Promise.allSettled(extra.map((c) => c.quit().catch(() => c.disconnect())));
     try {
       if (base.status === "ready") await deleteByPattern(base, `${prefix}*`);
     } catch {

@@ -23,7 +23,11 @@ afterAll(async () => {
 
 describe("Redis 실험", () => {
   for (const exp of experiments) {
-    it(`[${exp.category}] ${exp.title} (${exp.id})`, async () => {
+    it(`[${exp.category}] ${exp.title} (${exp.id})`, async ({ skip }) => {
+      if (exp.requires) {
+        const problem = await exp.requires();
+        if (problem) skip(problem);
+      }
       const result = await runExperiment(exp.id);
       const failed = result.steps.filter((s) => s.error);
       expect(result.error, failed.map((s) => `${s.cmd} → ${JSON.stringify(s.result)}`).join("\n")).toBeUndefined();

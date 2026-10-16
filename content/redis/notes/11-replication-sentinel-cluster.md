@@ -4,7 +4,7 @@ order: 11
 level: 심화
 summary: 마스터-레플리카 복제의 동작, Sentinel 의 자동 장애 조치, Cluster 의 해시 슬롯과 제약
 tags: [복제, Sentinel, Cluster, 해시슬롯, failover]
-experiments: []
+experiments: [replication-basics, sentinel-failover, cluster-hash-slots]
 ---
 
 ## 복제 (Replication)
@@ -71,11 +71,23 @@ slot = CRC16(key) mod 16384
 
 ## 로컬에서 체험하기
 
-```
-# 레플리카 하나 띄우기
-redis-server --port 6380 --replicaof 127.0.0.1 6379 --dir /tmp
-redis-cli -p 6380 INFO replication
-redis-cli -p 6379 SET k v && redis-cli -p 6380 GET k
+이 프로젝트에는 두 가지 실습 환경 스크립트가 있다 (brew 로 설치한 redis-server 를 호스트에서 여러 개 띄운다).
+
+```bash
+pnpm redis:ha          # master 6381 + replica 6382/6383 + sentinel 26381-26383
+redis-cli -p 6381 INFO replication
+redis-cli -p 26381 SENTINEL get-master-addr-by-name mymaster
+redis-cli -p 6381 SHUTDOWN NOSAVE          # 마스터를 죽이면 1~3초 뒤 승격
+redis-cli -p 26381 SENTINEL get-master-addr-by-name mymaster   # 바뀐 주소
+tail -f redis/ha/run/26381.log             # +sdown, +odown, +switch-master 로그
+pnpm redis:ha:down
+
+pnpm redis:cluster     # master 3 + replica 3, 포트 7001-7006
+redis-cli -p 7001 cluster nodes
+redis-cli -p 7001 cluster keyslot user:1
+redis-cli -p 7001 SET user:1 a             # (error) MOVED 10778 127.0.0.1:7002
+redis-cli -c -p 7001 SET user:1 a          # -c: 리다이렉트 따라가기
+pnpm redis:cluster:down
 ```
 
-Cluster 는 `redis-cli --cluster create` 로 6개 노드를 묶어 만들 수 있다. `utils/create-cluster` 스크립트가 Redis 소스에 포함되어 있다.
+실험실의 **복제**, **Sentinel failover**, **Cluster 해시 슬롯** 실험이 이 환경에서 실제 장애 조치와 MOVED 리다이렉트를 재현한다.

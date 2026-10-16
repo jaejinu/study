@@ -18,7 +18,11 @@
     "k8s:cluster:down": "kind delete cluster --name study",
     "k8s:up": "kubectl kustomize --load-restrictor LoadRestrictionsNone k8s | kubectl apply -f - && kubectl -n study rollout status statefulset/redis --timeout=120s",
     "k8s:down": "kubectl kustomize --load-restrictor LoadRestrictionsNone k8s | kubectl delete --ignore-not-found -f -",
-    "k8s:port": "kubectl -n study port-forward svc/redis 6379:6379"
+    "k8s:port": "kubectl -n study port-forward svc/redis 6379:6379",
+    "redis:ha": "redis/ha/start.sh",
+    "redis:ha:down": "redis/ha/stop.sh",
+    "redis:cluster": "redis/cluster/start.sh",
+    "redis:cluster:down": "redis/cluster/stop.sh"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",

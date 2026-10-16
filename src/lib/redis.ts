@@ -29,7 +29,8 @@ export function getRedis(): Redis {
 
 /** Pub/Sub, 블로킹 명령, WATCH 경쟁 재현 등을 위해 별도 커넥션이 필요할 때 사용 */
 export function createRedis(overrides: RedisOptions = {}): Redis {
-  const client = new Redis(REDIS_URL, { ...baseOptions, ...overrides });
+  // host/port/sentinels 를 직접 지정하면 REDIS_URL 대신 그 옵션으로 접속한다
+  const client = overrides.host || overrides.port || overrides.sentinels ? new Redis({ ...baseOptions, ...overrides }) : new Redis(REDIS_URL, { ...baseOptions, ...overrides });
   client.on("error", () => {});
   return client;
 }
