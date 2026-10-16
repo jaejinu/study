@@ -3,6 +3,8 @@ import { experiments } from "@/experiments";
 import { listLab } from "@/lab/registry";
 import { getNote, listNotes } from "@/lib/notes";
 import { getProgress } from "@/lib/progress";
+import { loadQuiz } from "@/lib/quiz";
+import { cardKey, fmtDuration, getQuizStats, getSubjectStudySeconds, summarizeReview } from "@/lib/study";
 import { searchAll } from "@/lib/search";
 import { subjects } from "@/lib/subjects";
 
@@ -49,7 +51,7 @@ export const toolDefinitions: Anthropic.Tool[] = [
   },
   {
     name: "get_progress",
-    description: "사용자의 학습 진행률(읽은 노트, 성공한 실험)을 가져온다. '다음에 뭘 공부할까', '안 읽은 것' 같은 질문에 사용.",
+    description: "사용자의 학습 진행률(읽은 노트, 성공한 실험, 학습 시간, 퀴즈 복습 현황과 자주 틀리는 노트)을 가져온다. '다음에 뭘 공부할까', '안 읽은 것', '뭘 복습할까' 같은 질문에 사용.",
     input_schema: { type: "object", properties: { subject: { type: "string", enum: subjects.map((s) => s.id) } }, required: ["subject"] },
   },
 ];
@@ -99,13 +101,23 @@ export async function executeTool(name: string, input: Record<string, unknown>):
       }
       case "get_progress": {
         const subject = String(input.subject ?? "");
-        const [p, notes] = await Promise.all([getProgress(subject), listNotes(subject)]);
+        const [p, notes, quiz, stats, studySeconds] = await Promise.all([getProgress(subject), listNotes(subject), loadQuiz(subject), getQuizStats(subject), getSubjectStudySeconds(subject)]);
+        const review = summarizeReview(quiz.map((c) => cardKey(c.note, c.q)), stats);
+        const weakNotes = Object.entries(
+          quiz.reduce<Record<string, number>>((acc, c) => {
+            const st = stats[cardKey(c.note, c.q)];
+            if (st && st.wrong > 0) acc[c.note] = (acc[c.note] ?? 0) + st.wrong;
+            return acc;
+          }, {}),
+        ).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([slug, wrong]) => ({ slug, wrongAnswers: wrong }));
         return {
           result: {
             readCount: p.read.length,
             total: notes.length,
             unread: notes.filter((n) => !p.read.includes(n.slug)).map((n) => ({ slug: n.slug, title: n.title, level: n.level })).slice(0, 15),
             labDone: p.labDone,
+            studyTime: fmtDuration(studySeconds),
+            quiz: { cards: review.total, dueForReview: review.due, unseen: review.unseen, stable: review.stable, weakNotes },
           },
         };
       }
