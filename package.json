@@ -12,6 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:report": "vitest run --reporter=default --reporter=json --outputFile.json=reports/vitest.json",
+    "e2e": "playwright test",
+    "e2e:report": "playwright show-report reports/e2e",
     "redis:docker": "docker compose -p study up -d redis",
     "redis:docker:down": "docker compose -p study down",
     "k8s:cluster": "kind create cluster --name study --wait 120s",
@@ -107,6 +109,8 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
     "@types/amqplib": "^0.10.8",
     "@types/node": "^22.20.5",

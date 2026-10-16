@@ -381,6 +381,11 @@ kbd {
 .header-search {
   font-size: 13px;
   color: var(--muted);
+  /* 누르기 쉬운 높이 (WCAG 2.5.8) — 모양은 그대로, 터치 영역만 넓힌다 */
+  min-height: 36px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
 }
 .header-search kbd {
   margin-left: 24px;
@@ -799,6 +804,16 @@ html[data-focus="true"] .header-context {
   .menu-close {
     display: block;
     font-size: 14px;
+  }
+  /* 손가락으로 누를 수 있는 크기 (WCAG 2.5.8 최소 24px, 권장 44px) — e2e/mobile.spec.ts 가 검사 */
+  .menu-toggle {
+    display: grid;
+    place-items: center;
+    min-width: 40px;
+    min-height: 40px;
+    margin: -10px 0 -10px -12px;
+    border-radius: 8px;
+    font-size: 18px;
   }
   .menu-close {
     padding: 20px;

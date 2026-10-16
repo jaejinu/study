@@ -16,16 +16,18 @@ interface HastNode {
   children?: HastNode[];
 }
 
-/** 체크박스 input 에 원본 markdown 줄 번호를 data-line 으로 붙인다 (저장 키로 사용) */
+/** 체크박스 input 에 원본 markdown 줄 번호(data-line, 저장 키)와 항목 글(data-label, 스크린리더용 이름)을 붙인다 */
 function rehypeCheckboxLines() {
   return (tree: HastNode) => {
     // remark-gfm 이 만드는 input 엔 position 이 없으므로 부모 li 의 줄 번호를 쓴다
-    const walk = (n: HastNode, line?: number) => {
-      const own = n.type === "element" && n.tagName === "li" && n.position ? n.position.start.line : line;
+    const walk = (n: HastNode, line?: number, label?: string) => {
+      const isLi = n.type === "element" && n.tagName === "li";
+      const own = isLi && n.position ? n.position.start.line : line;
+      const ownLabel = isLi ? textOf(n).trim().slice(0, 120) : label;
       if (n.type === "element" && n.tagName === "input" && own !== undefined) {
-        n.properties = { ...(n.properties ?? {}), dataLine: own };
+        n.properties = { ...(n.properties ?? {}), dataLine: own, dataLabel: ownLabel };
       }
-      n.children?.forEach((c) => walk(c, own));
+      n.children?.forEach((c) => walk(c, own, ownLabel));
     };
     walk(tree);
   };
@@ -96,11 +98,11 @@ export function Markdown({ content, small = false, checklist }: Props) {
     },
     ...(checklist
       ? {
-          input: ({ node, ...props }: WithNode<"input"> & { "data-line"?: number | string }) => {
+          input: ({ node, ...props }: WithNode<"input"> & { "data-line"?: number | string; "data-label"?: string }) => {
             void node;
             if (props.type !== "checkbox") return <input {...props} />;
             const line = Number(props["data-line"] ?? -1);
-            return <TaskCheckbox subject={checklist.subject} slug={checklist.slug} line={line} initial={checklist.checked.includes(line) || !!props.checked} />;
+            return <TaskCheckbox subject={checklist.subject} slug={checklist.slug} line={line} label={props["data-label"]} initial={checklist.checked.includes(line) || !!props.checked} />;
           },
         }
       : {}),

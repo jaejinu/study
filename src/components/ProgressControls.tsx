@@ -34,12 +34,13 @@ export function ReadToggle({ subject, slug, initial }: { subject: string; slug: 
   );
 }
 
-export function TaskCheckbox({ subject, slug, line, initial }: { subject: string; slug: string; line: number; initial: boolean }) {
+export function TaskCheckbox({ subject, slug, line, initial, label }: { subject: string; slug: string; line: number; initial: boolean; label?: string }) {
   const [on, setOn] = useState(initial);
   const [pending, start] = useTransition();
   return (
     <input
       type="checkbox"
+      aria-label={label ? `체크리스트: ${label}` : "체크리스트 항목"}
       checked={on}
       disabled={pending}
       onChange={() =>

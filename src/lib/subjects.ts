@@ -44,7 +44,7 @@ export const subjects: Subject[] = [
     tagline: "인메모리 자료구조 서버",
     description: "자료구조·만료·영속성부터 트랜잭션, 메시징, 캐싱 패턴, 분산 락, 고가용성까지. 모든 실험은 실제 Redis 에서 실행됩니다.",
     mark: "R",
-    color: "bg-[#ff4438]",
+    color: "bg-[#ea0e00]" /* 흰 글씨 대비 4.5:1 이상 (원래 #ff4438) */,
     nav: [
       { href: "/redis", label: "대시보드", icon: "◉", desc: "서버 상태 · 학습 현황" },
       { href: "/redis/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
@@ -68,7 +68,7 @@ export const subjects: Subject[] = [
     tagline: "컨테이너로 애플리케이션 포장·실행",
     description: "이미지와 컨테이너의 개념, Dockerfile 과 레이어 캐시, 볼륨·네트워크, Compose, 이미지 최적화와 운영 명령까지. 실습은 터미널에서 직접 수행합니다.",
     mark: "D",
-    color: "bg-[#2496ed]",
+    color: "bg-[#1077c6]" /* 흰 글씨 대비 4.5:1 이상 (원래 #2496ed) */,
     nav: [
       { href: "/docker", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
       { href: "/docker/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
@@ -106,7 +106,7 @@ export const subjects: Subject[] = [
     tagline: "분산 이벤트 스트리밍",
     description: "토픽·파티션·오프셋, 프로듀서 키와 순서 보장, 컨슈머 그룹과 리밸런스, 재처리(replay), 전달 보장. 로컬 KRaft 브로커로 직접 실험합니다.",
     mark: "K",
-    color: "bg-[#8b5cf6]",
+    color: "bg-[#8452f5]" /* 흰 글씨 대비 4.5:1 이상 (원래 #8b5cf6) */,
     nav: [
       { href: "/kafka", label: "대시보드", icon: "◉", desc: "브로커 점검 · 학습 현황" },
       { href: "/kafka/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
@@ -144,7 +144,7 @@ export const subjects: Subject[] = [
     tagline: "Prometheus · Grafana · 로그 · 트레이스",
     description: "메트릭·로그·트레이스 세 기둥, Prometheus 데이터 모델과 PromQL, exporter, Grafana 대시보드, 알림 설계. 이 앱과 Redis 를 실제로 수집해 봅니다.",
     mark: "O",
-    color: "bg-[#e6522c]",
+    color: "bg-[#d33f19]" /* 흰 글씨 대비 4.5:1 이상 (원래 #e6522c) */,
     nav: [
       { href: "/observability", label: "대시보드", icon: "◉", desc: "수집 스택 점검" },
       { href: "/observability/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
@@ -163,7 +163,7 @@ export const subjects: Subject[] = [
     tagline: "CI/CD 파이프라인",
     description: "워크플로 문법, 이벤트와 잡, 서비스 컨테이너, 캐시와 아티팩트, 시크릿과 OIDC, 재사용 워크플로. 이 저장소의 CI 가 살아 있는 예제입니다.",
     mark: "A",
-    color: "bg-[#2088ff]",
+    color: "bg-[#006fef]" /* 흰 글씨 대비 4.5:1 이상 (원래 #2088ff) */,
     nav: [
       { href: "/github-actions", label: "대시보드", icon: "◉", desc: "최근 워크플로 실행" },
       { href: "/github-actions/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
@@ -182,7 +182,7 @@ export const subjects: Subject[] = [
     tagline: "리버스 프록시 · 로드밸런서",
     description: "요청 처리 모델, server/location 매칭, 리버스 프록시와 업스트림, 캐싱, TLS 종료, 레이트 리밋, 로그. 이 앱 앞에 Nginx 를 세워 봅니다.",
     mark: "N",
-    color: "bg-[#009639]",
+    color: "bg-[#008733]" /* 흰 글씨 대비 4.5:1 이상 (원래 #009639) */,
     nav: [
       { href: "/nginx", label: "대시보드", icon: "◉", desc: "프록시 점검" },
       { href: "/nginx/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
@@ -201,7 +201,7 @@ export const subjects: Subject[] = [
     tagline: "TCP/IP · DNS · 소켓 · 디버깅",
     description: "계층 모델, IP·포트·소켓, TCP 핸드셰이크와 상태, DNS 해석, HTTP/TLS, NAT 와 컨테이너 네트워킹, 진단 도구. 터미널 도구로 직접 관찰합니다.",
     mark: "L",
-    color: "bg-[#d97706]",
+    color: "bg-[#af6005]" /* 흰 글씨 대비 4.5:1 이상 (원래 #d97706) */,
     nav: [
       { href: "/linux-network", label: "대시보드", icon: "◉", desc: "내 네트워크 환경" },
       { href: "/linux-network/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
@@ -333,7 +333,7 @@ export const subjects: Subject[] = [
     tagline: "측정 · 부하 테스트 · 병목 분석",
     description: "지연 분포(p50/p99)와 처리량, 리틀의 법칙과 큐잉, USE·RED 방법론, k6 로 하는 부하·스트레스·soak 테스트와 SLO 기반 임계값, 프로파일링(Node CPU/힙, flame graph), 병목 찾기(N+1, 락, GC, 커넥션 풀), 캐시·배치·커넥션 튜닝, 용량 계획. 이 앱을 대상으로 직접 재어 봅니다.",
     mark: "⏱",
-    color: "bg-[#ca8a04]",
+    color: "bg-[#9d6b03]" /* 흰 글씨 대비 4.5:1 이상 (원래 #ca8a04) */,
     nav: [
       { href: "/performance", label: "대시보드", icon: "◉", desc: "도구 점검 · 학습 현황" },
       { href: "/performance/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
@@ -447,7 +447,7 @@ export const subjects: Subject[] = [
     tagline: "RabbitMQ · NATS · Redis Streams · Kafka",
     description: "큐·토픽·로그 모델 비교, RabbitMQ(AMQP·익스체인지·확인·DLX·TTL), NATS JetStream, 전달 보장·우선순위·지연 큐, Kafka 를 쓰지 말아야 할 때, 같은 워크로드를 네 브로커로 구현해 비교. 아키텍처 노트의 비동기 메시징을 실측으로 잇습니다.",
     mark: "MQ",
-    color: "bg-[#ea580c]",
+    color: "bg-[#ca4c0a]" /* 흰 글씨 대비 4.5:1 이상 (원래 #ea580c) */,
     nav: [
       { href: "/messaging", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
       { href: "/messaging/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
@@ -561,7 +561,7 @@ export const subjects: Subject[] = [
     tagline: "열 지향 분석 DB · 로그 분석",
     description: "열 지향 저장과 MergeTree, 파티션·정렬 키·스킵 인덱스, 머티리얼라이즈드 뷰와 사전 집계, 로그·트레이스 분석(Loki·OpenSearch 와 비교), 압축 코덱, 분산·복제. 이 사이트의 앱 로그를 넣어 질의 속도와 저장 용량을 실측합니다.",
     mark: "CH",
-    color: "bg-[#facc15]",
+    color: "bg-[#8c7103]" /* 흰 글씨 대비 4.5:1 이상 (원래 #facc15) */,
     nav: [
       { href: "/clickhouse", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
       { href: "/clickhouse/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
@@ -580,7 +580,7 @@ export const subjects: Subject[] = [
     tagline: "배치·스트림 · 레이크하우스 · 변환 · 품질",
     description: "배치와 스트리밍, 열 파일 포맷(Parquet)과 레이크하우스(Iceberg), 오케스트레이션(Airflow·Dagster), dbt 식 변환과 테스트, 스트림 처리, 데이터 품질·계보·계약. Debezium CDC → Kafka → 객체 저장소 → DuckDB 로 이 사이트의 데이터를 흘려 봅니다.",
     mark: "DE",
-    color: "bg-[#0891b2]",
+    color: "bg-[#077f9c]" /* 흰 글씨 대비 4.5:1 이상 (원래 #0891b2) */,
     nav: [
       { href: "/data-engineering", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
       { href: "/data-engineering/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
@@ -637,7 +637,7 @@ export const subjects: Subject[] = [
     tagline: "HTTP/2·3 · QUIC · TLS 1.3 · 혼잡 제어",
     description: "HTTP/1.1→2→3 의 진화와 머리 막힘, QUIC 의 연결 수립·0-RTT·연결 이전, TLS 1.3 핸드셰이크 지연, 혼잡 제어(CUBIC·BBR), 손실·지연이 처리량에 미치는 영향, L4/L7 로드밸런싱과 CDN·애니캐스트 개요. 손실·지연을 주입해 직접 잽니다.",
     mark: "NP",
-    color: "bg-[#0d9488]",
+    color: "bg-[#0b8177]" /* 흰 글씨 대비 4.5:1 이상 (원래 #0d9488) */,
     nav: [
       { href: "/network-protocols", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
       { href: "/network-protocols/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
@@ -694,7 +694,7 @@ export const subjects: Subject[] = [
     tagline: "이벤트 루프 · V8 · 비동기 · 성능",
     description: "Node.js 의 구조(V8·libuv·바인딩), 이벤트 루프 단계와 마이크로태스크, 비동기 패턴과 에러 처리, 스트림·버퍼·백프레셔, 모듈 시스템(CJS·ESM), 워커 스레드와 클러스터, V8 의 JIT·히든 클래스·GC, 메모리 누수 추적, 프로파일링과 진단, 보안·운영. 이 사이트 자체가 Node 라 실험 재료가 이미 있습니다.",
     mark: "JS",
-    color: "bg-[#3c873a]",
+    color: "bg-[#3a8338]" /* 흰 글씨 대비 4.5:1 이상 (원래 #3c873a) */,
     nav: [
       { href: "/nodejs", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
       { href: "/nodejs/notes", label: "학습 노트", icon: "✎", desc: "챕터별로 읽는 정리 노트" },
@@ -713,7 +713,7 @@ export const subjects: Subject[] = [
     tagline: "언어 · 컬렉션 · 동시성 · JVM · GC · Spring",
     description: "현대 자바 언어(레코드·sealed·패턴 매칭·제네릭·람다·스트림), 컬렉션 내부, 예외·불변성, 동시성(스레드·락·java.util.concurrent·가상 스레드), JVM 구조(클래스 로딩·바이트코드·JIT), 메모리 모델과 GC(G1·ZGC), 성능 진단(JFR·jcmd·힙 덤프), 빌드(Gradle·Maven), Spring Boot 와 운영. 실험은 Docker 의 JDK 로 돌립니다.",
     mark: "J",
-    color: "bg-[#e76f00]",
+    color: "bg-[#b95900]" /* 흰 글씨 대비 4.5:1 이상 (원래 #e76f00) */,
     nav: [
       { href: "/java", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
       { href: "/java/notes", label: "학습 노트", icon: "✎", desc: "챕터별로 읽는 정리 노트" },
@@ -732,7 +732,7 @@ export const subjects: Subject[] = [
     tagline: "로컬 실험 ↔ 매니지드 서비스",
     description: "이 사이트에서 직접 돌린 Redis·Kafka·PostgreSQL·Kubernetes·S3·관측을 AWS 매니지드 서비스(ElastiCache·MSK·RDS/Aurora·EKS·S3·CloudWatch)에 대응시켜 무엇이 같고 무엇이 다른지, 비용·한도·운영 책임 분담을 정리합니다. VPC·IAM·멀티 AZ 설계와 LocalStack 으로 하는 로컬 실습 포함.",
     mark: "AWS",
-    color: "bg-[#ff9900]",
+    color: "bg-[#a86500]" /* 흰 글씨 대비 4.5:1 이상 (원래 #ff9900) */,
     nav: [
       { href: "/aws", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
       { href: "/aws/notes", label: "학습 노트", icon: "✎", desc: "챕터별로 읽는 정리 노트" },

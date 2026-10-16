@@ -25,7 +25,7 @@ export function RecordsActions() {
         JSON 으로 내보내기
       </button>
       <label className="flex items-center gap-1.5 text-muted">
-        <select value={mode} onChange={(e) => setMode(e.target.value as "merge" | "replace")} className="rounded border border-border bg-background px-2 py-1">
+        <select aria-label="가져오기 방식" value={mode} onChange={(e) => setMode(e.target.value as "merge" | "replace")} className="rounded border border-border bg-background px-2 py-1">
           <option value="merge">합치기 (기존 기록 유지)</option>
           <option value="replace">덮어쓰기 (백업으로 교체)</option>
         </select>

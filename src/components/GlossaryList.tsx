@@ -28,7 +28,7 @@ export function GlossaryList({ entries, subjects }: { entries: Entry[]; subjects
     <div>
       <div className="mb-4 flex flex-wrap gap-2">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="용어나 설명으로 필터" className="min-w-[220px] flex-1 rounded-md border border-border bg-surface px-3 py-1.5 text-sm outline-none focus:border-muted" />
-        <select value={subject} onChange={(e) => setSubject(e.target.value)} className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm">
+        <select aria-label="주제로 거르기" value={subject} onChange={(e) => setSubject(e.target.value)} className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm">
           <option value="all">모든 주제</option>
           {subjects.map((s) => (
             <option key={s.id} value={s.id}>

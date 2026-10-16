@@ -114,7 +114,7 @@ export function NoteMemos({ subject, slug, initial }: { subject: string; slug: s
           </div>
         )}
         {memos.length === 0 && !draft ? (
-          <p className="text-[13px] text-muted">본문에서 문장을 드래그하면 메모와 하이라이트를 남길 수 있습니다. 모든 메모는 <Link href="/memos" className="text-info hover:underline">내 메모 모아 보기</Link>에서 볼 수 있습니다.</p>
+          <p className="text-[13px] text-muted">본문에서 문장을 드래그하면 메모와 하이라이트를 남길 수 있습니다. 모든 메모는 <Link href="/memos" className="text-info underline underline-offset-2">내 메모 모아 보기</Link>에서 볼 수 있습니다.</p>
         ) : (
           <ul className="space-y-2">
             {memos.map((m) => (

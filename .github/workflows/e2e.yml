@@ -1,0 +1,65 @@
+name: e2e
+
+# 모바일·접근성 자동 검사 — Playwright(데스크톱 1280×800 · iPhone 13) + axe-core WCAG 2.1 AA
+#   화면이 열리는지, 가로로 넘치지 않는지, serious·critical 접근성 위반이 없는지, 모바일 메뉴·터치 영역
+#   로컬에서는 pnpm e2e (떠 있는 서버 검사), 리포트는 pnpm e2e:report
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "src/**"
+      - "content/**"
+      - "e2e/**"
+      - "playwright.config.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/e2e.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: playwright · axe (desktop · iPhone 13)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      redis:
+        image: redis:8-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      REDIS_URL: redis://127.0.0.1:6379
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Playwright 브라우저 (Chromium 만 — iPhone 13 도 Chromium 으로 흉내)
+        run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm build
+      - name: e2e — 빌드된 앱을 3311 에서 띄워 검사
+        run: pnpm e2e
+        env:
+          E2E_START: "1"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: |
+            reports/e2e
+            reports/e2e-artifacts
+          retention-days: 14

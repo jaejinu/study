@@ -85,7 +85,7 @@ export default async function SubjectHome({ params }: Props) {
             )}
           </div>
         </div>
-        <ol className="grid gap-2 sm:grid-cols-2">
+        <ol className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2">
           {notes.map((n, idx) => (
             <li key={n.slug}>
               <Link href={`/${subject.id}/notes/${n.slug}`} className="flex h-full gap-3 rounded-lg border border-border bg-surface p-3 transition-colors hover:border-muted">
@@ -97,7 +97,7 @@ export default async function SubjectHome({ params }: Props) {
                     <span className="truncate text-sm font-medium">{n.title}</span>
                     <LevelBadge level={n.level} />
                   </span>
-                  <span className="mt-0.5 block text-xs text-muted">{n.summary}</span>
+                  <span className="mt-0.5 block text-xs text-muted [overflow-wrap:anywhere]">{n.summary}</span>
                   {n.experiments.length > 0 && <span className="mt-1 block text-[11px] text-muted">⚗ 실험 {n.experiments.length}개</span>}
                 </span>
               </Link>

@@ -19,7 +19,10 @@ export function CodeBlock({ children, lang }: { children: ReactNode; lang?: stri
           {status}
         </button>
       </div>
-      <pre ref={ref}>{children}</pre>
+      {/* tabIndex: 가로로 긴 코드를 키보드(←→)로도 스크롤할 수 있게 (WCAG 2.1.1) */}
+      <pre ref={ref} tabIndex={0} aria-label={`${lang ?? "코드"} 예시`}>
+        {children}
+      </pre>
     </div>
   );
 }
