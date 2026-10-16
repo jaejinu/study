@@ -111,6 +111,37 @@ code, pre, kbd { font-family: var(--font-geist-mono), ui-monospace, SFMono-Regul
 .note pre::-webkit-scrollbar { height: 6px; }
 .note pre code { background: none; border: none; padding: 0; font-size: inherit; color: #e6edf3; }
 .note table { border-collapse: separate; border-spacing: 0; width: 100%; margin: 1.2rem 0; font-size: 0.92rem; line-height: 1.55; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: block; overflow-x: auto; }
+/* TableWrap 이 감싼 표: 스크롤은 바깥 div 가 맡고 표는 원래 table 레이아웃 */
+.note .table-outer { margin: 1.2rem 0; }
+.note .table-hint { font-size: 11.5px; color: var(--muted); text-align: right; margin-bottom: 0.3rem; }
+.note .table-wrap { position: relative; overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; scrollbar-width: thin; }
+.note .table-wrap table { display: table; margin: 0; border: 0; border-radius: 0; overflow: visible; }
+.note .table-wrap.is-clipped { box-shadow: inset -18px 0 14px -14px rgba(0, 0, 0, 0.55); }
+/* 코드 블록 툴바 (언어 라벨 · 복사) */
+.note .code-block { position: relative; margin: 1.2rem 0; }
+.note .code-block pre { margin: 0; padding-top: 1.9rem; }
+.note .code-toolbar { position: absolute; top: 0.35rem; left: 0.75rem; right: 0.5rem; display: flex; align-items: center; justify-content: space-between; pointer-events: none; z-index: 1; }
+.note .code-lang { font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: #7d8a9b; font-family: var(--font-geist-mono), ui-monospace, monospace; }
+.note .code-copy { pointer-events: auto; margin-left: auto; font-size: 11px; color: #9aa8ba; border: 1px solid #2b3646; background: #161d27; border-radius: 6px; padding: 0.1rem 0.5rem; opacity: 0; transition: opacity 0.15s; }
+.note .code-block:hover .code-copy, .note .code-copy:focus-visible { opacity: 1; }
+@media (hover: none) { .note .code-copy { opacity: 1; } }
+/* 콜아웃: 인용문 첫 문단의 접두어로 분류 (Markdown.tsx calloutKind) */
+.note blockquote[data-callout] { position: relative; }
+.note blockquote[data-callout="warn"] { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 11%, transparent); }
+.note blockquote[data-callout="tip"] { border-left-color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.note blockquote[data-callout="key"] { border-left-color: var(--accent); background: var(--accent-soft); }
+.note blockquote[data-callout="link"] { border-left-color: var(--info); background: color-mix(in srgb, var(--info) 8%, transparent); font-size: 0.95em; }
+.note blockquote[data-callout="quote"] { border-left-color: var(--muted); background: transparent; font-style: italic; color: var(--muted); }
+.note blockquote[data-callout="warn"]::before, .note blockquote[data-callout="tip"]::before, .note blockquote[data-callout="key"]::before { position: absolute; left: -0.95rem; top: 0.75rem; width: 1.3rem; height: 1.3rem; border-radius: 999px; display: grid; place-items: center; font-size: 11px; font-weight: 700; font-style: normal; color: #fff; }
+.note blockquote[data-callout="warn"]::before { content: "!"; background: var(--warn); }
+.note blockquote[data-callout="tip"]::before { content: "✓"; background: var(--ok); }
+.note blockquote[data-callout="key"]::before { content: "★"; background: var(--accent); font-size: 10px; }
+/* 확대 가능한 그림 */
+.note .zoom-trigger { position: relative; display: block; width: 100%; margin: 1.4rem 0 0.4rem; cursor: zoom-in; background: none; border: 0; padding: 0; }
+.note .zoom-trigger img { margin: 0 auto; }
+.note .zoom-hint { position: absolute; right: 0.6rem; bottom: 0.6rem; font-size: 11px; color: #e6edf3; background: rgba(13, 17, 23, 0.8); border: 1px solid #2b3646; border-radius: 6px; padding: 0.1rem 0.45rem; opacity: 0; transition: opacity 0.15s; }
+.note .zoom-trigger:hover .zoom-hint, .note .zoom-trigger:focus-visible .zoom-hint { opacity: 1; }
+.note .figure-caption { display: block; text-align: center; font-size: 12.5px; color: var(--muted); margin-bottom: 1.2rem; }
 .note th, .note td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0.55rem 0.8rem; text-align: left; vertical-align: top; }
 .note th:last-child, .note td:last-child { border-right: 0; }
 .note td:first-child { min-width: 7.5em; }

@@ -92,6 +92,8 @@ export function TopBar() {
           </Link>
         )}
       </div>
+      {/* 노트 페이지의 읽기 진행 막대가 포털로 들어오는 자리 (상단 바 아래 경계선) */}
+      <div id="reading-progress-slot" className="pointer-events-none absolute inset-x-0 -bottom-px h-[3px]" aria-hidden />
     </header>
   );
 }
