@@ -324,3 +324,75 @@ spec:
     ctx.check("환경 변수는 여전히 hello, 파일은 bonjour", after.includes("env=hello") && after.includes("file=bonjour"), after);
   },
 };
+
+async function requiresMetrics(): Promise<string | null> {
+  const base = await requiresCluster();
+  if (base) return base;
+  const top = await exec("kubectl", ["top", "nodes", "--request-timeout=5s"], { timeout: 8000 });
+  if (!top.ok) return "metrics-server 가 없거나 아직 준비되지 않았습니다. kind: `pnpm k8s:metrics` (설치 후 30초쯤 대기) / minikube: `minikube addons enable metrics-server --profile study`";
+  return null;
+}
+
+export const k8sHpaAutoscale: ShellExperiment = {
+  id: "k8s-hpa-autoscale",
+  subject: "kubernetes",
+  title: "HPA: CPU 부하를 걸면 Pod 이 자동으로 늘어난다",
+  category: "운영",
+  summary: "metrics-server 가 있는 클러스터에서 CPU 50% 목표 HPA 를 만들고 부하 생성기로 복제본이 1 → N 으로 늘어나는 과정을 관찰 (2~3분 소요)",
+  notes: ["07-deploy-resources", "09-minikube-addons"],
+  description: `
+**HorizontalPodAutoscaler** 는 metrics-server 가 보고하는 Pod CPU 사용률(requests 대비)을 15초마다 읽어
+\`원하는 복제본 = ceil(현재 복제본 × 현재 사용률 / 목표 사용률)\` 로 계산한다. 그래서 **requests 가 없으면 HPA 는 동작하지 않는다**.
+스케일 아웃은 빠르고(안정화 창 0초), 스케일 인은 기본 5분 안정화 창을 둔다 — 부하가 사라져도 바로 줄지 않는다.
+이 실험은 공식 예제 이미지(\`registry.k8s.io/hpa-example\`, CPU 를 태우는 PHP 페이지)에 부하를 걸어 복제본이 늘어나는 것을 기다린다. 사전 준비: metrics-server.
+`,
+  code: `pnpm k8s:metrics                       # kind 에 metrics-server (minikube 는 addon)
+kubectl -n study create deployment lab-hpa --image=registry.k8s.io/hpa-example --port=80
+kubectl -n study set resources deploy/lab-hpa --requests=cpu=100m --limits=cpu=300m
+kubectl -n study expose deploy/lab-hpa --port=80
+kubectl -n study autoscale deploy/lab-hpa --cpu-percent=50 --min=1 --max=5
+# 부하 생성
+kubectl -n study run lab-load --rm -it --image=busybox:1.36 --restart=Never -- /bin/sh -c "while true; do wget -q -O- http://lab-hpa; done"
+kubectl -n study get hpa lab-hpa -w            # TARGETS 250%/50% → REPLICAS 1 → 4
+kubectl -n study top pods -l app=lab-hpa`,
+  requires: requiresMetrics,
+  cleanup: async (ctx) => {
+    await ctx.sh("kubectl", K("delete", "hpa", "lab-hpa", "--ignore-not-found"), { allowFail: true });
+    await ctx.sh("kubectl", K("delete", "pod", "lab-load", "--ignore-not-found", "--wait=false", "--grace-period=0", "--force"), { allowFail: true });
+    await cleanupLab(ctx);
+  },
+  async run(ctx) {
+    await ensureNamespace(ctx);
+    await ctx.sh("kubectl", K("create", "deployment", "lab-hpa", "--image=registry.k8s.io/hpa-example", "--port=80"));
+    await ctx.sh("kubectl", K("label", "deploy", "lab-hpa", "lab=true"));
+    await ctx.sh("kubectl", K("set", "resources", "deploy/lab-hpa", "--requests=cpu=100m", "--limits=cpu=300m"));
+    await ctx.sh("kubectl", K("rollout", "status", "deploy/lab-hpa", "--timeout=180s"), { timeout: 190_000 });
+    await ctx.sh("kubectl", K("expose", "deploy/lab-hpa", "--port=80"));
+    await ctx.sh("kubectl", K("label", "svc", "lab-hpa", "lab=true"));
+    await ctx.sh("kubectl", K("autoscale", "deploy/lab-hpa", "--cpu-percent=50", "--min=1", "--max=5"));
+    await ctx.sh("kubectl", K("get", "hpa", "lab-hpa"));
+
+    ctx.note("부하 생성기 Pod 을 띄운다 (wget 무한 루프)");
+    await ctx.sh("kubectl", K("run", "lab-load", "--image=busybox:1.36", "--restart=Never", "--labels=lab=true", "--", "/bin/sh", "-c", "while true; do wget -q -O- http://lab-hpa >/dev/null; done"));
+    const scaled = await ctx.poll(
+      "HPA 가 복제본을 2개 이상으로 늘릴 때까지 (metrics 지연 포함, 최대 4분)",
+      async () => {
+        const r = await exec("kubectl", K("get", "hpa", "lab-hpa", "-o", "jsonpath={.status.currentReplicas} {.status.desiredReplicas} {.status.currentMetrics[0].resource.current.averageUtilization}"));
+        const [cur, desired, util] = r.out.split(" ").map(Number);
+        return desired >= 2 ? { cur, desired, util } : undefined;
+      },
+      { timeoutMs: 240_000, intervalMs: 5000 },
+    );
+    await ctx.sh("kubectl", K("get", "hpa", "lab-hpa"));
+    await ctx.sh("kubectl", K("top", "pods", "-l", "app=lab-hpa"), { allowFail: true });
+    ctx.check(`CPU 사용률 ${scaled.util}% (목표 50%) → 원하는 복제본 ${scaled.desired}`, scaled.desired >= 2);
+    await ctx.poll("늘어난 Pod 이 Ready 가 될 때까지", async () => ((await readyPods("lab-hpa")) >= 2 ? true : undefined), { timeoutMs: 120_000, intervalMs: 3000 });
+    await ctx.sh("kubectl", K("get", "pods", "-l", "app=lab-hpa"));
+    await ctx.sh("kubectl", K("describe", "hpa", "lab-hpa"), { allowFail: true }).then((r) => {
+      const ev = r.out.split("\n").filter((l) => /SuccessfulRescale|ScalingActive|AbleToScale/.test(l)).slice(-4).join("\n");
+      ctx.note(`HPA 이벤트:\n${ev}`);
+    });
+    ctx.note("부하를 멈춰도 스케일 인은 기본 5분 안정화 창 뒤에 일어난다 (정리 단계에서 삭제)");
+    await ctx.sh("kubectl", K("delete", "pod", "lab-load", "--wait=false", "--grace-period=0", "--force"), { allowFail: true });
+  },
+};

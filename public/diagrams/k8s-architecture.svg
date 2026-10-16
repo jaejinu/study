@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" font-family="ui-sans-serif, system-ui, 'Apple SD Gothic Neo', sans-serif" font-size="13">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#8b98a9"/></marker></defs>
+  <rect width="900" height="420" fill="#0d1117"/>
+  <!-- control plane -->
+  <rect x="30" y="30" width="840" height="150" rx="10" fill="#121821" stroke="#326ce5" stroke-width="1.5"/>
+  <text x="48" y="54" fill="#58a6ff" font-weight="600">Control Plane</text>
+  <g fill="#1a222e" stroke="#243040">
+    <rect x="60" y="70" width="180" height="90" rx="8"/><rect x="270" y="70" width="150" height="90" rx="8"/><rect x="450" y="70" width="180" height="90" rx="8"/><rect x="660" y="70" width="190" height="90" rx="8"/>
+  </g>
+  <g fill="#e6edf3" font-weight="600"><text x="70" y="92">kube-apiserver</text><text x="280" y="92">etcd</text><text x="460" y="92">kube-scheduler</text><text x="670" y="92">controller-manager</text></g>
+  <g fill="#8b98a9" font-size="11.5">
+    <text x="70" y="112">모든 요청의 관문</text><text x="70" y="128">인증 · 인가 · 검증</text><text x="70" y="144">watch 로 변경 전파</text>
+    <text x="280" y="112">클러스터 상태 저장</text><text x="280" y="128">(key-value, Raft)</text><text x="280" y="144">유일한 진실의 원천</text>
+    <text x="460" y="112">Pending Pod 을</text><text x="460" y="128">어느 노드에 둘지</text><text x="460" y="144">requests · affinity</text>
+    <text x="670" y="112">Deployment, ReplicaSet,</text><text x="670" y="128">Node, Job 컨트롤러</text><text x="670" y="144">원하는 상태 ↔ 현재 상태</text>
+  </g>
+  <!-- kubectl -->
+  <rect x="30" y="200" width="120" height="40" rx="8" fill="#1a222e" stroke="#243040"/><text x="52" y="225" fill="#e6edf3">kubectl / CI</text>
+  <path d="M150 220 H 150 Q 160 220 160 210 V 165" fill="none" stroke="#8b98a9" marker-end="url(#a)"/>
+  <text x="165" y="195" fill="#8b98a9" font-size="11">REST (apply, get)</text>
+  <!-- nodes -->
+  <g>
+    <rect x="200" y="210" width="320" height="190" rx="10" fill="#121821" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="216" y="234" fill="#3fb950" font-weight="600">Node A</text>
+    <rect x="216" y="246" width="130" height="36" rx="6" fill="#1a222e" stroke="#243040"/><text x="226" y="269" fill="#e6edf3">kubelet</text>
+    <rect x="356" y="246" width="150" height="36" rx="6" fill="#1a222e" stroke="#243040"/><text x="366" y="269" fill="#e6edf3">kube-proxy</text>
+    <rect x="216" y="292" width="290" height="36" rx="6" fill="#1a222e" stroke="#243040"/><text x="226" y="315" fill="#e6edf3">containerd (런타임)</text>
+    <g fill="#243040" stroke="#58a6ff"><rect x="216" y="340" width="86" height="44" rx="6"/><rect x="318" y="340" width="86" height="44" rx="6"/><rect x="420" y="340" width="86" height="44" rx="6"/></g>
+    <g fill="#e6edf3" font-size="12"><text x="240" y="366">Pod</text><text x="342" y="366">Pod</text><text x="444" y="366">Pod</text></g>
+  </g>
+  <g>
+    <rect x="550" y="210" width="320" height="190" rx="10" fill="#121821" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="566" y="234" fill="#3fb950" font-weight="600">Node B</text>
+    <rect x="566" y="246" width="130" height="36" rx="6" fill="#1a222e" stroke="#243040"/><text x="576" y="269" fill="#e6edf3">kubelet</text>
+    <rect x="706" y="246" width="150" height="36" rx="6" fill="#1a222e" stroke="#243040"/><text x="716" y="269" fill="#e6edf3">kube-proxy</text>
+    <rect x="566" y="292" width="290" height="36" rx="6" fill="#1a222e" stroke="#243040"/><text x="576" y="315" fill="#e6edf3">containerd (런타임)</text>
+    <g fill="#243040" stroke="#58a6ff"><rect x="566" y="340" width="86" height="44" rx="6"/><rect x="668" y="340" width="86" height="44" rx="6"/></g>
+    <g fill="#e6edf3" font-size="12"><text x="590" y="366">Pod</text><text x="692" y="366">Pod</text></g>
+  </g>
+  <path d="M281 246 V 190" fill="none" stroke="#8b98a9" stroke-dasharray="4 3" marker-end="url(#a)"/>
+  <path d="M631 246 V 190" fill="none" stroke="#8b98a9" stroke-dasharray="4 3" marker-end="url(#a)"/>
+  <text x="290" y="200" fill="#8b98a9" font-size="11">kubelet 이 API 를 watch · 상태 보고</text>
+</svg>

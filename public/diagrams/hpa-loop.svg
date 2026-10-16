@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300" font-family="ui-sans-serif, system-ui, 'Apple SD Gothic Neo', sans-serif" font-size="13">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#8b98a9"/></marker></defs>
+  <rect width="900" height="300" fill="#0d1117"/>
+  <g fill="#121821" stroke="#243040"><rect x="30" y="110" width="170" height="80" rx="10"/><rect x="250" y="110" width="170" height="80" rx="10"/><rect x="470" y="110" width="170" height="80" rx="10"/><rect x="690" y="110" width="180" height="80" rx="10"/></g>
+  <g fill="#e6edf3" font-weight="600"><text x="45" y="138">kubelet / cAdvisor</text><text x="265" y="138">metrics-server</text><text x="485" y="138">HPA 컨트롤러</text><text x="705" y="138">Deployment</text></g>
+  <g fill="#8b98a9" font-size="11.5">
+    <text x="45" y="158">컨테이너 CPU·메모리</text><text x="45" y="174">cgroup 에서 수집</text>
+    <text x="265" y="158">노드마다 긁어 모아</text><text x="265" y="174">metrics.k8s.io API 로</text>
+    <text x="485" y="158">15초마다 계산</text><text x="485" y="174">desired = ceil(cur × now/target)</text>
+    <text x="705" y="158">spec.replicas 갱신</text><text x="705" y="174">→ ReplicaSet → Pod</text>
+  </g>
+  <g fill="none" stroke="#8b98a9" marker-end="url(#a)"><path d="M200 150 H 248"/><path d="M420 150 H 468"/><path d="M640 150 H 688"/></g>
+  <path d="M780 190 V 240 H 115 V 192" fill="none" stroke="#58a6ff" stroke-dasharray="5 4" marker-end="url(#a)"/>
+  <text x="330" y="258" fill="#58a6ff" font-size="12">새 Pod 의 사용률이 다시 측정됨 — 조정 루프</text>
+  <text x="30" y="40" fill="#e6edf3" font-weight="600" font-size="15">HPA 가 복제본을 정하는 흐름</text>
+  <text x="30" y="62" fill="#8b98a9" font-size="12">예: 복제본 1, requests 100m, 실제 250m 사용 → 사용률 250% → desired = ceil(1 × 250/50) = 5 (max 로 제한)</text>
+  <text x="30" y="82" fill="#8b98a9" font-size="12">스케일 인은 기본 5분 안정화 창 — 부하가 사라져도 바로 줄지 않는다</text>
+</svg>

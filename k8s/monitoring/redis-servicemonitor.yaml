@@ -1,0 +1,90 @@
+# study 네임스페이스의 Redis 를 redis_exporter 사이드카 없이 수집하려면 exporter Deployment + ServiceMonitor 가 필요하다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-exporter
+  namespace: study
+  labels: { app: redis-exporter }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: redis-exporter }
+  template:
+    metadata:
+      labels: { app: redis-exporter }
+    spec:
+      containers:
+        - name: exporter
+          image: oliver006/redis_exporter:v1.69.0
+          env:
+            - name: REDIS_ADDR
+              value: redis://redis:6379
+          ports:
+            - name: metrics
+              containerPort: 9121
+          resources:
+            requests: { cpu: 20m, memory: 32Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-exporter
+  namespace: study
+  labels: { app: redis-exporter }
+spec:
+  selector: { app: redis-exporter }
+  ports:
+    - name: metrics
+      port: 9121
+      targetPort: metrics
+---
+# Prometheus Operator 가 이 리소스를 보고 스크레이프 설정을 자동 생성한다
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redis
+  namespace: study
+  labels: { release: kps }
+spec:
+  selector:
+    matchLabels: { app: redis-exporter }
+  endpoints:
+    - port: metrics
+      interval: 15s
+---
+# 앱(web) 의 /api/metrics 도 수집
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: web
+  namespace: study
+  labels: { release: kps }
+spec:
+  selector:
+    matchLabels: { app: web }
+  endpoints:
+    - port: http
+      path: /api/metrics
+      interval: 15s
+---
+# 알림 규칙 예시 (PrometheusRule CRD)
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: study-rules
+  namespace: study
+  labels: { release: kps }
+spec:
+  groups:
+    - name: study
+      rules:
+        - alert: StudyRedisDown
+          expr: redis_up == 0
+          for: 1m
+          labels: { severity: critical }
+          annotations: { summary: "Redis exporter 가 Redis 에 연결하지 못함" }
+        - alert: StudyRedisMemoryHigh
+          expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+          for: 5m
+          labels: { severity: warning }
+          annotations: { summary: "Redis 메모리 80% 초과" }

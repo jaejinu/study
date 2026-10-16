@@ -1,0 +1,26 @@
+# kube-prometheus-stack 값 (로컬 학습용, 가볍게). pnpm k8s:monitoring
+grafana:
+  adminPassword: study
+  service:
+    type: ClusterIP
+  # 이 프로젝트의 Redis 대시보드도 함께 로드
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+prometheus:
+  prometheusSpec:
+    retention: 2d
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+    # 네임스페이스/레이블 상관없이 모든 ServiceMonitor/PodMonitor 를 수집 (학습용)
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+alertmanager:
+  enabled: true
+# 로컬 kind 에서는 없는 컴포넌트의 스크레이프는 끈다 (타깃 down 노이즈 방지)
+kubeControllerManager: { enabled: false }
+kubeScheduler: { enabled: false }
+kubeEtcd: { enabled: false }
+kubeProxy: { enabled: false }

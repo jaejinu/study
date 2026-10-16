@@ -35,7 +35,14 @@
     "obs:up": "docker compose --profile observability up -d prometheus redis-exporter grafana",
     "obs:down": "docker compose --profile observability stop prometheus redis-exporter grafana",
     "nginx:up": "docker compose --profile nginx up -d nginx",
-    "nginx:down": "docker compose --profile nginx stop nginx"
+    "nginx:down": "docker compose --profile nginx stop nginx",
+    "k8s:metrics": "kubectl apply -f k8s/addons/metrics-server.yaml && kubectl -n kube-system rollout status deploy/metrics-server --timeout=120s",
+    "k8s:monitoring": "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts; helm repo update; helm upgrade --install kps prometheus-community/kube-prometheus-stack -n monitoring --create-namespace -f k8s/monitoring/values.yaml --wait --timeout 15m && kubectl apply -f k8s/monitoring/redis-servicemonitor.yaml",
+    "k8s:monitoring:down": "kubectl delete -f k8s/monitoring/redis-servicemonitor.yaml --ignore-not-found; helm uninstall kps -n monitoring",
+    "k8s:grafana:port": "kubectl -n monitoring port-forward svc/kps-grafana 13001:80",
+    "k8s:prom:port": "kubectl -n monitoring port-forward svc/kps-kube-prometheus-stack-prometheus 19091:9090",
+    "k8s:minikube": "minikube start --profile study --driver=docker --cpus 2 --memory 3072 && minikube addons enable metrics-server --profile study && minikube addons enable ingress --profile study",
+    "k8s:minikube:down": "minikube delete --profile study"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",

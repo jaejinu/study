@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 360" font-family="ui-sans-serif, system-ui, 'Apple SD Gothic Neo', sans-serif" font-size="13">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#8b98a9"/></marker></defs>
+  <rect width="900" height="360" fill="#0d1117"/>
+  <text x="30" y="36" fill="#e6edf3" font-weight="600" font-size="15">LGTM 스택 — 세 신호의 파이프라인 (이 프로젝트의 compose 구성)</text>
+  <!-- sources -->
+  <g fill="#121821" stroke="#243040"><rect x="30" y="70" width="150" height="54" rx="8"/><rect x="30" y="150" width="150" height="54" rx="8"/><rect x="30" y="230" width="150" height="54" rx="8"/></g>
+  <g fill="#e6edf3" font-weight="600"><text x="44" y="92">Study 앱</text><text x="44" y="172">Redis</text><text x="44" y="252">컨테이너 stdout</text></g>
+  <g fill="#8b98a9" font-size="11"><text x="44" y="110">/api/metrics · OTel 트레이스</text><text x="44" y="190">INFO → redis_exporter</text><text x="44" y="270">docker 로그 드라이버</text></g>
+  <!-- collectors -->
+  <g fill="#1a222e" stroke="#e6522c"><rect x="250" y="70" width="150" height="54" rx="8"/></g>
+  <g fill="#1a222e" stroke="#d29922"><rect x="250" y="230" width="150" height="54" rx="8"/></g>
+  <g fill="#1a222e" stroke="#58a6ff"><rect x="250" y="150" width="150" height="54" rx="8"/></g>
+  <g fill="#e6edf3" font-weight="600"><text x="264" y="92">Prometheus</text><text x="264" y="172">Tempo</text><text x="264" y="252">Alloy</text></g>
+  <g fill="#8b98a9" font-size="11"><text x="264" y="110">pull · 5초 스크레이프</text><text x="264" y="190">OTLP 수신 · 트레이스 저장</text><text x="264" y="270">로그 수집 · 라벨 부여</text></g>
+  <!-- stores -->
+  <g fill="#1a222e" stroke="#d29922"><rect x="470" y="230" width="150" height="54" rx="8"/></g>
+  <text x="484" y="252" fill="#e6edf3" font-weight="600">Loki</text><text x="484" y="270" fill="#8b98a9" font-size="11">라벨 인덱스 + 압축 청크</text>
+  <!-- grafana -->
+  <rect x="690" y="110" width="180" height="140" rx="10" fill="#121821" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="706" y="136" fill="#3fb950" font-weight="600">Grafana</text>
+  <g fill="#8b98a9" font-size="11.5"><text x="706" y="158">대시보드 · 알림</text><text x="706" y="176">PromQL / LogQL / TraceQL</text><text x="706" y="196">trace_id 로 로그 ↔ 트레이스</text><text x="706" y="214">exemplar 로 메트릭 → 트레이스</text><text x="706" y="234">:13000</text></g>
+  <!-- arrows -->
+  <g fill="none" stroke="#8b98a9" marker-end="url(#a)">
+    <path d="M180 97 H 248"/><path d="M180 177 H 220 Q 235 177 235 150 V 110 Q 235 97 248 97"/>
+    <path d="M180 257 H 248"/><path d="M400 257 H 468"/>
+    <path d="M180 85 Q 215 85 215 150 Q 215 177 248 177"/>
+    <path d="M400 97 Q 600 97 688 150"/><path d="M400 177 H 688"/><path d="M620 257 Q 660 257 688 220"/>
+  </g>
+  <g fill="#8b98a9" font-size="11"><text x="470" y="80">메트릭</text><text x="470" y="170">트레이스</text><text x="630" y="300">로그</text></g>
+  <text x="30" y="330" fill="#8b98a9" font-size="12">메트릭은 "무엇이 이상한가", 트레이스는 "어디서 느린가", 로그는 "정확히 무슨 일이 있었나" 에 답한다. 셋을 잇는 열쇠는 trace_id.</text>
+</svg>
