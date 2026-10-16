@@ -143,6 +143,7 @@ export default async function NotePage({ params }: Props) {
           <span className="ml-auto">
             <StudyTimer subject={subject.id} slug={slug} initialSeconds={studySeconds} />
           </span>
+          <span className="w-full text-[12.5px] text-muted">말로 꺼내 보기: <Link href={`/practice/explain?subject=${subject.id}&slug=${slug}`} className="text-info hover:underline">이 노트로 설명해 보기</Link> · <Link href={`/practice/interview?subject=${subject.id}`} className="text-info hover:underline">{subject.name} 면접 연습</Link></span>
         </div>
 
         {(related.length > 0 || cards.length > 0) && (

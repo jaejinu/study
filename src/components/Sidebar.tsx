@@ -69,6 +69,7 @@ export function Sidebar({
         <div className="nav-group nav-secondary">
           {subject && nav("/subjects", "다른 주제 보기 ↗")}
           {nav("/review", "오늘의 복습")}
+          {nav("/practice", "AI 학습 모드")}
           {nav("/drills", "장애 훈련")}
           {nav("/path", "학습 경로")}
           {nav("/mastery", "약점 지도")}
