@@ -36,8 +36,8 @@ export async function getSnapshot(): Promise<Snapshot> {
   const at = Date.now();
   try {
     await ensureConnected(r);
-    const [infoRaw, slowRaw] = await Promise.all([r.info(), r.slowlog("GET", 10)]);
-    const i = parse(infoRaw);
+    const [infoRaw, cmdRaw, slowRaw] = await Promise.all([r.info(), r.info("commandstats"), r.slowlog("GET", 10)]);
+    const i = { ...parse(infoRaw), ...parse(cmdRaw) };
     const hits = Number(i.keyspace_hits ?? 0);
     const misses = Number(i.keyspace_misses ?? 0);
     const db0 = /keys=(\d+),expires=(\d+)/.exec(i.db0 ?? "");

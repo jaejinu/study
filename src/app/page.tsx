@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { experiments } from "@/experiments";
 import { listNotes } from "@/lib/notes";
-import { shellExperiments } from "@/shell-lab";
+import { listLab } from "@/lab/registry";
 import { getProgress } from "@/lib/progress";
 import { subjects } from "@/lib/subjects";
 
@@ -13,7 +13,7 @@ export default async function Home() {
       id: s.id,
       notes: (await listNotes(s.id)).length,
       read: (await getProgress(s.id)).read.length,
-      experiments: s.id === "redis" ? experiments.length : shellExperiments.filter((e) => e.subject === s.id).length,
+      experiments: s.id === "redis" ? experiments.length : listLab(s.id).length,
     })),
   );
   return (

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge, PageHeader } from "@/components/ui";
-import { listShellExperiments, shellCategories } from "@/shell-lab";
+import { hasLab, labCategories, listLab } from "@/lab/registry";
 import { getSubject } from "@/lib/subjects";
 import { getProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
@@ -18,19 +18,19 @@ export async function generateMetadata({ params }: Props) {
 export default async function ShellLabPage({ params }: Props) {
   const { subject: id } = await params;
   const subject = getSubject(id);
-  if (!subject || (id !== "docker" && id !== "kubernetes")) notFound();
-  const list = listShellExperiments(id);
+  if (!subject || !hasLab(id)) notFound();
+  const list = listLab(id);
   const progress = await getProgress(id);
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader
         title={`${subject.name} 실험실`}
-        subtitle={`각 실험은 서버에서 실제 ${id === "docker" ? "docker" : "kubectl"} 명령을 실행하고 명령·출력·소요 시간을 그대로 보여줍니다. 기대값 검증(✓/✗)도 함께 실행됩니다.`}
+        subtitle="각 실험은 서버에서 실제 명령이나 클라이언트 라이브러리를 실행하고 단계별 결과·소요 시간을 그대로 보여줍니다. 기대값 검증(✓/✗)도 함께 실행됩니다."
       />
       <div className="mb-6">
         <ProgressBar done={list.filter((e) => progress.labDone.includes(e.id)).length} total={list.length} label="성공한 실험" />
       </div>
-      {shellCategories(id).map((c) => (
+      {labCategories(id).map((c) => (
         <section key={c} className="mb-8">
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">{c}</h2>
           <ul className="grid gap-2 sm:grid-cols-2">

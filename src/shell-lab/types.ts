@@ -1,4 +1,4 @@
-export type ShellSubject = "docker" | "kubernetes";
+export type ShellSubject = "docker" | "kubernetes" | "linux-network";
 
 export interface ShellStep {
   /** 실행한 명령 또는 설명 */

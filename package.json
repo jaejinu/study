@@ -26,13 +26,24 @@
     "docker:build": "docker build -t study:dev .",
     "docker:run": "docker run --rm -p 3200:3000 -e REDIS_URL=redis://host.docker.internal:6379 study:dev",
     "k8s:load": "kind load docker-image study:dev --name study",
-    "k8s:web:port": "kubectl -n study port-forward svc/web 3200:3000"
+    "k8s:web:port": "kubectl -n study port-forward svc/web 3200:3000",
+    "kafka:up": "docker compose --profile kafka up -d kafka",
+    "kafka:down": "docker compose --profile kafka stop kafka",
+    "pg:up": "docker compose --profile postgres up -d postgres",
+    "pg:down": "docker compose --profile postgres stop postgres",
+    "pg:cli": "docker compose exec postgres psql -U study -d study",
+    "obs:up": "docker compose --profile observability up -d prometheus redis-exporter grafana",
+    "obs:down": "docker compose --profile observability stop prometheus redis-exporter grafana",
+    "nginx:up": "docker compose --profile nginx up -d nginx",
+    "nginx:down": "docker compose --profile nginx stop nginx"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.12.0",
     "ioredis": "^6.0.0",
+    "kafkajs": "^2.2.4",
     "next": "16.4.2",
+    "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-markdown": "^10.1.0",
@@ -43,6 +54,7 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

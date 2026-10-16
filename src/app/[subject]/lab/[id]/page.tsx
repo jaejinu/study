@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Markdown } from "@/components/Markdown";
 import { ShellLabRunner } from "@/components/ShellLabRunner";
+import { CodeLabRunner } from "@/components/CodeLabRunner";
 import { Badge, Card } from "@/components/ui";
-import { getShellExperiment, listShellExperiments } from "@/shell-lab";
+import { getLab, listLab } from "@/lab/registry";
 import { listNotes } from "@/lib/notes";
 import { getSubject } from "@/lib/subjects";
 
@@ -13,17 +14,17 @@ type Props = { params: Promise<{ subject: string; id: string }> };
 
 export async function generateMetadata({ params }: Props) {
   const { subject, id } = await params;
-  return { title: getShellExperiment(subject, id)?.title ?? "실험" };
+  return { title: getLab(subject, id)?.title ?? "실험" };
 }
 
 export default async function ShellExperimentPage({ params }: Props) {
   const { subject: sid, id } = await params;
   const subject = getSubject(sid);
-  const exp = getShellExperiment(sid, id);
+  const exp = getLab(sid, id);
   if (!subject || !exp) notFound();
   const notes = await listNotes(sid);
   const related = exp.notes.map((s) => notes.find((n) => n.slug === s)).filter((n) => n !== undefined);
-  const all = listShellExperiments(exp.subject);
+  const all = listLab(sid);
   const idx = all.findIndex((e) => e.id === id);
   const prev = all[idx - 1];
   const next = all[idx + 1];
@@ -59,14 +60,14 @@ export default async function ShellExperimentPage({ params }: Props) {
           )}
         </Card>
         <Card className="p-4">
-          <h2 className="mb-2 text-sm font-semibold">터미널에서 하면</h2>
+          <h2 className="mb-2 text-sm font-semibold">{exp.kind === "shell" ? "터미널에서 하면" : "CLI / SQL 로 보면"}</h2>
           <pre className="overflow-x-auto rounded-md bg-[#0d1117] p-3 text-xs leading-relaxed">{exp.code}</pre>
         </Card>
       </div>
 
       <section className="mt-6">
         <h2 className="mb-3 text-lg font-semibold">실행 결과</h2>
-        <ShellLabRunner subject={sid} id={exp.id} />
+        {exp.kind === "shell" ? <ShellLabRunner subject={sid} id={exp.id} /> : <CodeLabRunner subject={sid} id={exp.id} />}
       </section>
 
       <nav className="mt-10 flex justify-between border-t border-border pt-4 text-sm">

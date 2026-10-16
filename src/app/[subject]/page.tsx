@@ -9,7 +9,8 @@ import { categories, experiments } from "@/experiments";
 import { listNotes } from "@/lib/notes";
 import { readLastReport } from "@/lib/report";
 import { getSubject } from "@/lib/subjects";
-import { listShellExperiments } from "@/shell-lab";
+import { hasLab, listLab } from "@/lab/registry";
+import { EnvStatusCard } from "@/components/EnvStatusCard";
 import { getProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 
@@ -38,12 +39,14 @@ export default async function SubjectHome({ params }: Props) {
             ? "노트로 개념을 익히고 → 실험실에서 실제 동작을 확인하고 → 콘솔로 직접 만져 본다."
             : subject.id === "docker"
               ? "노트로 개념을 익히고 → 터미널에서 직접 실습한다. 각 노트 끝의 실습 블록을 따라 해 보자."
-              : "노트로 개념을 익히고 → 로컬 클러스터(kind)에 직접 배포해 본다. kubectl 로 오브젝트를 만지며 익히자."
+              : subject.id === "kubernetes"
+                ? "노트로 개념을 익히고 → 로컬 클러스터(kind)에 직접 배포해 본다. kubectl 로 오브젝트를 만지며 익히자."
+                : "노트로 개념을 익히고 → 로컬 환경에서 직접 실습한다. 각 노트 끝의 체크리스트를 따라 해 보자."
         }
       />
 
       <Suspense fallback={<Card className="p-4 text-sm text-muted">환경 확인 중…</Card>}>
-        {subject.id === "redis" ? <RedisStatusCard /> : subject.id === "docker" ? <DockerStatusCard /> : <KubeStatusCard />}
+        {subject.id === "redis" ? <RedisStatusCard /> : subject.id === "docker" ? <DockerStatusCard /> : subject.id === "kubernetes" ? <KubeStatusCard /> : <EnvStatusCard subject={subject.id} />}
       </Suspense>
 
       <section className="mt-8">
@@ -125,7 +128,7 @@ export default async function SubjectHome({ params }: Props) {
         </section>
       )}
 
-      {(subject.id === "docker" || subject.id === "kubernetes") && (
+      {hasLab(subject.id) && (
         <section className="mt-8">
           <Card className="p-4">
             <div className="mb-2 flex items-baseline justify-between">
@@ -135,7 +138,7 @@ export default async function SubjectHome({ params }: Props) {
               </Link>
             </div>
             <ul className="grid gap-1 text-sm sm:grid-cols-2">
-              {listShellExperiments(subject.id).map((e) => (
+              {listLab(subject.id).map((e) => (
                 <li key={e.id}>
                   <Link href={`/${subject.id}/lab/${e.id}`} className="text-muted hover:text-foreground">
                     ⚗ {e.title}
