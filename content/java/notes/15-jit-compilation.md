@@ -120,7 +120,7 @@ Try increasing the code cache size using -XX:ReservedCodeCacheSize=
 ## 예시로 보기 — 이 프로젝트에서
 
 - [실험 `java-jit-warmup`](/java/lab/java-jit-warmup) 의 기본 모드 곡선은 `109 → 20 → 17 → 36 → 15 …` 처럼 중간에 튄다. 컨테이너 CPU 2개 위에서 **C2 컴파일러 스레드가 앱 스레드와 CPU 를 나눠 쓰기** 때문이다. 같은 일이 CPU limit 이 걸린 k8s Pod 에서 배포 직후에 일어난다([CPU 스로틀링](/os-internals/notes/03-scheduler-cgroups)).
-- Node.js 의 V8 도 같은 구조다(Ignition 인터프리터 → Sparkplug/Maglev → TurboFan, 그리고 탈최적화). [성능 공학 노트 04](/performance/notes/04-node-web-server-performance)의 "같은 함수가 처음엔 느리다" 는 관찰과 같은 현상이며, 두 런타임 비교는 [Node.js](/nodejs) 주제에서 이어진다.
+- Node.js 의 V8 도 같은 구조다(Ignition 인터프리터 → Sparkplug/Maglev → TurboFan, 그리고 탈최적화). [성능 공학 노트 04](/performance/notes/04-node-web-server-performance)의 "같은 함수가 처음엔 느리다" 는 관찰과 같은 현상이며, 두 런타임 비교는 [Node.js 09편: V8 파이프라인](/nodejs/notes/09-v8-pipeline) 주제에서 이어진다.
 - 연속 프로파일러([관측성 노트 10](/observability/notes/10-continuous-profiling))로 자바 서비스를 보면, 배포 직후 몇 분은 `Interpreter`·`C2 CompilerThread` 프레임이 크게 보이다가 사라진다.
 
 ## 실습 체크리스트

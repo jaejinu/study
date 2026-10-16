@@ -127,7 +127,7 @@ Netty·gRPC·Kafka 클라이언트·NIO 파일 채널은 GC 가 옮기지 않는
 
 - [운영체제 노트 02](/os-internals/notes/02-virtual-memory-page-cache)의 **RSS·VSZ·예약 vs 커밋** 구분이 그대로 JVM 의 reserved/committed 다. NMT 의 Total reserved 1.5GB 는 VSZ, committed 63MB 가 RSS 에 가깝다.
 - 이 사이트의 [Redis 메모리 노트](/redis/notes/12-memory-performance)가 `used_memory` 와 `used_memory_rss`(+ 단편화)를 구분하듯, 자바도 "힙 사용량" 과 "프로세스 RSS" 를 **둘 다** 대시보드에 둬야 한다. Prometheus 에선 `jvm_memory_used_bytes{area="heap"}` 와 `process_resident_memory_bytes`(또는 k8s 의 `container_memory_working_set_bytes`)를 같은 패널에.
-- Node.js 도 같다: `heapUsed` 는 V8 힙, `rss` 는 Buffer·네이티브 애드온까지([Node.js](/nodejs) 주제).
+- Node.js 도 같다: `heapUsed` 는 V8 힙, `rss` 는 Buffer·네이티브 애드온까지([Node.js 10편: GC 와 힙](/nodejs/notes/10-gc-heap)).
 
 ## 실습 체크리스트
 

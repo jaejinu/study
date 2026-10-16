@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="440" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker>
+  <marker id="g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#3fb950"/></marker>
+  <marker id="b" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#58a6ff"/></marker>
+  <marker id="o" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#d29922"/></marker>
+  <marker id="r" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#f85149"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">nextTick 큐와 마이크로태스크 큐 — 매크로태스크 사이에서 비워지는 두 줄</text>
+
+  <rect x="30" y="60" width="250" height="230" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="155" y="84" text-anchor="middle" fill="#e6edf3" font-weight="600">콜 스택 (동기 코드)</text>
+  <rect x="55" y="100" width="200" height="34" rx="5" fill="#0d1117" stroke="#58a6ff"/><text x="155" y="122" text-anchor="middle" fill="#58a6ff">console.log("sync")</text>
+  <rect x="55" y="142" width="200" height="34" rx="5" fill="#0d1117" stroke="#30363d"/><text x="155" y="164" text-anchor="middle" fill="#8b949e">process.nextTick(f)</text>
+  <rect x="55" y="184" width="200" height="34" rx="5" fill="#0d1117" stroke="#30363d"/><text x="155" y="206" text-anchor="middle" fill="#8b949e">Promise.resolve().then(g)</text>
+  <rect x="55" y="226" width="200" height="34" rx="5" fill="#0d1117" stroke="#30363d"/><text x="155" y="248" text-anchor="middle" fill="#8b949e" font-size="12">setTimeout(h)·setImmediate(i)</text>
+
+  <rect x="350" y="60" width="270" height="100" rx="10" fill="#161b22" stroke="#d29922"/>
+  <text x="485" y="84" text-anchor="middle" fill="#d29922" font-weight="600">nextTick 큐 (Node 고유)</text>
+  <rect x="375" y="100" width="60" height="34" rx="5" fill="#9e6a03" fill-opacity="0.4" stroke="#d29922"/><text x="405" y="122" text-anchor="middle" fill="#e6edf3">f</text>
+  <rect x="445" y="100" width="60" height="34" rx="5" fill="#9e6a03" fill-opacity="0.2" stroke="#d29922" stroke-dasharray="4 3"/>
+  <text x="560" y="122" text-anchor="middle" fill="#8b949e" font-size="12">재귀 시 계속 추가</text>
+
+  <rect x="350" y="190" width="270" height="100" rx="10" fill="#161b22" stroke="#3fb950"/>
+  <text x="485" y="214" text-anchor="middle" fill="#3fb950" font-weight="600">마이크로태스크 큐 (V8)</text>
+  <rect x="375" y="230" width="60" height="34" rx="5" fill="#238636" fill-opacity="0.4" stroke="#3fb950"/><text x="405" y="252" text-anchor="middle" fill="#e6edf3">g</text>
+  <text x="524" y="252" text-anchor="middle" fill="#8b949e" font-size="11">then · await · queueMicrotask</text>
+
+  <rect x="690" y="60" width="240" height="230" rx="10" fill="#161b22" stroke="#58a6ff"/>
+  <text x="810" y="84" text-anchor="middle" fill="#58a6ff" font-weight="600">이벤트 루프 (매크로태스크)</text>
+  <rect x="715" y="110" width="190" height="34" rx="5" fill="#0d1117" stroke="#58a6ff"/><text x="810" y="132" text-anchor="middle" fill="#e6edf3">timers: h</text>
+  <rect x="715" y="200" width="190" height="34" rx="5" fill="#0d1117" stroke="#58a6ff"/><text x="810" y="222" text-anchor="middle" fill="#e6edf3">check: i</text>
+  <text x="810" y="176" text-anchor="middle" fill="#8b949e" font-size="12">콜백 1개 실행 → 두 큐 비우기</text>
+
+  <line x1="257" y1="159" x2="345" y2="117" stroke="#d29922" stroke-width="1.5" marker-end="url(#o)"/>
+  <line x1="257" y1="201" x2="345" y2="245" stroke="#3fb950" stroke-width="1.5" marker-end="url(#g)"/>
+  <path d="M257,243 H312 V300 H810 V240" fill="none" stroke="#58a6ff" stroke-width="1.2" stroke-dasharray="5 4" marker-end="url(#b)"/>
+  <line x1="485" y1="162" x2="485" y2="186" stroke="#e6edf3" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="495" y="179" fill="#e6edf3" font-size="12">CJS: 먼저 비움</text>
+
+  <rect x="30" y="310" width="900" height="112" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="50" y="334" fill="#e6edf3" font-weight="600">실측 순서 (각 20회 동일)</text>
+  <text x="50" y="358" fill="#d29922">· CommonJS (.cjs): sync → nextTick → promise → microtask → (timeout | immediate)</text>
+  <text x="50" y="380" fill="#3fb950">· ES 모듈 (.mjs): sync → promise → microtask → nextTick — 모듈 평가가 이미 마이크로태스크 안이라 Promise 쪽이 먼저 비워진다</text>
+  <text x="50" y="402" fill="#f85149">· 어느 큐든 재귀로 채우면 이벤트 루프가 굶는다: nextTick 1e6회 → 0ms 타이머 34ms 지연, await 1000회로는 양보되지 않음</text>
+</svg>

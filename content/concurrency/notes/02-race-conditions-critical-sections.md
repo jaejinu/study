@@ -112,7 +112,7 @@ async function withdraw(amount) {
 await Promise.all([withdraw(80), withdraw(80)]);   // balance = -60
 ```
 
-스레드 경합과 달리 끼어들 수 있는 지점이 `await` 로 **보인다**는 것이 장점이다. 규칙은 같다 — 확인과 행동 사이에 `await` 를 두지 말거나, 그 구간을 직렬화한다(뮤텍스 라이브러리, 작업 큐). Node 의 이벤트 루프 순서는 [Node.js](/nodejs) 주제에서 자세히 다룬다.
+스레드 경합과 달리 끼어들 수 있는 지점이 `await` 로 **보인다**는 것이 장점이다. 규칙은 같다 — 확인과 행동 사이에 `await` 를 두지 말거나, 그 구간을 직렬화한다(뮤텍스 라이브러리, 작업 큐). Node 의 이벤트 루프 순서는 [Node.js 02편: 이벤트 루프](/nodejs/notes/02-event-loop-phases) 주제에서 자세히 다룬다.
 
 ## 같은 버그, 다른 층
 

@@ -71,7 +71,7 @@ const [user, orders] = await Promise.all([getUser(id), getOrders(id)]);   // 동
 
 대가는 **함수 색깔 문제**다. `async` 함수는 `async` 함수에서만 기다릴 수 있으므로 비동기가 호출 사슬을 따라 위로 번진다. 한편 [경합 조건](/concurrency/notes/02-race-conditions-critical-sections)에서 보았듯 `await` 지점마다 다른 작업이 끼어들 수 있다.
 
-Java 21 의 **가상 스레드**는 다른 해법이다. 코드는 평범한 블로킹 코드(색깔 없음)인데, 블로킹 지점에서 런타임이 가상 스레드를 캐리어 스레드에서 떼어 낸다. 스레드 수십만 개를 "그냥 블로킹" 으로 쓸 수 있다([Java 13편: 가상 스레드](/java/notes/13-virtual-threads-structured) 주제). Node 는 이벤트 루프 + async/await 쪽이다([Node.js](/nodejs) 주제).
+Java 21 의 **가상 스레드**는 다른 해법이다. 코드는 평범한 블로킹 코드(색깔 없음)인데, 블로킹 지점에서 런타임이 가상 스레드를 캐리어 스레드에서 떼어 낸다. 스레드 수십만 개를 "그냥 블로킹" 으로 쓸 수 있다([Java 13편: 가상 스레드](/java/notes/13-virtual-threads-structured) 주제). Node 는 이벤트 루프 + async/await 쪽이다([Node.js 04편: 비동기 패턴](/nodejs/notes/04-async-patterns-errors) 주제).
 
 ## 구조적 동시성 — 작업의 수명을 블록에 묶기
 

@@ -21,7 +21,7 @@ experiments: [java-hashmap-internals]
 
 이 분리 덕분에 **Kotlin·Scala·Clojure·Groovy** 도 같은 JVM 위에서 돈다. 언어만 다르고 결과물은 같은 바이트코드다. 반대로 JVM 개선(새 GC, 가상 스레드)은 이 언어들이 공짜로 누린다.
 
-> Node.js 와 비교하면: Node 는 "JavaScript 언어 + V8 엔진 + libuv + Node 표준 라이브러리" 다. V8 이 JS 소스를 직접 받아 내부 바이트코드(Ignition)로 바꾸는 반면, 자바는 **컴파일러(javac)가 미리 바이트코드 파일을 만든다**. 실행 시점에 JIT 가 뜨거운 코드를 기계어로 바꾸는 점은 둘이 같다(→ [Node.js](/nodejs)).
+> Node.js 와 비교하면: Node 는 "JavaScript 언어 + V8 엔진 + libuv + Node 표준 라이브러리" 다. V8 이 JS 소스를 직접 받아 내부 바이트코드(Ignition)로 바꾸는 반면, 자바는 **컴파일러(javac)가 미리 바이트코드 파일을 만든다**. 실행 시점에 JIT 가 뜨거운 코드를 기계어로 바꾸는 점은 둘이 같다(→ [Node.js 01편: V8 과 libuv](/nodejs/notes/01-architecture-v8-libuv)).
 
 ## JDK · JRE · JVM
 

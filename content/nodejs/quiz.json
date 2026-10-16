@@ -1,1 +1,337 @@
-[]
+[
+  {
+    "note": "01-architecture-v8-libuv",
+    "q": "Node.js 를 이루는 핵심 구성 요소 세 가지와 각각의 역할은?",
+    "a": "V8 은 자바스크립트를 컴파일·실행하고 힙을 관리한다. libuv 는 이벤트 루프와 비동기 I/O, 스레드 풀을 제공한다. C++ 바인딩이 둘을 잇고 fs·net·crypto 같은 내장 모듈을 노출한다."
+  },
+  {
+    "note": "01-architecture-v8-libuv",
+    "q": "\"Node 는 단일 스레드다\" 라는 말이 정확히 뜻하는 것은?",
+    "a": "자바스크립트 코드와 콜백이 메인 스레드 하나에서 실행된다는 뜻이다. 프로세스 안에는 libuv 스레드 풀, V8 의 GC·컴파일러 스레드 등 여러 스레드가 함께 돈다."
+  },
+  {
+    "note": "01-architecture-v8-libuv",
+    "q": "네트워크 I/O 와 파일 I/O 는 libuv 에서 어떻게 다르게 처리되나?",
+    "a": "소켓은 epoll·kqueue 같은 OS 비동기 알림으로 메인 스레드에서 기다린다. 파일 시스템·dns.lookup·crypto 의 일부·zlib 은 기본 4개짜리 스레드 풀에서 블로킹으로 처리된다."
+  },
+  {
+    "note": "01-architecture-v8-libuv",
+    "q": "pbkdf2 8개를 동시에 돌리면 기본 설정에서 시간이 두 덩어리로 나뉘는 이유와 해법은?",
+    "a": "스레드 풀이 4개라 앞의 4개가 끝난 뒤에 나머지 4개가 시작된다(실측 약 45ms·88ms). UV_THREADPOOL_SIZE=8 로 늘리면 한 번에 끝난다(58ms). 이 값은 풀이 처음 쓰이기 전에 정해야 한다."
+  },
+  {
+    "note": "01-architecture-v8-libuv",
+    "q": "dns.lookup 과 dns.resolve 의 차이는?",
+    "a": "lookup 은 getaddrinfo 를 스레드 풀에서 호출해 /etc/hosts 와 OS 설정을 따른다. resolve 는 c-ares 로 DNS 서버에 직접 질의해 스레드 풀을 쓰지 않는다. 느린 DNS 가 lookup 을 통해 스레드 풀을 막으면 파일 I/O 까지 느려진다."
+  },
+  {
+    "note": "02-event-loop-phases",
+    "q": "libuv 이벤트 루프 한 바퀴의 단계를 순서대로 말하면?",
+    "a": "timers → pending callbacks → idle·prepare → poll → check → close callbacks 이다. 각 콜백이 끝날 때마다 nextTick 큐와 마이크로태스크 큐를 비운다."
+  },
+  {
+    "note": "02-event-loop-phases",
+    "q": "poll 단계에서 루프가 블록되는 조건은?",
+    "a": "실행할 immediate 가 없고 가장 가까운 타이머까지 시간이 남으면, 그 시간까지 epoll·kqueue 에서 I/O 를 기다리며 쉰다. 처리할 일이 없을 때 CPU 를 쓰지 않는 이유다."
+  },
+  {
+    "note": "02-event-loop-phases",
+    "q": "I/O 콜백 안에서 setTimeout(0) 과 setImmediate 중 무엇이 먼저 실행되고 왜 그런가?",
+    "a": "항상 setImmediate 가 먼저다(실측 60/60). poll 단계 직후가 check 단계이고, 타이머는 다음 바퀴의 timers 단계에서야 돌기 때문이다."
+  },
+  {
+    "note": "02-event-loop-phases",
+    "q": "메인 모듈에서 setTimeout(0) 과 setImmediate 의 순서가 실행마다 바뀌는 이유는?",
+    "a": "setTimeout(0) 은 1ms 타이머가 된다. 첫 timers 단계에 들어갈 때 1ms 가 이미 지났는지에 따라 달라진다(실측 timeout 29 · immediate 11). 앞에 2ms 바쁜 작업을 두면 20/20 timeout 이 먼저다."
+  },
+  {
+    "note": "02-event-loop-phases",
+    "q": "unref() 는 무엇을 하며 언제 쓰나?",
+    "a": "핸들이 살아 있어도 이벤트 루프가 끝나는 것을 막지 않게 한다. 주기적 정리 타이머나 강제 종료 타이머처럼 프로세스 종료를 붙잡으면 안 되는 핸들에 쓴다."
+  },
+  {
+    "note": "03-microtasks-nexttick",
+    "q": "process.nextTick 큐와 Promise 마이크로태스크 큐는 무엇이 다른가?",
+    "a": "nextTick 큐는 Node 가 관리하고, 마이크로태스크 큐는 V8 이 관리한다. 둘 다 현재 콜백이 끝난 직후, 다음 매크로태스크 전에 비워진다."
+  },
+  {
+    "note": "03-microtasks-nexttick",
+    "q": "같은 코드에서 CommonJS 와 ES 모듈의 nextTick·Promise 실행 순서가 다른 이유는?",
+    "a": "CJS 는 sync → nextTick → promise 순서다. ESM 은 모듈 평가 자체가 마이크로태스크 안에서 일어나서 Promise 쪽이 먼저 비워지고 nextTick 이 마지막이 된다(실측 각 20회 동일)."
+  },
+  {
+    "note": "03-microtasks-nexttick",
+    "q": "await Promise.resolve() 를 1000번 반복해도 타이머가 끼어들지 못하는 이유는?",
+    "a": "await 의 재개는 마이크로태스크라서 마이크로태스크 큐가 빌 때까지 이벤트 루프로 돌아가지 않는다. 진짜로 양보하려면 setImmediate 같은 매크로태스크로 쪼개야 한다."
+  },
+  {
+    "note": "03-microtasks-nexttick",
+    "q": "nextTick 을 재귀로 계속 예약하면 어떤 일이 생기나?",
+    "a": "큐가 영원히 비지 않아 I/O·타이머가 굶는다(기아). 실측에서 nextTick 1e6회는 0ms 타이머를 34ms, Promise 재귀는 16ms 늦췄다."
+  },
+  {
+    "note": "03-microtasks-nexttick",
+    "q": "Zalgo 문제란 무엇이고 어떻게 피하나?",
+    "a": "같은 API 가 어떤 때는 동기로, 어떤 때는 비동기로 콜백을 부르는 문제다. 호출자의 실행 순서 가정이 깨진다. 캐시 적중 같은 동기 경로도 nextTick 이나 Promise 로 미뤄 항상 비동기로 만든다."
+  },
+  {
+    "note": "04-async-patterns-errors",
+    "q": "Node 22 에서 처리되지 않은 Promise 거부가 생기면 어떻게 되나?",
+    "a": "기본값(--unhandled-rejections=throw)으로 예외처럼 처리되어 프로세스가 종료 코드 1로 끝난다. warn 으로 바꾸면 경고만 찍고 계속 돈다."
+  },
+  {
+    "note": "04-async-patterns-errors",
+    "q": "Promise.all · allSettled · race · any 의 차이는?",
+    "a": "all 은 하나라도 거부되면 즉시 거부한다. allSettled 는 전부 끝날 때까지 기다려 결과를 모은다. race 는 가장 먼저 끝난 것을, any 는 처음 성공한 것을 따른다."
+  },
+  {
+    "note": "04-async-patterns-errors",
+    "q": "AbortSignal.timeout 과 AbortSignal.any 는 각각 무엇에 쓰나?",
+    "a": "timeout(ms) 은 시간이 지나면 스스로 중단되는 신호를 만든다. any([...]) 는 여러 신호 중 하나라도 중단되면 중단되는 신호를 만든다. 사용자 취소와 타임아웃을 함께 걸 때 쓴다."
+  },
+  {
+    "note": "04-async-patterns-errors",
+    "q": "작업 100개를 Promise.all 로 한꺼번에 돌리는 것과 동시성 10 풀의 차이는?",
+    "a": "실측에서 Promise.all 은 20ms 에 끝났지만 동시에 100개가 열렸다. 풀은 215ms 걸렸지만 동시 10개를 넘지 않았다. 외부 API·DB 가 감당할 동시성을 지키려면 풀로 제한한다."
+  },
+  {
+    "note": "04-async-patterns-errors",
+    "q": "EventEmitter 에서 'error' 이벤트에 리스너가 없으면?",
+    "a": "emit('error') 가 예외를 던져 처리되지 않으면 프로세스가 죽는다. 스트림·소켓 같은 이미터에는 항상 error 리스너를 단다."
+  },
+  {
+    "note": "05-buffers-encoding",
+    "q": "\"한글 ok\" 는 몇 글자이고 UTF-8 로 몇 바이트인가?",
+    "a": "5글자, 9바이트다. 한글 한 글자가 UTF-8 에서 3바이트이기 때문이다. length 로 바이트 크기를 계산하면 틀린다."
+  },
+  {
+    "note": "05-buffers-encoding",
+    "q": "청크 경계에서 한글이 깨지는 이유와 해법은?",
+    "a": "멀티바이트 문자가 두 청크에 나뉘면 각 청크를 따로 toString 할 때 ��가 나온다. StringDecoder 나 TextDecoder 의 decode(value, {stream:true}) 가 남은 바이트를 다음 청크까지 들고 있다가 이어 붙인다."
+  },
+  {
+    "note": "05-buffers-encoding",
+    "q": "buf.subarray() 와 Buffer.from(buf) 의 차이는?",
+    "a": "subarray 는 같은 메모리를 가리키는 뷰라서 수정이 원본에 반영된다. Buffer.from(buf) 는 복사본이다. 큰 버퍼의 작은 조각을 오래 들고 있으면 원본 전체가 해제되지 않는다."
+  },
+  {
+    "note": "05-buffers-encoding",
+    "q": "Buffer.allocUnsafe 가 빠른 이유와 위험은?",
+    "a": "0으로 채우지 않고, 작은 크기는 8KB 풀(poolSize 8192)에서 잘라 준다. 이전 데이터가 남아 있을 수 있어 전부 덮어쓰기 전에 노출하면 정보가 샌다."
+  },
+  {
+    "note": "05-buffers-encoding",
+    "q": "50MB Buffer 를 만들면 heapUsed 와 arrayBuffers 는 어떻게 보이나?",
+    "a": "실측에서 heapUsed 는 약 3MB 그대로이고 arrayBuffers 가 50MB 늘었다. Buffer 데이터는 V8 힙 밖에 있어서 --max-old-space-size 에 잡히지 않지만 RSS 와 컨테이너 한도에는 잡힌다."
+  },
+  {
+    "note": "06-streams-backpressure",
+    "q": "highWaterMark 의 Node 22 기본값과 의미는?",
+    "a": "바이트 스트림은 65536(64KB), objectMode 는 16개다. 내부 버퍼가 이 값을 넘으면 write() 가 false 를 돌려주는 기준선이다. 하드 상한은 아니다."
+  },
+  {
+    "note": "06-streams-backpressure",
+    "q": "write() 의 반환값을 무시하면 무슨 일이 생기나?",
+    "a": "소비자가 느리면 버퍼에 계속 쌓인다. 실측에서 64KB × 512 를 1ms 소비자에 쓰자 writableLength 가 32MB 까지 늘고 RSS 가 32MB 늘었다. 존중하면 64KB 에서 멈췄다."
+  },
+  {
+    "note": "06-streams-backpressure",
+    "q": "백프레셔를 지키면 전송이 느려지나?",
+    "a": "아니다. 실측에서 두 방식 모두 약 0.64초였다. 속도는 느린 소비자가 정하고, 차이는 그동안 메모리에 쌓아 두느냐뿐이다."
+  },
+  {
+    "note": "06-streams-backpressure",
+    "q": "pipe 대신 stream.pipeline 을 써야 하는 이유는?",
+    "a": "pipeline 은 백프레셔를 처리하고, 어느 단계에서든 오류가 나면 모든 스트림을 destroy 하고 콜백·Promise 로 오류를 전달한다. pipe 는 오류 시 다른 스트림을 닫지 않아 fd·메모리가 샌다."
+  },
+  {
+    "note": "07-network-http",
+    "q": "http.Agent 의 keepAlive 를 켜고 끄면 순차 요청 300개가 어떻게 달라지나?",
+    "a": "실측에서 꺼진 경우 95ms 에 연결 300개, 켜진 경우 17ms 에 연결 1개였다. TCP 핸드셰이크와 포트 소모가 사라진다."
+  },
+  {
+    "note": "07-network-http",
+    "q": "fetch(undici) 로 동시 요청 300개를 보냈을 때 ECONNRESET 이 난 이유는?",
+    "a": "undici 는 기본으로 호스트당 연결 수를 제한하지 않아 연결 300개를 한꺼번에 연다. macOS 의 accept 큐(somaxconn 128)가 넘쳐 73개가 리셋됐다. maxSockets 50 인 Agent 는 실패 0이었다."
+  },
+  {
+    "note": "07-network-http",
+    "q": "Node HTTP 서버의 기본 타임아웃 세 가지는?",
+    "a": "keepAliveTimeout 5000ms, headersTimeout 60000ms, requestTimeout 300000ms 다. 각각 유휴 keep-alive 연결, 헤더 수신, 요청 전체를 제한한다."
+  },
+  {
+    "note": "07-network-http",
+    "q": "로드밸런서 뒤에서 간헐적 502 가 나는 대표 원인은?",
+    "a": "서버의 keepAliveTimeout 이 LB 의 유휴 타임아웃보다 짧은 경우다. LB 가 재사용하려던 연결을 서버가 막 닫아 버린다. 서버 쪽 값을 LB 보다 길게 잡는다."
+  },
+  {
+    "note": "08-module-system",
+    "q": "CommonJS 와 ES 모듈의 로딩 방식 차이는?",
+    "a": "CJS 의 require 는 동기로 파일을 읽어 실행하고 module.exports 객체를 돌려준다. ESM 은 파싱·링크 단계에서 정적 import 를 먼저 해석하고, 라이브 바인딩으로 연결한 뒤 평가한다."
+  },
+  {
+    "note": "08-module-system",
+    "q": "순환 참조에서 CJS 와 ESM 은 각각 어떻게 동작하나?",
+    "a": "CJS 는 아직 실행 중인 모듈의 부분 exports 를 돌려준다(실측 b 가 { a1: 1 } 만 봄). ESM 은 초기화 전 바인딩에 접근하면 ReferenceError(Cannot access 'a' before initialization)가 난다."
+  },
+  {
+    "note": "08-module-system",
+    "q": "package.json 의 exports 필드가 하는 두 가지 일은?",
+    "a": "import·require 조건에 따라 다른 진입점(ESM·CJS)을 고르게 한다. 그리고 나열하지 않은 내부 경로 접근을 ERR_PACKAGE_PATH_NOT_EXPORTED 로 막는 캡슐화를 한다."
+  },
+  {
+    "note": "08-module-system",
+    "q": "Node 22 에서 require(esm) 이 실패하는 경우는?",
+    "a": "대상 ES 모듈이나 그 의존성에 최상위 await 가 있으면 ERR_REQUIRE_ASYNC_MODULE 로 실패한다. 동기적으로 평가할 수 없기 때문이다."
+  },
+  {
+    "note": "08-module-system",
+    "q": "듀얼 패키지 위험이란?",
+    "a": "같은 패키지가 ESM 판과 CJS 판으로 한 프로세스에 두 번 로드되는 것이다. 싱글턴·instanceof·모듈 상태가 둘로 갈라진다."
+  },
+  {
+    "note": "09-v8-pipeline",
+    "q": "Node 22(V8 12.4)의 실행 티어는?",
+    "a": "Ignition 인터프리터 → Sparkplug 베이스라인 JIT → TurboFan 최적화 JIT 이다. Maglev 중간 티어는 이 버전에서 기본으로 꺼져 있다."
+  },
+  {
+    "note": "09-v8-pipeline",
+    "q": "탈최적화(deopt)는 언제 일어나고 어떻게 관찰하나?",
+    "a": "TurboFan 이 타입 피드백을 바탕으로 세운 가정(예: 항상 Smi)이 깨지면 바이트코드로 돌아간다. --trace-deopt 로 보면 \"not a Smi\", \"Insufficient type feedback\" 같은 이유가 찍힌다."
+  },
+  {
+    "note": "09-v8-pipeline",
+    "q": "히든 클래스(맵)와 인라인 캐시는 무엇인가?",
+    "a": "히든 클래스는 객체의 속성 구성과 순서를 나타내는 내부 모양이다. 인라인 캐시는 속성 접근 지점마다 본 모양과 오프셋을 기억해 빠르게 접근한다."
+  },
+  {
+    "note": "09-v8-pipeline",
+    "q": "같은 루프에 넣는 객체 모양의 가짓수가 늘면 성능이 어떻게 변했나?",
+    "a": "실측에서 1가지 13.6ms, 2가지 20.7ms, 4가지 53.2ms 였다. 그 이상은 비슷했다. 접근 지점이 단형에서 다형·초다형으로 바뀌며 느려진다."
+  },
+  {
+    "note": "09-v8-pipeline",
+    "q": "히든 클래스를 깨지 않으려면 어떻게 코드를 쓰나?",
+    "a": "생성자나 리터럴에서 모든 속성을 같은 순서로 초기화한다. 나중에 속성을 추가하거나 delete 하지 않는다. 같은 자리에 다른 타입의 값을 섞지 않는다."
+  },
+  {
+    "note": "10-gc-heap",
+    "q": "V8 이 힙을 세대로 나누는 근거는?",
+    "a": "대부분의 객체는 금방 죽는다는 세대 가설이다. 새 객체는 작은 young 공간에서 자주 싸게 수거하고, 살아남은 것만 old 공간으로 옮긴다."
+  },
+  {
+    "note": "10-gc-heap",
+    "q": "Scavenge 와 Mark-Compact 의 차이는?",
+    "a": "Scavenge 는 young 공간에서 살아 있는 객체만 반대편 semi-space 로 복사하는 짧고 잦은 GC 다. Mark-Compact 는 old 공간 전체를 마킹·정리하며 드물지만 비싸고, 증분·동시 마킹으로 정지를 줄인다."
+  },
+  {
+    "note": "10-gc-heap",
+    "q": "단명 객체와 일부가 오래 사는 객체를 300만 개 만들었을 때 GC 는 어떻게 달랐나?",
+    "a": "단명은 minor 31회(5ms), major 0회, old 3.6MB 였다. 1/3 유지는 minor 46회(44ms), major 2회(20ms), old 137MB 였다. 오래 사는 객체가 복사·승격 비용을 만든다."
+  },
+  {
+    "note": "10-gc-heap",
+    "q": "힙 상한을 넘으면 어떻게 끝나고, 컨테이너 OOM 과 어떻게 구별하나?",
+    "a": "\"JavaScript heap out of memory\" FATAL ERROR 와 함께 SIGABRT 로 종료 코드 134 가 된다. 컨테이너 한도 초과는 커널이 SIGKILL 을 보내 137 이 된다."
+  },
+  {
+    "note": "10-gc-heap",
+    "q": "컨테이너에서 --max-old-space-size 를 어떻게 잡나?",
+    "a": "컨테이너 메모리 한도의 70~75% 로 둔다. 힙 밖 메모리(Buffer·스택·코드)를 위한 여유가 필요하고, 그래야 커널 OOM killer 대신 V8 이 먼저 GC 를 세게 돈다."
+  },
+  {
+    "note": "11-memory-leaks",
+    "q": "자바스크립트에서 메모리 누수란 무엇인가?",
+    "a": "더 이상 쓰지 않는 객체가 GC 루트에서 여전히 도달 가능해서 수거되지 않는 상태다. GC 가 있어도 참조를 놓지 않으면 샌다."
+  },
+  {
+    "note": "11-memory-leaks",
+    "q": "흔한 누수 경로 네 가지는?",
+    "a": "끝없이 커지는 전역 캐시·Map, 제거하지 않은 이벤트 리스너, 큰 객체를 붙잡은 클로저, 정리하지 않은 타이머다."
+  },
+  {
+    "note": "11-memory-leaks",
+    "q": "힙 스냅샷 두 장을 비교해서 누수를 찾는 방법은?",
+    "a": "같은 작업을 반복하기 전후로 스냅샷을 찍고 생성자별 개수 증가를 본다. 실측에서는 Session·onConfig 클로저·Buffer 가 정확히 2000개씩 늘어 반복 횟수와 맞았다."
+  },
+  {
+    "note": "11-memory-leaks",
+    "q": "얕은 크기(shallow)와 유지 크기(retained)의 차이는?",
+    "a": "얕은 크기는 객체 자신이 차지하는 바이트다. 유지 크기는 그 객체가 사라지면 함께 해제되는 전체 크기다. 누수 원인은 유지 크기가 큰 객체의 리테이너 경로에서 찾는다."
+  },
+  {
+    "note": "11-memory-leaks",
+    "q": "WeakMap 과 WeakRef 는 누수를 어떻게 막나?",
+    "a": "WeakMap 의 키와 WeakRef 의 대상은 GC 를 막지 않는다. 실측에서 Map 은 키를 붙잡았지만, WeakRef 는 GC 뒤 deref() 가 undefined 를 돌려줬고 FinalizationRegistry 콜백이 불렸다."
+  },
+  {
+    "note": "12-workers-cluster-child-process",
+    "q": "worker_threads 와 cluster 의 차이는?",
+    "a": "worker_threads 는 한 프로세스 안의 스레드로 각자 V8 아이솔레이트와 이벤트 루프를 가진다. CPU 작업을 나눌 때 쓴다. cluster 는 같은 포트를 공유하는 여러 프로세스를 띄워 요청 처리를 늘린다."
+  },
+  {
+    "note": "12-workers-cluster-child-process",
+    "q": "64MB ArrayBuffer 를 워커에 복제할 때와 transfer 할 때의 차이는?",
+    "a": "복제는 58.7ms 걸리고 원본이 그대로 남는다. transfer 는 0.1ms 로 소유권만 넘기고 원본 byteLength 가 0이 된다."
+  },
+  {
+    "note": "12-workers-cluster-child-process",
+    "q": "SharedArrayBuffer 에 워커 4개가 ++ 를 10만 번씩 하면 결과가 왜 40만이 아닌가?",
+    "a": "읽기·더하기·쓰기가 원자적이지 않아 갱신이 서로 덮어써진다(실측 148,626). Atomics.add 를 쓰면 정확히 400,000 이 된다."
+  },
+  {
+    "note": "12-workers-cluster-child-process",
+    "q": "쿠버네티스에서 cluster 를 꼭 써야 하나?",
+    "a": "보통은 Pod 를 여러 개 띄우고 Pod 당 프로세스 하나가 단순하다. 재시작·스케일·자원 한도가 Pod 단위로 관리되기 때문이다. Pod 하나에 여러 코어를 줄 때만 cluster 가 의미 있다."
+  },
+  {
+    "note": "13-profiling-diagnostics",
+    "q": "느려졌을 때 먼저 확인할 순서는?",
+    "a": "이벤트 루프 지연으로 메인 스레드가 막혔는지 본다. 그다음 CPU 프로파일로 어디서 시간을 쓰는지, GC·힙 지표로 메모리 압박인지 확인한다."
+  },
+  {
+    "note": "13-profiling-diagnostics",
+    "q": "monitorEventLoopDelay 로 200ms 블로킹을 측정하면 어떻게 보이나?",
+    "a": "실측에서 p50 11.0ms, p99·max 210.5ms 였다. 평균은 멀쩡해 보여도 꼬리 지연에 블로킹이 드러난다."
+  },
+  {
+    "note": "13-profiling-diagnostics",
+    "q": "--cpu-prof 프로파일의 self time 은 무엇을 말해 주나?",
+    "a": "함수 자기 몸체에서 쓴 시간이다. 실측에서 sortMany 가 67.7% 로 1위, GC 가 8.4% 였다. self 가 큰 함수가 최적화 대상이다."
+  },
+  {
+    "note": "13-profiling-diagnostics",
+    "q": "flame graph 는 어떻게 읽나?",
+    "a": "가로 폭이 샘플 비율(시간)이고 세로는 호출 스택 깊이다. 넓은 판 위에 더 이상 자식이 없는 넓은 부분이 self 시간이 큰 곳이다. 가로 순서는 시간 순서가 아니다."
+  },
+  {
+    "note": "13-profiling-diagnostics",
+    "q": "diagnostics_channel 의 장점은?",
+    "a": "코드를 고치지 않고 내장 모듈이 발행하는 채널을 구독해 관찰한다. 실측에서 http.server.request.start, http.server.response.finish, http.client.request.start 를 받았다. OpenTelemetry 계측도 이를 쓴다."
+  },
+  {
+    "note": "14-operations-security",
+    "q": "SIGTERM 처리기가 없을 때와 graceful shutdown 을 할 때 진행 중 요청은?",
+    "a": "처리기가 없으면 즉시 종료되어 응답이 없고 종료 코드가 143 이다. server.close 와 closeIdleConnections 로 기다리면 진행 중 요청이 200 으로 끝나고 0으로 종료한다."
+  },
+  {
+    "note": "14-operations-security",
+    "q": "쿠버네티스에서 SIGTERM 을 받자마자 닫으면 502 가 나는 이유는?",
+    "a": "엔드포인트 제거와 SIGTERM 전송이 동시에 일어나 kube-proxy·Ingress 가 몇 초간 계속 요청을 보낸다. preStop sleep 이나 readiness 실패 후 대기로 시간을 벌고, 전체를 terminationGracePeriodSeconds 안에 끝낸다."
+  },
+  {
+    "note": "14-operations-security",
+    "q": "종료 코드 134 와 137 은 각각 무엇을 뜻하나?",
+    "a": "134 는 SIGABRT 로 보통 V8 힙 상한 초과다. 137 은 SIGKILL 로 컨테이너 메모리 한도 초과나 grace period 초과다."
+  },
+  {
+    "note": "14-operations-security",
+    "q": "--permission 으로 무엇을 막을 수 있고 한계는?",
+    "a": "허용하지 않은 파일 읽기·쓰기, 자식 프로세스, 워커, 네이티브 애드온을 ERR_ACCESS_DENIED 로 막는다. 네트워크는 아직 제한하지 않아 심층 방어 한 겹으로만 본다."
+  },
+  {
+    "note": "14-operations-security",
+    "q": "npm 공급망 공격을 줄이는 기본 조치는?",
+    "a": "락파일을 커밋하고 CI 에서 --frozen-lockfile 로 설치한다. 설치 스크립트를 허용 목록으로 제한하고, audit·trivy·자동 업데이트 PR 로 취약 버전을 관리한다."
+  }
+]

@@ -4210,5 +4210,185 @@
     "subject": "aws",
     "def": "AWS API 를 로컬 컨테이너로 흉내 내는 에뮬레이터. 기본 설정에서는 IAM 을 강제하지 않아 권한 검증용으로는 쓸 수 없다.",
     "link": "/aws/notes/07-multi-az-dr-well-architected"
+  },
+  {
+    "term": "libuv",
+    "subject": "nodejs",
+    "def": "Node.js 의 이벤트 루프·비동기 I/O·스레드 풀을 제공하는 C 라이브러리. 소켓은 epoll/kqueue 로, 파일·DNS lookup·crypto 일부는 스레드 풀로 처리한다.",
+    "link": "/nodejs/notes/01-architecture-v8-libuv"
+  },
+  {
+    "term": "UV_THREADPOOL_SIZE",
+    "subject": "nodejs",
+    "def": "libuv 스레드 풀 크기를 정하는 환경 변수(기본 4). pbkdf2 8개 동시 실행 시 4면 91ms, 8이면 58ms 로 측정됐다.",
+    "link": "/nodejs/notes/01-architecture-v8-libuv"
+  },
+  {
+    "term": "이벤트 루프 단계 (event loop phases)",
+    "subject": "nodejs",
+    "def": "timers → pending → idle·prepare → poll → check → close 순으로 도는 libuv 루프의 한 바퀴. I/O 콜백 안에서는 setImmediate 가 setTimeout(0) 보다 항상 먼저다.",
+    "link": "/nodejs/notes/02-event-loop-phases"
+  },
+  {
+    "term": "setImmediate",
+    "subject": "nodejs",
+    "def": "이벤트 루프의 check 단계에서 실행되는 콜백 예약. 긴 작업을 쪼개 I/O 에 양보할 때 쓴다(마이크로태스크로는 양보되지 않는다).",
+    "link": "/nodejs/notes/02-event-loop-phases"
+  },
+  {
+    "term": "process.nextTick",
+    "subject": "nodejs",
+    "def": "현재 콜백 직후 비워지는 Node 고유 큐. CommonJS 에서는 Promise 보다 먼저, ES 모듈 최상위에서는 나중에 실행되며 재귀 사용 시 이벤트 루프를 굶긴다.",
+    "link": "/nodejs/notes/03-microtasks-nexttick"
+  },
+  {
+    "term": "마이크로태스크 (microtask)",
+    "subject": "nodejs",
+    "def": "Promise 의 then·await 재개·queueMicrotask 가 들어가는 V8 큐. 매크로태스크 하나가 끝날 때마다 빌 때까지 실행된다.",
+    "link": "/nodejs/notes/03-microtasks-nexttick"
+  },
+  {
+    "term": "처리되지 않은 거부 (unhandled rejection)",
+    "subject": "nodejs",
+    "def": "catch 없이 거부된 Promise. Node 15+ 기본값(--unhandled-rejections=throw)에서는 프로세스가 종료 코드 1로 끝난다.",
+    "link": "/nodejs/notes/04-async-patterns-errors"
+  },
+  {
+    "term": "AbortSignal",
+    "subject": "nodejs",
+    "def": "fetch·스트림·타이머 등을 취소하는 표준 신호. AbortSignal.timeout(ms) 은 TimeoutError 를, any([...]) 는 여러 신호의 결합을 만든다.",
+    "link": "/nodejs/notes/04-async-patterns-errors"
+  },
+  {
+    "term": "StringDecoder",
+    "subject": "nodejs",
+    "def": "청크 경계에서 잘린 멀티바이트 문자를 다음 청크까지 보관했다가 이어 붙이는 디코더. 없으면 한글이 �� 로 깨진다.",
+    "link": "/nodejs/notes/05-buffers-encoding"
+  },
+  {
+    "term": "highWaterMark",
+    "subject": "nodejs",
+    "def": "스트림 내부 버퍼의 기준선. Node 22 기본 64KB(objectMode 는 16개)이며, 넘으면 write() 가 false 를 돌려 백프레셔 신호를 보낸다.",
+    "link": "/nodejs/notes/06-streams-backpressure"
+  },
+  {
+    "term": "stream.pipeline",
+    "subject": "nodejs",
+    "def": "스트림들을 연결하며 백프레셔를 지키고, 오류 시 모든 스트림을 destroy 해 오류를 한 곳으로 전달하는 함수. pipe 의 안전한 대체.",
+    "link": "/nodejs/notes/06-streams-backpressure"
+  },
+  {
+    "term": "http.Agent",
+    "subject": "nodejs",
+    "def": "Node HTTP 클라이언트의 연결 풀. keepAlive 로 연결을 재사용하고 maxSockets 로 호스트당 연결 수를 제한한다.",
+    "link": "/nodejs/notes/07-network-http"
+  },
+  {
+    "term": "undici",
+    "subject": "nodejs",
+    "def": "Node 내장 fetch 의 구현체. 기본으로 호스트당 연결 수 제한이 없어 대량 동시 요청 시 accept 큐 초과로 ECONNRESET 이 날 수 있다.",
+    "link": "/nodejs/notes/07-network-http"
+  },
+  {
+    "term": "CommonJS / ES 모듈",
+    "subject": "nodejs",
+    "def": "Node 의 두 모듈 시스템. CJS 는 동기 require 와 module.exports, ESM 은 정적 import·라이브 바인딩·최상위 await 를 쓴다.",
+    "link": "/nodejs/notes/08-module-system"
+  },
+  {
+    "term": "exports 필드 (package.json)",
+    "subject": "nodejs",
+    "def": "패키지의 진입점을 import/require 조건별로 지정하고, 나열되지 않은 내부 경로를 ERR_PACKAGE_PATH_NOT_EXPORTED 로 막는 필드.",
+    "link": "/nodejs/notes/08-module-system"
+  },
+  {
+    "term": "TurboFan",
+    "subject": "nodejs",
+    "def": "V8 의 최적화 JIT 컴파일러. Ignition 바이트코드의 타입 피드백으로 기계어를 만들고, 가정이 깨지면 탈최적화한다.",
+    "link": "/nodejs/notes/09-v8-pipeline"
+  },
+  {
+    "term": "히든 클래스 (hidden class)",
+    "subject": "nodejs",
+    "def": "V8 이 객체의 속성 구성·순서로 매기는 내부 모양(Map). 같은 모양이면 인라인 캐시로 속성 접근이 빨라진다.",
+    "link": "/nodejs/notes/09-v8-pipeline"
+  },
+  {
+    "term": "인라인 캐시 (inline cache)",
+    "subject": "nodejs",
+    "def": "속성 접근 지점마다 본 히든 클래스와 오프셋을 기억하는 V8 최적화. 모양이 늘면 단형→다형→초다형으로 느려진다.",
+    "link": "/nodejs/notes/09-v8-pipeline"
+  },
+  {
+    "term": "Scavenge",
+    "subject": "nodejs",
+    "def": "V8 young 공간의 GC. 살아 있는 객체만 반대편 semi-space 로 복사하고, 두 번 살아남으면 old 공간으로 승격한다.",
+    "link": "/nodejs/notes/10-gc-heap"
+  },
+  {
+    "term": "--max-old-space-size",
+    "subject": "nodejs",
+    "def": "V8 old 공간 상한(MB). 넘으면 heap out of memory 로 SIGABRT(134). 컨테이너에서는 메모리 한도의 70~75% 로 둔다.",
+    "link": "/nodejs/notes/10-gc-heap"
+  },
+  {
+    "term": "힙 스냅샷 (heap snapshot)",
+    "subject": "nodejs",
+    "def": "V8 힙의 모든 객체와 참조 그래프를 기록한 파일. 두 장을 비교해 처리량에 비례해 느는 생성자를 찾으면 누수 지점이 나온다.",
+    "link": "/nodejs/notes/11-memory-leaks"
+  },
+  {
+    "term": "유지 크기 (retained size)",
+    "subject": "nodejs",
+    "def": "어떤 객체가 사라지면 함께 해제되는 메모리 전체. 얕은 크기는 작아도 큰 Buffer 를 붙잡은 객체는 유지 크기가 크다.",
+    "link": "/nodejs/notes/11-memory-leaks"
+  },
+  {
+    "term": "WeakRef / FinalizationRegistry",
+    "subject": "nodejs",
+    "def": "GC 를 막지 않는 약한 참조와, 대상이 수거된 뒤 호출되는 정리 콜백. 캐시용이며 호출 시점은 보장되지 않는다.",
+    "link": "/nodejs/notes/11-memory-leaks"
+  },
+  {
+    "term": "worker_threads",
+    "subject": "nodejs",
+    "def": "한 프로세스 안에서 별도 V8 아이솔레이트·이벤트 루프를 가진 스레드. CPU 작업 분산용이며 시작 비용 때문에 풀로 재사용한다.",
+    "link": "/nodejs/notes/12-workers-cluster-child-process"
+  },
+  {
+    "term": "Transferable",
+    "subject": "nodejs",
+    "def": "postMessage 시 복사 대신 소유권을 넘기는 객체(ArrayBuffer 등). 64MB 기준 복제 58.7ms, 전달 0.1ms 이며 원본은 비워진다.",
+    "link": "/nodejs/notes/12-workers-cluster-child-process"
+  },
+  {
+    "term": "Atomics",
+    "subject": "nodejs",
+    "def": "SharedArrayBuffer 위에서 원자적 연산·대기·깨우기를 제공하는 API. 여러 워커가 ++ 하면 갱신이 사라지지만 Atomics.add 는 정확하다.",
+    "link": "/nodejs/notes/12-workers-cluster-child-process"
+  },
+  {
+    "term": "cluster 모듈",
+    "subject": "nodejs",
+    "def": "같은 포트를 공유하는 Node 프로세스 여러 개를 띄우는 모듈. 기본 라운드로빈으로 연결을 나눈다(400 연결 → 100/100/100/100).",
+    "link": "/nodejs/notes/12-workers-cluster-child-process"
+  },
+  {
+    "term": "diagnostics_channel",
+    "subject": "nodejs",
+    "def": "내장 모듈·라이브러리가 발행하는 이름 붙은 채널을 구독해 코드 수정 없이 HTTP 요청 등을 관찰하는 API. APM 계측의 기반.",
+    "link": "/nodejs/notes/13-profiling-diagnostics"
+  },
+  {
+    "term": "graceful shutdown",
+    "subject": "nodejs",
+    "def": "SIGTERM 을 받으면 새 연결을 거부하고 진행 중 요청을 끝낸 뒤 종료하는 절차. 없으면 진행 중 요청이 끊긴다.",
+    "link": "/nodejs/notes/14-operations-security"
+  },
+  {
+    "term": "Node 권한 모델 (--permission)",
+    "subject": "nodejs",
+    "def": "파일 읽기·쓰기, 자식 프로세스, 워커 등을 허용 목록으로 제한하는 Node 런타임 기능. 위반 시 ERR_ACCESS_DENIED. 네트워크는 아직 제한하지 않는다.",
+    "link": "/nodejs/notes/14-operations-security"
   }
 ]

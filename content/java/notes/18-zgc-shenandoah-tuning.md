@@ -114,7 +114,7 @@ experiments: [java-gc-compare]
 ## 예시로 보기 — 이 프로젝트에서
 
 - [성능 공학 노트 08](/performance/notes/08-tail-latency-at-scale)의 **꼬리 지연** 관점에서 GC 는 대표적인 "가끔 크게 튀는" 원인이다. 팬아웃이 큰 서비스에선 한 서버의 GC 멈춤이 전체 요청의 p99 가 된다 — 그래서 헤징 요청·저지연 GC 를 함께 쓴다.
-- Go 와 Node(V8 Orinoco)도 동시·증분 GC 로 멈춤을 줄였다. 언어는 달라도 "멈춤 vs CPU·처리량" 트레이드오프는 같다([Node.js](/nodejs) 주제에서 V8 GC 와 비교).
+- Go 와 Node(V8 Orinoco)도 동시·증분 GC 로 멈춤을 줄였다. 언어는 달라도 "멈춤 vs CPU·처리량" 트레이드오프는 같다([Node.js 10편](/nodejs/notes/10-gc-heap)에서 V8 GC 와 비교).
 - [Redis 노트 04](/redis/notes/04-persistence)의 fork 기반 RDB 처럼, "앱을 멈추지 않으려고 다른 데서 비용을 내는" 설계는 시스템 곳곳에서 반복된다.
 
 ## 실습 체크리스트

@@ -110,7 +110,7 @@ S(N) = 1 / ((1 − p) + p / N)          N → ∞ 이면  S → 1 / (1 − p)
 | [06 데드락·라이브락·기아](/concurrency/notes/06-deadlock-livelock-starvation) | 막는 장치가 만드는 새 문제 |
 | [07 액터·CSP·구조적 동시성](/concurrency/notes/07-actors-csp-structured-concurrency) | 공유하지 않고 협력하기, 그리고 분산으로 |
 
-Node.js 의 이벤트 루프·워커는 [Node.js](/nodejs), 자바의 스레드·java.util.concurrent·가상 스레드는 [Java 3부: 동시성](/java/notes/10-threads-jmm) 주제에서 깊게 다룬다.
+Node.js 의 이벤트 루프·워커는 [Node.js 02편: 이벤트 루프](/nodejs/notes/02-event-loop-phases), 자바의 스레드·java.util.concurrent·가상 스레드는 [Java 3부: 동시성](/java/notes/10-threads-jmm) 주제에서 깊게 다룬다.
 
 ## 실습 체크리스트
 

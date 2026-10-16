@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="440" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker>
+  <marker id="g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#3fb950"/></marker>
+  <marker id="b" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#58a6ff"/></marker>
+  <marker id="o" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#d29922"/></marker>
+  <marker id="r" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#f85149"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">스트림 백프레셔 — write() 가 false 면 멈추고 'drain' 을 기다린다</text>
+
+  <!-- top: ignore -->
+  <text x="40" y="66" fill="#f85149" font-weight="600">반환값 무시 — 생산자가 소비자보다 빠르면 버퍼가 끝없이 커진다</text>
+  <rect x="40" y="80" width="150" height="60" rx="8" fill="#161b22" stroke="#58a6ff"/>
+  <text x="115" y="106" text-anchor="middle" fill="#58a6ff" font-weight="600">생산자</text>
+  <text x="115" y="125" text-anchor="middle" fill="#8b949e" font-size="12">64KB × 512 즉시</text>
+  <rect x="240" y="80" width="480" height="60" rx="8" fill="#161b22" stroke="#f85149"/>
+  <rect x="250" y="90" width="460" height="40" rx="4" fill="#f85149" fill-opacity="0.25"/>
+  <line x1="300" y1="84" x2="300" y2="136" stroke="#e6edf3" stroke-dasharray="3 3"/>
+  <text x="304" y="78" fill="#e6edf3" font-size="11">highWaterMark 64KB</text>
+  <text x="480" y="115" text-anchor="middle" fill="#f85149" font-weight="600">writableLength 최대 32MB · RSS +32MB</text>
+  <rect x="770" y="80" width="150" height="60" rx="8" fill="#161b22" stroke="#d29922"/>
+  <text x="845" y="106" text-anchor="middle" fill="#d29922" font-weight="600">소비자</text>
+  <text x="845" y="125" text-anchor="middle" fill="#8b949e" font-size="12">청크당 1ms</text>
+  <line x1="192" y1="110" x2="236" y2="110" stroke="#f85149" stroke-width="2" marker-end="url(#r)"/>
+  <line x1="722" y1="110" x2="766" y2="110" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- bottom: pipeline -->
+  <text x="40" y="196" fill="#3fb950" font-weight="600">pipeline() / 반환값 존중 — 버퍼가 highWaterMark 근처에서 멈춘다</text>
+  <rect x="40" y="210" width="150" height="60" rx="8" fill="#161b22" stroke="#58a6ff"/>
+  <text x="115" y="236" text-anchor="middle" fill="#58a6ff" font-weight="600">생산자</text>
+  <text x="115" y="255" text-anchor="middle" fill="#8b949e" font-size="12">false 면 일시정지</text>
+  <rect x="240" y="210" width="480" height="60" rx="8" fill="#161b22" stroke="#3fb950"/>
+  <rect x="250" y="220" width="50" height="40" rx="4" fill="#3fb950" fill-opacity="0.35"/>
+  <line x1="300" y1="214" x2="300" y2="266" stroke="#e6edf3" stroke-dasharray="3 3"/>
+  <text x="510" y="245" text-anchor="middle" fill="#3fb950" font-weight="600">writableLength 최대 64KB</text>
+  <rect x="770" y="210" width="150" height="60" rx="8" fill="#161b22" stroke="#d29922"/>
+  <text x="845" y="236" text-anchor="middle" fill="#d29922" font-weight="600">소비자</text>
+  <text x="845" y="255" text-anchor="middle" fill="#8b949e" font-size="12">청크당 1ms</text>
+  <line x1="192" y1="240" x2="236" y2="240" stroke="#3fb950" stroke-width="2" marker-end="url(#g)"/>
+  <line x1="722" y1="240" x2="766" y2="240" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+  <path d="M845,272 C845,318 115,318 115,276" fill="none" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#g)"/>
+  <text x="480" y="290" text-anchor="middle" fill="#3fb950" font-size="12">버퍼가 비면 'drain' → 생산 재개</text>
+
+  <rect x="30" y="322" width="900" height="100" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="50" y="346" fill="#e6edf3" font-weight="600">같은 32MB 를 보내는데 걸린 시간은 둘 다 약 0.64초 — 느린 쪽이 속도를 정한다. 차이는 그동안 쌓아 둔 메모리뿐</text>
+  <text x="50" y="370" fill="#8b949e">· 기본 highWaterMark: 바이트 스트림 65536 · objectMode 16 (Node 22)</text>
+  <text x="50" y="392" fill="#8b949e">· pipeline 은 오류·중단 시 양쪽 스트림을 모두 destroy 해서 파일 디스크립터 누수도 막는다</text>
+  <text x="50" y="412" fill="#8b949e">· HTTP 응답·파일·소켓·Web Streams(ReadableStream) 모두 같은 원리 — 큐가 차면 pull 을 멈춘다</text>
+</svg>

@@ -25,7 +25,7 @@ experiments: []
 spring.threads.virtual.enabled: true   # Boot 3.2+: Tomcat 요청·@Async·스케줄러가 가상 스레드
 ```
 
-> WebFlux 의 이벤트 루프는 [Node.js 이벤트 루프](/nodejs)·[Redis 단일 스레드](/redis/notes/01-redis-overview)와 같은 원리다: 블로킹 호출 하나가 그 루프의 모든 요청을 멈춘다. 가상 스레드는 "블로킹 코드를 쓰면서 논블로킹의 확장성" 을 주지만, **병목이 DB 커넥션이라면 스레드를 늘려도 빨라지지 않는다** — 아래 커넥션 풀 절.
+> WebFlux 의 이벤트 루프는 [Node.js 이벤트 루프](/nodejs/notes/02-event-loop-phases)·[Redis 단일 스레드](/redis/notes/01-redis-overview)와 같은 원리다: 블로킹 호출 하나가 그 루프의 모든 요청을 멈춘다. 가상 스레드는 "블로킹 코드를 쓰면서 논블로킹의 확장성" 을 주지만, **병목이 DB 커넥션이라면 스레드를 늘려도 빨라지지 않는다** — 아래 커넥션 풀 절.
 
 ## JPA 영속성 컨텍스트 — 마법의 정체
 

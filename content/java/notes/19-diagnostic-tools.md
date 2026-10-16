@@ -169,7 +169,7 @@ asprof -d 30 -e wall  -f /tmp/wall.html  <pid>   # 벽시계 — 대기 포함 (
 
 - 이 사이트의 [Redis 콘솔·모니터](/redis/notes/14-ops-commands) 가 `INFO`·`SLOWLOG` 로 서버를 들여다보듯, `jcmd` 는 JVM 의 `INFO` 다. "운영 중에 안전하게 볼 수 있는 명령" 과 "멈춤을 일으키는 명령(힙 덤프 ≈ Redis `KEYS *`)" 을 구분하는 감각이 같다.
 - [SRE 포스트모템](/sre/notes/05-incident-postmortem)의 타임라인 재구성에 JFR 덤프가 가장 강력한 증거다 — 메트릭은 "언제", JFR 은 "어느 스레드가 어느 메서드에서" 를 말한다.
-- Node 진단 도구(`--cpu-prof`, heap snapshot, `--inspect`)와 1:1 대응이 된다: JFR ≈ `--cpu-prof`+trace events, 힙 덤프 ≈ heap snapshot, jcmd ≈ inspector 프로토콜([Node.js](/nodejs)).
+- Node 진단 도구(`--cpu-prof`, heap snapshot, `--inspect`)와 1:1 대응이 된다: JFR ≈ `--cpu-prof`+trace events, 힙 덤프 ≈ heap snapshot, jcmd ≈ inspector 프로토콜([Node.js 13편: 진단 도구](/nodejs/notes/13-profiling-diagnostics)).
 
 ## 실습 체크리스트
 

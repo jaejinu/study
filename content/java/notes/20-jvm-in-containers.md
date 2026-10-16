@@ -117,7 +117,7 @@ env:
 ## 예시로 보기 — 이 프로젝트에서
 
 - [OS 노트 03 의 실험 `os-cgroup-limits`](/os-internals/notes/03-scheduler-cgroups)는 같은 cgroup 을 OS 관점에서 본다: `--cpus=0.5` 에서 51주기 중 51번 스로틀, `--memory=64m` 에서 exit 137. 이 노트의 실험은 같은 현상을 **JVM 이 어떻게 해석하는가** 관점으로 본다 — 두 노트를 나란히 읽으면 "컨테이너는 결국 cgroup" 이 손에 잡힌다.
-- 이 저장소의 앱은 Node 지만 같은 질문을 가진다: Node 의 `--max-old-space-size` 기본값도 컨테이너 한도와 맞춰야 한다([Node.js](/nodejs)).
+- 이 저장소의 앱은 Node 지만 같은 질문을 가진다: Node 의 `--max-old-space-size` 기본값도 컨테이너 한도와 맞춰야 한다([Node.js 10편: GC 와 힙](/nodejs/notes/10-gc-heap)).
 - 관측: `container_memory_working_set_bytes` (k8s, OOMKilled 판정 기준) 와 `jvm_memory_used_bytes{area="heap"}` 를 한 패널에 그리면 "힙 밖" 이 두 선의 차이로 보인다. 컨테이너 한도의 90% 알림을 둔다([k8s 관측](/observability/notes/07-kubernetes-observability)).
 
 ## 실습 체크리스트
