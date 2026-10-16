@@ -12,8 +12,8 @@ export interface LabItem {
   notes: string[];
 }
 
-const SHELL = new Set(["docker", "kubernetes", "linux-network", "observability", "security", "iac", "performance"]);
-const CODE = new Set(["kafka", "postgres", "ai-systems", "chaos", "observability"]);
+const SHELL = new Set(["docker", "kubernetes", "linux-network", "observability", "security", "iac", "performance", "sre", "ebpf", "finops", "os-internals"]);
+const CODE = new Set(["kafka", "postgres", "ai-systems", "chaos", "observability", "search", "db-internals", "api-design", "messaging", "mlops", "testing", "distributed-systems"]);
 
 export function hasLab(subject: string): boolean {
   return SHELL.has(subject) || CODE.has(subject);

@@ -213,6 +213,65 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  # ---- OpenSearch : pnpm search:up (19200) — 검색 주제 ----
+  opensearch:
+    image: opensearchproject/opensearch:2.19.1
+    container_name: study-opensearch
+    profiles: ["search"]
+    ports:
+      - "127.0.0.1:19200:9200"
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+      bootstrap.memory_lock: "false"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # ---- RabbitMQ + NATS : pnpm mq:up — 메시징 비교 주제 ----
+  rabbitmq:
+    image: rabbitmq:4.0-management-alpine
+    container_name: study-rabbitmq
+    profiles: ["mq"]
+    ports:
+      - "127.0.0.1:5673:5672"
+      - "127.0.0.1:15674:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: study
+      RABBITMQ_DEFAULT_PASS: study
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+  nats:
+    image: nats:2.11-alpine
+    container_name: study-nats
+    profiles: ["mq"]
+    command: ["-js", "-m", "8222", "-sd", "/data"]
+    ports:
+      - "127.0.0.1:14222:4222"
+      - "127.0.0.1:18222:8222"
+    volumes:
+      - nats-data:/data
+
+  # ---- MLflow : pnpm mlflow:up (15000) — MLOps 주제 ----
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.22.0
+    container_name: study-mlflow
+    profiles: ["mlflow"]
+    command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--backend-store-uri", "sqlite:////data/mlflow.db", "--artifacts-destination", "/data/artifacts"]
+    ports:
+      - "127.0.0.1:15000:5000"
+    volumes:
+      - mlflow-data:/data
+
   # ---- Nginx TLS 종단 : pnpm nginx:tls (사설 CA, https://localhost:18444) ----
   nginx-tls:
     image: nginx:1.27-alpine
@@ -227,6 +286,9 @@ services:
       - "host.docker.internal:host-gateway"
 
 volumes:
+  opensearch-data:
+  nats-data:
+  mlflow-data:
   redis-data:
   pg-data:
   loki-data:

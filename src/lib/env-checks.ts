@@ -257,8 +257,65 @@ export async function checkPerformance(): Promise<EnvStatus> {
   };
 }
 
+async function checkSimple(title: string, probes: { label: string; ok: boolean; detail?: string }[], hint?: string, links?: { label: string; href: string }[]): Promise<EnvStatus> {
+  return { ok: probes.every((p) => p.ok), title, lines: probes.map((p) => `${p.label}: ${p.ok ? "준비됨" : "없음"}${p.detail ? ` (${p.detail})` : ""}`), hint, links };
+}
+
+export async function checkSre(): Promise<EnvStatus> {
+  const [prom, am, app] = await Promise.all([fetchText("http://127.0.0.1:19090/-/ready"), fetchText("http://127.0.0.1:19093/-/ready"), fetchText("http://127.0.0.1:3000/api/metrics")]);
+  return checkSimple(prom.ok && am.ok ? "SLO 실험 준비됨 (Prometheus · Alertmanager · 앱 메트릭)" : "관측 스택이 필요합니다", [{ label: "Prometheus(19090)", ok: prom.ok }, { label: "Alertmanager(19093)", ok: am.ok }, { label: "앱 /api/metrics", ok: app.ok }], prom.ok ? undefined : "pnpm obs:up", [{ label: "Grafana", href: "http://localhost:13000" }, { label: "관측성 대시보드", href: "/observability" }]);
+}
+export async function checkEbpf(): Promise<EnvStatus> {
+  const [docker, kernel, falco] = await Promise.all([version("docker", ["--version"]), run("docker", ["info", "--format", "{{.KernelVersion}}"]), run("kubectl", ["--context", "kind-study", "-n", "falco", "get", "ds", "falco", "-o", "jsonpath={.status.numberReady}", "--request-timeout=4s"])]);
+  return checkSimple(docker ? `eBPF 실험 준비됨 (Docker VM 커널 ${kernel.out || "?"})` : "Docker 가 필요합니다", [{ label: "docker", ok: !!docker, detail: docker ?? undefined }, { label: "Linux 커널 (BTF 필요, 5.8+)", ok: kernel.ok, detail: kernel.out }, { label: "Falco (kind-study)", ok: falco.ok && Number(falco.out) > 0 }], docker ? undefined : "Docker Desktop 실행", [{ label: "bpftrace 문서", href: "https://github.com/bpftrace/bpftrace" }, { label: "보안 Falco 실험", href: "/security/lab" }]);
+}
+export async function checkSearch(): Promise<EnvStatus> {
+  const os = await fetchText("http://127.0.0.1:19200/");
+  const ver = os.ok ? (os.text.match(/"number"\s*:\s*"([^"]+)"/)?.[1] ?? "") : "";
+  return checkSimple(os.ok ? `OpenSearch ${ver} 연결됨 (19200)` : "OpenSearch 가 꺼져 있습니다", [{ label: "OpenSearch(19200)", ok: os.ok, detail: ver || undefined }], os.ok ? undefined : "pnpm search:up", [{ label: "OpenSearch 문서", href: "https://docs.opensearch.org" }]);
+}
+export async function checkDbInternals(): Promise<EnvStatus> {
+  const [pg, redis] = await Promise.all([run("docker", ["inspect", "-f", "{{.State.Status}}", "study-postgres"]), run("docker", ["inspect", "-f", "{{.State.Status}}", "study-redis"])]);
+  return checkSimple("스토리지 엔진 실험 대상", [{ label: "PostgreSQL(study-postgres, pageinspect)", ok: pg.ok && pg.out === "running" }, { label: "Redis(study-redis)", ok: redis.ok && redis.out === "running" }, { label: "node:sqlite (Node 22 내장)", ok: Number(process.versions.node.split(".")[0]) >= 22 }], pg.ok ? undefined : "pnpm pg:up && pnpm redis:docker");
+}
+export async function checkApiDesign(): Promise<EnvStatus> {
+  const nginx = await fetchText("http://127.0.0.1:18080/health");
+  return checkSimple("gRPC 실험은 Node 만으로 동작합니다", [{ label: "@grpc/grpc-js", ok: true }, { label: "Nginx 프록시(18080)", ok: nginx.ok }], nginx.ok ? undefined : "pnpm nginx:up   # 프록시 실험용 (선택)", [{ label: "gRPC 문서", href: "https://grpc.io/docs/" }]);
+}
+export async function checkMessaging(): Promise<EnvStatus> {
+  const [rmq, nats, kafka] = await Promise.all([fetchText("http://127.0.0.1:15674/"), fetchText("http://127.0.0.1:18222/varz"), run("docker", ["inspect", "-f", "{{.State.Status}}", "study-kafka"])]);
+  return checkSimple(rmq.ok && nats.ok ? "RabbitMQ · NATS 연결됨" : "브로커가 꺼져 있습니다", [{ label: "RabbitMQ(5673, 관리 15674)", ok: rmq.ok }, { label: "NATS JetStream(14222, 모니터 18222)", ok: nats.ok }, { label: "Kafka(19092, 비교용)", ok: kafka.ok && kafka.out === "running" }], rmq.ok && nats.ok ? undefined : "pnpm mq:up", [{ label: "RabbitMQ 관리 UI", href: "http://localhost:15674" }, { label: "NATS 모니터", href: "http://localhost:18222" }]);
+}
+export async function checkMlops(): Promise<EnvStatus> {
+  const [ollama, mlflow] = await Promise.all([fetchText("http://127.0.0.1:11434/api/tags"), fetchText("http://127.0.0.1:15000/health")]);
+  const models = ollama.ok ? (ollama.text.match(/"name"\s*:\s*"([^"]+)"/g) ?? []).map((m) => m.replace(/.*"([^"]+)"$/, "$1")).join(", ") : "";
+  return checkSimple("로컬 모델 서빙 · 실험 추적", [{ label: "Ollama(11434)", ok: ollama.ok, detail: models || undefined }, { label: "MLflow(15000)", ok: mlflow.ok }, { label: "ANTHROPIC_API_KEY", ok: !!process.env.ANTHROPIC_API_KEY, detail: "LLM-judge 실험 (없으면 로컬 모델로)" }], ollama.ok ? undefined : "brew install ollama && ollama serve && ollama pull qwen2.5:0.5b", [{ label: "Ollama", href: "https://ollama.com" }, { label: "MLflow UI", href: "http://localhost:15000" }]);
+}
+export async function checkTesting(): Promise<EnvStatus> {
+  const [redis, docker] = await Promise.all([run("docker", ["inspect", "-f", "{{.State.Status}}", "study-redis"]), version("docker", ["--version"])]);
+  return checkSimple("테스트 실험 준비", [{ label: "vitest · fast-check", ok: true }, { label: "Docker (컨테이너 격리 테스트)", ok: !!docker }, { label: "Redis(study-redis)", ok: redis.ok && redis.out === "running" }], redis.ok ? undefined : "pnpm redis:docker");
+}
+export async function checkFinops(): Promise<EnvStatus> {
+  const [oc, prom, kps] = await Promise.all([run("kubectl", ["--context", "kind-study", "-n", "opencost", "get", "deploy", "opencost", "-o", "jsonpath={.status.readyReplicas}", "--request-timeout=4s"]), fetchText("http://127.0.0.1:19090/-/ready"), run("kubectl", ["--context", "kind-study", "-n", "monitoring", "get", "svc", "kps-kube-prometheus-stack-prometheus", "--request-timeout=4s"])]);
+  return checkSimple("비용 모델링 대상", [{ label: "OpenCost (kind-study)", ok: oc.ok && Number(oc.out) > 0 }, { label: "kube-prometheus-stack", ok: kps.ok }, { label: "Prometheus(19090, 보존 비용 측정)", ok: prom.ok }], oc.ok && Number(oc.out) > 0 ? undefined : "helm install opencost (실험 설명 참고)", [{ label: "OpenCost", href: "https://www.opencost.io" }]);
+}
+export async function checkOsInternals(): Promise<EnvStatus> {
+  const [docker, kernel, redis] = await Promise.all([version("docker", ["--version"]), run("docker", ["info", "--format", "{{.KernelVersion}} / {{.NCPU}} CPU / {{.MemTotal}} B"]), run("docker", ["inspect", "-f", "{{.State.Status}}", "study-redis"])]);
+  return checkSimple(docker ? `Linux VM 준비됨 (${kernel.out})` : "Docker 가 필요합니다", [{ label: "docker (특권 컨테이너로 perf·bpftrace)", ok: !!docker }, { label: "Redis(study-redis, 관측 대상)", ok: redis.ok && redis.out === "running" }], docker ? undefined : "Docker Desktop 실행");
+}
+
 export async function checkEnv(subject: string): Promise<EnvStatus> {
   switch (subject) {
+    case "sre": return checkSre();
+    case "ebpf": return checkEbpf();
+    case "search": return checkSearch();
+    case "db-internals": return checkDbInternals();
+    case "api-design": return checkApiDesign();
+    case "messaging": return checkMessaging();
+    case "mlops": return checkMlops();
+    case "testing": return checkTesting();
+    case "finops": return checkFinops();
+    case "os-internals": return checkOsInternals();
     case "security":
       return checkSecurity();
     case "iac":
