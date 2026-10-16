@@ -98,14 +98,14 @@ export function ShellLabRunner({ subject, id }: { subject: string; id: string })
         </Button>
         {result && (
           <>
-            <Badge tone={result.ok ? "ok" : "accent"}>{result.ok ? "성공" : "실패"}</Badge>
+            <Badge tone={result.ok ? "ok" : "danger"}>{result.ok ? "성공" : "실패"}</Badge>
             <span className="text-xs text-muted">
               {result.steps.length}단계 · {(result.durationMs / 1000).toFixed(1)}s · {new Date(result.ranAt).toLocaleTimeString("ko-KR")}
             </span>
           </>
         )}
       </div>
-      {result?.error && <pre className="whitespace-pre-wrap rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-xs text-accent">{result.error}</pre>}
+      {result?.error && <pre className="whitespace-pre-wrap rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">{result.error}</pre>}
       {result && result.steps.length > 0 && (
         <div className="rounded-lg border border-border">
           {result.steps.map((s, i) => (

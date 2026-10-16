@@ -25,7 +25,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       <PageHeader title="검색" subtitle="모든 주제의 노트 본문과 실험을 찾습니다. 여러 단어는 모두 포함된 것만 보여줍니다." />
       <form action="/search" className="mb-6 flex gap-2">
         <input name="q" defaultValue={q} placeholder="예: 파이프라인, 격리 수준, MOVED, 롤링 업데이트" autoFocus className="flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-muted" />
-        <button className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">검색</button>
+        <button className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-contrast">검색</button>
       </form>
       {q.trim() && <p className="mb-3 text-xs text-muted">{hits.length}건</p>}
       <ul className="space-y-2">

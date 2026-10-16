@@ -10,6 +10,7 @@ import { Flashcards } from "@/components/Flashcards";
 import { loadQuiz } from "@/lib/quiz";
 import { cardKey, getNoteTime, getQuizStats } from "@/lib/study";
 import { StudyTimer } from "@/components/StudyTimer";
+import { NoteReader } from "@/components/NoteReader";
 import { Toc } from "@/components/Toc";
 import { logger } from "@/lib/log";
 import { metrics } from "@/lib/metrics";
@@ -42,7 +43,7 @@ export default async function NotePage({ params }: Props) {
   const readMinutes = Math.max(1, Math.round(note.content.replace(/```[\s\S]*?```/g, "").length / 650));
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[minmax(0,1fr)_230px]">
+    <NoteReader location={{href:`${base}/${slug}`, title:note.title, subject:subject.name, chapter:idx+1}}><details className="mobile-toc"><summary>이 노트의 목차</summary><Toc headings={note.headings} /></details><div className="reader-layout">
       <article>
         <div className="mb-4 flex items-center gap-2 pt-8 text-xs text-muted md:pt-0">
           <Link href={base} className="hover:text-foreground">
@@ -115,8 +116,8 @@ export default async function NotePage({ params }: Props) {
         </nav>
       </article>
 
-      <aside className="hidden lg:block">
-        <div className="sticky top-8">
+      <aside className="reader-aside">
+        <div>
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">이 노트의 목차</div>
           <div className="max-h-[calc(100vh-8rem)] overflow-y-auto pr-1">
             <Toc headings={note.headings} />
@@ -132,6 +133,6 @@ export default async function NotePage({ params }: Props) {
           )}
         </div>
       </aside>
-    </div>
+    </div></NoteReader>
   );
 }

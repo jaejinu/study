@@ -23,7 +23,7 @@ export function ExperimentRunner({ id }: { id: string }) {
         </Button>
         {result && (
           <>
-            <Badge tone={result.ok ? "ok" : "accent"}>{result.ok ? "성공" : "실패"}</Badge>
+            <Badge tone={result.ok ? "ok" : "danger"}>{result.ok ? "성공" : "실패"}</Badge>
             <span className="text-xs text-muted">
               {result.steps.length}단계 · {result.durationMs}ms · {new Date(result.ranAt).toLocaleTimeString("ko-KR")}
             </span>
@@ -31,7 +31,7 @@ export function ExperimentRunner({ id }: { id: string }) {
         )}
       </div>
       {result?.error && (
-        <div className="rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-sm text-accent">{result.error}</div>
+        <div className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{result.error}</div>
       )}
       {result && <StepsTable steps={result.steps} />}
       {!result && (

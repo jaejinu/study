@@ -74,7 +74,7 @@ export function Console() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
-      <div className="flex min-h-[520px] flex-col rounded-lg border border-border bg-[#0d1117]">
+      <div className="flex min-h-[520px] flex-col rounded-lg border border-border bg-code">
         <div className="flex-1 overflow-y-auto p-4 font-mono text-[13px] leading-relaxed">
           {history.length === 0 && (
             <div className="text-muted">

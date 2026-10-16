@@ -168,7 +168,7 @@ export default async function SubjectHome({ params }: Props) {
             <p className="text-sm text-muted">
               <code>k8s/</code> 의 매니페스트(Namespace, ConfigMap, StatefulSet, Service)를 kustomize 로 적용합니다. 포트 포워딩하면 Redis 대시보드와 실험이 그대로 붙습니다.
             </p>
-            <pre className="mt-2 rounded bg-[#0d1117] p-3 text-xs leading-relaxed">{`pnpm k8s:cluster     # kind 로 로컬 클러스터 생성 (최초 1회)
+            <pre className="mt-2 rounded bg-code p-3 text-xs leading-relaxed">{`pnpm k8s:cluster     # kind 로 로컬 클러스터 생성 (최초 1회)
 pnpm k8s:up          # kustomize 빌드 → kubectl apply + 롤아웃 대기
 kubectl -n study get all,pvc,cm
 pnpm k8s:port        # svc/redis → localhost:6379 (다른 Redis 는 꺼 두기)
@@ -185,7 +185,7 @@ pnpm k8s:cluster:down`}</pre>
             <p className="text-sm text-muted">
               루트의 <code>docker-compose.yml</code> 은 <code>redis/redis.conf</code> 를 그대로 마운트합니다. Redis 노트의 실험도 그대로 동작합니다.
             </p>
-            <pre className="mt-2 rounded bg-[#0d1117] p-3 text-xs leading-relaxed">{`pnpm redis:docker          # docker compose up -d redis
+            <pre className="mt-2 rounded bg-code p-3 text-xs leading-relaxed">{`pnpm redis:docker          # docker compose up -d redis
 docker compose logs -f redis
 docker compose exec redis redis-cli ping
 pnpm redis:docker:down     # 정지 (데이터는 볼륨에 보존)`}</pre>

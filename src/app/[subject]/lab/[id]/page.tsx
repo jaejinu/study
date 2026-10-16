@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CodeBlock } from "@/components/CodeBlock";
 import { Markdown } from "@/components/Markdown";
 import { ShellLabRunner } from "@/components/ShellLabRunner";
 import { CodeLabRunner } from "@/components/CodeLabRunner";
@@ -30,7 +31,7 @@ export default async function ShellExperimentPage({ params }: Props) {
   const next = all[idx + 1];
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="lab-page mx-auto max-w-5xl">
       <div className="mb-3 flex items-center gap-2 pt-8 text-xs text-muted md:pt-0">
         <Link href={`/${sid}/lab`} className="hover:text-foreground">
           {subject.name} 실험실
@@ -41,8 +42,8 @@ export default async function ShellExperimentPage({ params }: Props) {
       <h1 className="text-2xl font-bold tracking-tight">{exp.title}</h1>
       <p className="mt-1 text-muted">{exp.summary}</p>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Card className="p-4">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card className="min-w-0 p-6">
           <h2 className="mb-1 text-sm font-semibold">무엇을 배우나</h2>
           <Markdown content={exp.description.trim()} small />
           {related.length > 0 && (
@@ -59,13 +60,13 @@ export default async function ShellExperimentPage({ params }: Props) {
             </div>
           )}
         </Card>
-        <Card className="p-4">
+        <Card className="min-w-0 p-6">
           <h2 className="mb-2 text-sm font-semibold">{exp.kind === "shell" ? "터미널에서 하면" : "CLI / SQL 로 보면"}</h2>
-          <pre className="overflow-x-auto rounded-md bg-[#0d1117] p-3 text-xs leading-relaxed">{exp.code}</pre>
+          <CodeBlock><code>{exp.code}</code></CodeBlock>
         </Card>
       </div>
 
-      <section className="mt-6">
+      <section className="mt-6 rounded-xl border border-border bg-surface p-6">
         <h2 className="mb-3 text-lg font-semibold">실행 결과</h2>
         {exp.kind === "shell" ? <ShellLabRunner subject={sid} id={exp.id} /> : <CodeLabRunner subject={sid} id={exp.id} />}
       </section>

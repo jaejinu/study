@@ -1,101 +1,120 @@
 import Link from "next/link";
-import { experiments } from "@/experiments";
 import { listNotes } from "@/lib/notes";
-import { listLab } from "@/lab/registry";
 import { getReadCounts } from "@/lib/progress";
-import { subjects, subjectsByTrack } from "@/lib/subjects";
+import { subjects } from "@/lib/subjects";
 import { loadQuiz } from "@/lib/quiz";
-import { cardKey, getQuizStats, getWeeklyStudy, summarizeReview } from "@/lib/study";
+import {
+  cardKey,
+  getQuizStats,
+  getWeeklyStudy,
+  summarizeReview,
+} from "@/lib/study";
 import { WeeklyStudyCard } from "@/components/WeeklyStudy";
-
+import { ContinueLearning } from "@/components/ContinueLearning";
 export const dynamic = "force-dynamic";
-
 export default async function Home() {
-  const [counts, weekly, readCounts] = await Promise.all([
+  const [all, weekly, reads] = await Promise.all([
     Promise.all(
       subjects.map(async (s) => {
-        const [notes, quiz, stats] = await Promise.all([listNotes(s.id), loadQuiz(s.id), getQuizStats(s.id)]);
+        const [notes, quiz, stats] = await Promise.all([
+          listNotes(s.id),
+          loadQuiz(s.id),
+          getQuizStats(s.id),
+        ]);
         return {
-          id: s.id,
-          notes: notes.length,
-          experiments: s.id === "redis" ? experiments.length : listLab(s.id).length,
-          due: summarizeReview(quiz.map((c) => cardKey(c.note, c.q)), stats).due,
+          ...s,
+          notes,
+          due: summarizeReview(
+            quiz.map((c) => cardKey(c.note, c.q)),
+            stats,
+          ).due,
         };
       }),
     ),
     getWeeklyStudy(),
     getReadCounts(),
   ]);
-  const dueBySubject = Object.fromEntries(counts.map((c) => [c.id, c.due]));
+  const first = all.find((s) => s.notes.length > 0)!;
+  const due = all.reduce((sum, s) => sum + s.due, 0),
+    review = all.find((s) => s.due > 0) ?? first;
+  const active = [...all]
+    .filter((s) => s.notes.length)
+    .sort((a, b) => (reads[b.id] ?? 0) - (reads[a.id] ?? 0))
+    .slice(0, 4);
   return (
-    <div className="mx-auto max-w-5xl pt-10 md:pt-16">
-      <div className="mb-10 text-center">
-        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">무엇을 공부할까요?</h1>
-        <p className="mt-3 text-muted">
-          {subjects.length}개 주제 · 노트 {counts.reduce((a, c) => a + c.notes, 0)}편 · 실험 {counts.reduce((a, c) => a + c.experiments, 0)}개. 주제를 고르면 목차 순서의 학습 노트와 실험실이 열립니다.
-        </p>
-      </div>
-      {subjectsByTrack().map(({ track, subjects: list }) => (
-        <section key={track.id} className="mb-9">
-          <div className="mb-3 flex items-baseline gap-3">
-            <h2 className="text-lg font-semibold">{track.name}</h2>
-            <span className="text-sm text-muted">{track.desc}</span>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {list.map((s) => {
-              const c = counts.find((x) => x.id === s.id)!;
-              const read = readCounts[s.id] ?? 0;
-              const pct = c.notes ? Math.round((read / c.notes) * 100) : 0;
-              return (
-                <Link key={s.id} href={`/${s.id}`} className={`group flex flex-col rounded-xl border border-border bg-surface p-5 transition-all hover:-translate-y-0.5 hover:border-muted hover:shadow-lg hover:shadow-black/30 ${c.notes === 0 ? "opacity-60" : ""}`}>
-                  <div className="flex items-center gap-3">
-                    <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg text-base font-bold text-white ${s.color}`}>{s.mark}</span>
-                    <div className="min-w-0">
-                      <div className="truncate text-[17px] font-semibold leading-tight">{s.name}</div>
-                      <div className="truncate text-[12.5px] text-muted">{s.tagline}</div>
-                    </div>
-                  </div>
-                  <p className="clamp-3 mt-3 flex-1 text-[13.5px] leading-relaxed text-muted">{s.description}</p>
-                  <div className="mt-4">
-                    <div className="h-1 overflow-hidden rounded bg-surface-2">
-                      <div className="h-full rounded bg-ok" style={{ width: `${pct}%` }} />
-                    </div>
-                    <div className="mt-2 flex items-center gap-3 text-[12px] text-muted">
-                      {c.notes === 0 ? (
-                        <span className="rounded border border-border bg-surface-2 px-1.5 py-0.5 text-[11px]">준비 중</span>
-                      ) : (
-                        <span>
-                          노트 <span className="font-mono text-foreground">{c.notes}</span>
-                          {read > 0 && <span className="text-ok"> · {read} 읽음</span>}
-                        </span>
-                      )}
-                      {c.experiments > 0 && (
-                        <span>
-                          실험 <span className="font-mono text-foreground">{c.experiments}</span>
-                        </span>
-                      )}
-                      {c.due > 0 && <span className="text-warn">복습 {c.due}</span>}
-                      <span className="ml-auto text-info opacity-0 transition-opacity group-hover:opacity-100">시작 →</span>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      ))}
-      <div className="mt-8">
-        <WeeklyStudyCard weekly={weekly} dueBySubject={dueBySubject} />
-      </div>
-      <div className="mt-8 flex justify-center gap-3 text-sm">
-        <Link href="/assistant" className="rounded-md border border-accent/40 bg-accent-soft px-3 py-1.5 hover:border-accent">🤖 AI 도우미</Link>
-        <Link href="/search" className="rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">🔍 검색</Link>
-        <Link href="/glossary" className="rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">📖 용어집</Link>
-        <Link href="/graph" className="rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">🕸 링크 그래프</Link>
-      </div>
-      <p className="mt-6 text-center text-xs text-muted">
-        주제를 추가하려면 <code>src/lib/subjects.ts</code> 에 항목을 넣고 <code>content/&lt;id&gt;/notes</code> 에 노트를 작성하세요.
+    <div className="study-home">
+      <p className="eyebrow">YOUR LEARNING SPACE</p>
+      <h1 className="home-title">오늘도, 하나의 개념을 깊이.</h1>
+      <p className="home-intro">
+        읽고, 직접 실험하고, 나의 지식으로 남기는 시간.
       </p>
+      {first && (
+        <ContinueLearning
+          first={{
+            href: `/${first.id}/notes/${first.notes[0].slug}`,
+            title: first.notes[0].title,
+            subject: first.name,
+            chapter: 1,
+            progress: 0,
+          }}
+        />
+      )}
+      <div className="home-actions">
+        <Link id="review" className="home-action" href={`/${review.id}/quiz`}>
+          <h2>
+            기억을 단단하게 <span className="float-right text-accent">↗</span>
+          </h2>
+          <p>
+            {due > 0
+              ? `오늘 복습할 카드 ${due}장이 기다리고 있어요.`
+              : "퀴즈로 방금 배운 내용을 확인해 보세요."}
+          </p>
+        </Link>
+        <Link className="home-action" href="/redis/lab">
+          <h2>
+            직접 해보면 더 선명하게{" "}
+            <span className="float-right text-accent">↗</span>
+          </h2>
+          <p>코드를 실행하고, 결과를 살펴보며 이해해 보세요.</p>
+        </Link>
+      </div>
+      <section className="mb-10">
+        <div className="section-heading">
+          <h2>학습 중인 주제</h2>
+          <Link href="/subjects">전체 {subjects.length}개 주제 보기 →</Link>
+        </div>
+        {active.map((s) => {
+          const read = Math.min(reads[s.id] ?? 0, s.notes.length),
+            pct = (read / s.notes.length) * 100;
+          return (
+            <Link className="subject-row" href={`/${s.id}`} key={s.id}>
+              <span className="grid h-10 w-10 place-items-center rounded-lg bg-accent-soft text-sm font-semibold text-accent">
+                {s.mark}
+              </span>
+              <div className="subject-title">
+                <h3>{s.name}</h3>
+                <p>{s.tagline}</p>
+              </div>
+              <span className="text-xs text-muted">
+                {read} / {s.notes.length}
+              </span>
+              <div
+                className="subject-meter"
+                aria-label={`${s.name} ${Math.round(pct)}% 완료`}
+              >
+                <span style={{ width: `${pct}%` }} />
+              </div>
+              <span className="text-muted">→</span>
+            </Link>
+          );
+        })}
+      </section>
+      <section id="activity">
+        <WeeklyStudyCard
+          weekly={weekly}
+          dueBySubject={Object.fromEntries(all.map((s) => [s.id, s.due]))}
+        />
+      </section>
     </div>
   );
 }

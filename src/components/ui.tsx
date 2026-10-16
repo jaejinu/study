@@ -17,8 +17,9 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
   return <div className={`rounded-lg border border-border bg-surface ${className}`}>{children}</div>;
 }
 
-export function Badge({ children, tone = "muted" }: { children: ReactNode; tone?: "muted" | "ok" | "warn" | "accent" | "info" }) {
+export function Badge({ children, tone = "muted" }: { children: ReactNode; tone?: "muted" | "ok" | "warn" | "accent" | "info" | "danger" }) {
   const map = {
+    danger: "bg-danger/10 text-danger border-danger/30",
     muted: "bg-surface-2 text-muted border-border",
     ok: "bg-ok/15 text-ok border-ok/30",
     warn: "bg-warn/15 text-warn border-warn/30",
@@ -40,9 +41,9 @@ export function Button({
   ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" | "danger" }) {
   const v = {
-    primary: "bg-accent text-white hover:bg-accent/90 disabled:bg-accent/40",
+    primary: "bg-accent text-accent-contrast hover:bg-accent/90 disabled:bg-accent/40",
     ghost: "border border-border bg-surface-2 text-foreground hover:border-muted disabled:opacity-50",
-    danger: "border border-accent/40 text-accent hover:bg-accent-soft disabled:opacity-50",
+    danger: "border border-danger/40 text-danger hover:bg-danger/10 disabled:opacity-50",
   };
   return (
     <button className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed ${v[variant]} ${className}`} {...rest}>

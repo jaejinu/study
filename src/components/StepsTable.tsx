@@ -25,9 +25,9 @@ export function StepsTable({ steps }: { steps: Step[] }) {
             if (s.note) {
               const isCheck = s.cmd.startsWith("✓") || s.cmd.startsWith("✗");
               return (
-                <tr key={i} className={`border-t border-border ${s.error ? "bg-accent-soft" : isCheck ? "bg-ok/5" : "bg-surface-2/60"}`}>
+                <tr key={i} className={`border-t border-border ${s.error ? "bg-danger/10" : isCheck ? "bg-ok/5" : "bg-surface-2/60"}`}>
                   <td className="px-3 py-1.5 text-muted">{i + 1}</td>
-                  <td colSpan={s.result == null ? 3 : 1} className={`px-3 py-1.5 ${isCheck ? (s.error ? "text-accent" : "text-ok") : "italic text-muted"}`}>
+                  <td colSpan={s.result == null ? 3 : 1} className={`px-3 py-1.5 ${isCheck ? (s.error ? "text-danger" : "text-ok") : "italic text-muted"}`}>
                     {s.cmd}
                   </td>
                   {s.result != null && (
@@ -39,12 +39,12 @@ export function StepsTable({ steps }: { steps: Step[] }) {
               );
             }
             return (
-              <tr key={i} className={`border-t border-border ${s.error ? "bg-accent-soft" : ""}`}>
+              <tr key={i} className={`border-t border-border ${s.error ? "bg-danger/10" : ""}`}>
                 <td className="px-3 py-1.5 text-muted">{i + 1}</td>
                 <td className="px-3 py-1.5 font-mono text-xs">
                   <span className="text-info">{s.cmd}</span>
                 </td>
-                <td className={`max-w-[480px] break-all px-3 py-1.5 font-mono text-xs ${s.error ? "text-accent" : ""}`}>{fmt(s.result)}</td>
+                <td className={`max-w-[480px] break-all px-3 py-1.5 font-mono text-xs ${s.error ? "text-danger" : ""}`}>{fmt(s.result)}</td>
                 <td className="px-3 py-1.5 text-right font-mono text-xs text-muted">{s.ms ? s.ms.toFixed(2) : ""}</td>
               </tr>
             );

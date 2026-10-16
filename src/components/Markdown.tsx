@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import rehypeHighlight from "rehype-highlight";
+import { CodeBlock } from "./CodeBlock";
 import { TaskCheckbox } from "./ProgressControls";
 
 interface HastNode {
@@ -47,7 +48,7 @@ export function Markdown({ content, small = false, checklist }: Props) {
     : undefined;
   return (
     <div className={`note ${small ? "note-sm" : ""}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug, rehypeCheckboxLines, [rehypeHighlight, { ignoreMissing: true }]]} components={components}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug, rehypeCheckboxLines, [rehypeHighlight, { ignoreMissing: true }]]} components={{ ...components, pre: ({ children }) => <CodeBlock>{children}</CodeBlock>, table: ({ children }) => <div className="note-table-scroll"><table>{children}</table></div> }}>
         {content}
       </ReactMarkdown>
     </div>
