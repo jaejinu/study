@@ -67,7 +67,10 @@
     "clickhouse:up": "docker compose -p study --profile clickhouse up -d clickhouse",
     "clickhouse:down": "docker compose -p study --profile clickhouse stop clickhouse",
     "lake:up": "docker compose -p study --profile lake up -d s3",
-    "lake:down": "docker compose -p study --profile lake stop s3"
+    "lake:down": "docker compose -p study --profile lake stop s3",
+    "stack:status": "docker ps --filter name=study --format 'table {{.Names}}\\t{{.Status}}' && (minikube status -p study 2>/dev/null | head -3 || true)",
+    "stack:lite": "docker compose -p study --profile search --profile mq --profile clickhouse --profile lake --profile mlflow --profile cdc --profile kafka stop opensearch rabbitmq nats clickhouse s3 mlflow connect kafka; docker stop study-netpol-control-plane 2>/dev/null; minikube stop -p study 2>/dev/null; echo '가벼운 상태: Redis·PostgreSQL·관측 스택·kind-study 만 남김. 필요한 것은 pnpm <이름>:up 으로 다시 켠다'",
+    "stack:netpol:start": "docker start study-netpol-control-plane"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
