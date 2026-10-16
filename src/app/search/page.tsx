@@ -48,7 +48,17 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           );
         })}
       </ul>
-      {q.trim() && hits.length === 0 && <p className="text-sm text-muted">결과가 없습니다. 더 짧은 단어로 시도해 보세요.</p>}
+      {q.trim() && hits.length === 0 && (
+        <div className="rounded-xl border border-dashed border-border px-6 py-8 text-center text-sm">
+          <p className="font-medium">‘{q}’ 에 맞는 노트·실험이 없습니다</p>
+          <p className="mt-1 text-muted">더 짧은 단어(예: 조사 빼기)나 영어 용어로 다시 찾아보세요. 정의가 궁금하면 용어집, 설명이 필요하면 AI 에게 물어볼 수 있습니다.</p>
+          <div className="mt-4 flex justify-center gap-2">
+            <Link href="/glossary" className="rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">
+              📖 용어집
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

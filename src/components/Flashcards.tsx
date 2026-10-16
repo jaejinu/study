@@ -84,7 +84,16 @@ export function Flashcards({ cards, subject, stats: initialStats = {}, defaultMo
     restart(buildOrder(cards, stats, m, Date.now()));
   };
 
-  if (cards.length === 0) return <p className="text-sm text-muted">아직 이 주제의 퀴즈가 없습니다.</p>;
+  if (cards.length === 0)
+    return (
+      <div className="rounded-xl border border-dashed border-border px-6 py-8 text-center text-sm">
+        <p className="font-medium">아직 이 주제의 퀴즈 카드가 없습니다</p>
+        <p className="mt-1 text-muted">노트를 먼저 읽어 보세요. 카드는 노트와 함께 추가됩니다.</p>
+        <Link href={`/${subject}/notes`} className="mt-4 inline-block rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">
+          학습 노트 목차 →
+        </Link>
+      </div>
+    );
   if (done)
     return (
       <div className="rounded-lg border border-border bg-surface p-6 text-center">

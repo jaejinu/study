@@ -167,6 +167,21 @@ code, pre, kbd { font-family: var(--font-geist-mono), ui-monospace, SFMono-Regul
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
+/* 항상 어두운 코드·터미널 패널: 라이트 테마에서도 안쪽 토큰을 다크 값으로 고정해 글자가 읽히게 */
+.code-surface {
+  background: #0d1117;
+  color: #e6edf3;
+  --foreground: #e6edf3;
+  --muted: #9aa8ba;
+  --border: #243040;
+  --surface: #121821;
+  --surface-2: #1a222e;
+  --info: #58a6ff;
+  --ok: #3fb950;
+  --warn: #d29922;
+  color-scheme: dark;
+}
+
 /* 줄 수 제한 */
 .clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

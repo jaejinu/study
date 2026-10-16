@@ -63,7 +63,7 @@ export default async function ShellExperimentPage({ params }: Props) {
         </Card>
         <Card className="p-4">
           <h2 className="mb-2 text-sm font-semibold">{exp.kind === "shell" ? "터미널에서 하면" : "CLI / SQL 로 보면"}</h2>
-          <pre className="overflow-x-auto rounded-md bg-[#0d1117] p-3 text-xs leading-relaxed">{exp.code}</pre>
+          <pre className="overflow-x-auto rounded-md code-surface p-3 text-xs leading-relaxed">{exp.code}</pre>
         </Card>
       </div>
 
