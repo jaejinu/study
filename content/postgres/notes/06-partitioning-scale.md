@@ -4,7 +4,7 @@ order: 6
 level: 심화
 summary: 선언적 파티셔닝(범위·리스트·해시)의 동작과 파티션 프루닝, 시계열 테이블 운영(파티션 생성·삭제 자동화), 대량 적재와 인덱스 전략, 읽기 복제·풀링·샤딩(Citus)·읽기 모델 분리까지 PostgreSQL 의 확장 경로, 커넥션·락·VACUUM 이 규모에서 어떻게 문제가 되는지
 tags: [파티셔닝, 프루닝, 시계열, 대량적재, Citus, 확장, pg_partman]
-experiments: [pg-index-explain]
+experiments: [pg-index-explain, pg-partition-pruning]
 ---
 
 ## 언제 파티셔닝하나
@@ -91,6 +91,79 @@ INSERT INTO target SELECT … FROM staging ON CONFLICT (id) DO UPDATE SET …;  
 | 큰 JSONB 갱신 | 전체 튜플 재작성, TOAST | 자주 바뀌는 필드는 컬럼으로 분리 |
 | 통계 낡음 | 계획 급변 | `ANALYZE` 빈도, `default_statistics_target` ↑ |
 
+## 파티션 프루닝은 두 번 일어난다
+
+| 시점 | 무엇을 보고 | EXPLAIN 에서 |
+|---|---|---|
+| 플래닝 시 | 상수 조건 `WHERE created_at >= '2026-10-01'` | 계획에 해당 파티션만 나타남 |
+| 실행 시(초기화) | 매개변수 `$1`, `now()`, 서브쿼리 결과 | `Subplans Removed: N` |
+| 실행 중 | 조인 키(중첩 루프의 바깥 값) | 내부 Append 의 `(never executed)` 노드 |
+
+```sql
+EXPLAIN (ANALYZE, COSTS OFF)
+SELECT count(*) FROM events WHERE created_at >= now() - interval '7 days';
+-- Aggregate
+--   ->  Append
+--         Subplans Removed: 11                 ← 실행 시 프루닝(now() 는 플래닝 때 모름)
+--         ->  Seq Scan on events_2026_10 ...
+```
+
+프루닝이 안 되는 대표 실수: 파티션 키에 **함수를 씌운 조건**(`WHERE date(created_at) = ...`), 키와 **다른 타입**의 비교, 파티션 키가 아닌 컬럼으로만 거르기. 실험 `pg-partition-pruning` 이 상수·매개변수·함수 조건을 비교해 어떤 경우에 몇 개 파티션을 읽는지 보여 준다.
+
+## 파티셔닝이 늦어지게 만드는 것들
+
+파티셔닝은 공짜가 아니다.
+
+| 비용 | 원인 | 완화 |
+|---|---|---|
+| 플래닝 시간 증가 | 파티션 수 × 인덱스 수만큼 카탈로그 조회 | 파티션 수 수백 이하, 프루닝 가능한 조건 |
+| 전역 유니크 불가 | 유니크 인덱스는 파티션 키를 포함해야 함 | PK 를 `(id, created_at)` 로 |
+| 파티션 간 이동 UPDATE | 파티션 키 값을 바꾸면 DELETE+INSERT | 키를 불변 컬럼으로 |
+| 너무 작은 파티션 | 파티션마다 인덱스·메타데이터 | 시계열은 보통 일~월 단위 |
+| 기본(DEFAULT) 파티션 | 새 파티션 생성 시 DEFAULT 를 스캔해 검증(잠금) | DEFAULT 를 비워 두거나 두지 않기 |
+
+## 파티션을 떼는 것이 진짜 이득
+
+시계열 데이터의 보존 기간 관리는 `DELETE` 대신 **파티션 DETACH + DROP** 이다.
+
+| 방법 | 비용 | 부작용 |
+|---|---|---|
+| `DELETE FROM events WHERE created_at < …` | 수천만 행 삭제 = WAL·dead tuple 폭증 | VACUUM 부담, 복제 지연 |
+| `ALTER TABLE events DETACH PARTITION events_2026_07 CONCURRENTLY` + `DROP` | 메타데이터 변경 + 파일 삭제 | 거의 없음(잠금 짧음) |
+
+실험 `pg-partition-pruning` 도 마지막에 `DETACH ... CONCURRENTLY` 로 옛 파티션을 떼어 낸다. 이 패턴은 OLAP 의 파티션 관리와 같은 발상이다 — [쿼리 실행기와 열 저장](/db-internals/notes/07-query-execution-columnar).
+
+## 대량 적재 — 숫자로 보는 차이
+
+100만 행을 넣는 방법별 대략적 처리량(로컬 Docker, 인덱스 1개):
+
+| 방법 | 처리량(행/초) | 왜 |
+|---|---|---|
+| 한 행씩 INSERT + 자동 커밋 | 2~5천 | 행마다 왕복 + fsync |
+| 한 행씩 INSERT, 하나의 트랜잭션 | 1~3만 | fsync 1회, 왕복은 그대로 |
+| 다중 VALUES(1000행씩) | 10~20만 | 왕복 1/1000 |
+| `COPY FROM STDIN` | 30~100만 | 파싱·프로토콜 최소 |
+| `COPY` + 인덱스 나중에 생성 | 더 빠름 | 인덱스 정렬을 한 번에 |
+
+왕복(RTT)과 커밋(fsync) 두 비용을 줄이는 것이 전부다. Redis 파이프라인이 RTT 를 줄이는 것과 같은 원리다 — [파이프라이닝](/redis/notes/06-pipelining). 적재 후에는 반드시 `ANALYZE` 를 돌려 통계를 갱신한다.
+
+## 예시로 보기 — 이 프로젝트의 확장 경로 설계
+
+이 사이트의 데이터는 작지만, 같은 구조가 커진다고 가정하고 PostgreSQL 확장 경로를 그려 보자.
+
+| 데이터 | 성장 패턴 | 전략 |
+|---|---|---|
+| 학습 기록(퀴즈 응답·학습 시간) | 시간순 append, 최근만 자주 조회 | 월 단위 범위 파티션 + 오래된 파티션 DETACH → 객체 저장소로 아카이브 |
+| 사용자·설정 | 작고 자주 읽음 | 파티션 불필요, 캐시(Redis) |
+| 이벤트(outbox) | 쓰기 많고 곧 삭제 | 일 단위 파티션 + 처리 후 DROP, CDC 로 Kafka 에 |
+| 벡터(노트 임베딩) | 노트 수에 비례, 읽기 위주 | HNSW 인덱스, 읽기 복제본 |
+
+## 운영·관측 포인트
+
+- 파티션 생성은 자동화(pg_partman, cron)하고 **미래 파티션이 N개 이상 있는지**를 알림으로 둔다. 파티션이 없으면 INSERT 가 실패하거나 DEFAULT 로 몰린다.
+- 파티션별 크기·행 수를 대시보드로(`pg_partition_tree` + `pg_total_relation_size`).
+- 샤딩(Citus 등)으로 가기 전에 **읽기 복제본 + 캐시 + 파티셔닝 + 쿼리 개선**을 먼저 소진한다. 샤딩은 트랜잭션·조인 제약이 크게 바뀐다 — [파티셔닝과 라우팅](/distributed-systems/notes/07-partitioning).
+
 ## 실습 체크리스트
 
 - [ ] 위 `events` 파티션 테이블을 만들고 100만 행 적재 후 `EXPLAIN` 으로 프루닝 확인
@@ -98,3 +171,5 @@ INSERT INTO target SELECT … FROM staging ON CONFLICT (id) DO UPDATE SET …;  
 - [ ] `DETACH PARTITION … CONCURRENTLY` 후 `DROP` 의 소요 시간을 `DELETE` 와 비교
 - [ ] `COPY` 와 단건 INSERT 10만 행의 시간 비교
 - [ ] `UNLOGGED` 테이블 적재 속도 비교 후 `ALTER TABLE … SET LOGGED`
+- [ ] `now()` 조건으로 실행 시 프루닝(`Subplans Removed`) 확인, `date(created_at)` 로 바꿔 프루닝이 깨지는 것 확인
+- [ ] 100만 행을 다중 VALUES 와 COPY 로 넣어 처리량 비교

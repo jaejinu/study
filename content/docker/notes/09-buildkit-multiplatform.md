@@ -99,9 +99,107 @@ docker buildx imagetools inspect ghcr.io/jaejinu/study:1.0        # 매니페스
 - [ ] 멀티플랫폼은 네이티브 러너 또는 크로스 컴파일
 - [ ] 최종 이미지 크기 `docker image history` 로 확인
 
+## BuildKit 은 빌드를 그래프로 본다
+
+예전 빌더는 Dockerfile 을 위에서 아래로 한 줄씩 실행했다. BuildKit 은 먼저 전체를 **LLB(Low-Level Build) 그래프**로 바꾼 뒤, 필요한 노드만 병렬로 실행한다.
+
+```dockerfile
+FROM node:22-alpine AS deps        # A
+FROM golang:1.23 AS tools          # B  ← 최종 결과에서 안 쓰면 아예 실행 안 함
+FROM deps AS build                 # C (A 에 의존)
+FROM node:22-alpine AS runtime     # D (A·C 와 병렬로 베이스 pull 가능)
+COPY --from=build ...              # D 는 C 결과를 기다림
+```
+
+```
+     A(deps) ──▶ C(build) ──┐
+                            ├──▶ D(runtime)  ← 타깃
+     D 의 FROM pull ────────┘
+     B(tools): 타깃에 연결 안 됨 → 건너뜀
+```
+
+`docker build --target build .` 처럼 타깃을 바꾸면 그래프에서 필요한 부분만 다시 계산한다. 그래서 CI 에서 `--target test` 스테이지로 테스트를 돌리고, 같은 캐시로 `--target runtime` 이미지를 만드는 패턴이 싸다.
+
+## 캐시 마운트 vs 레이어 캐시
+
+둘은 다른 문제를 푼다.
+
+| | 레이어 캐시 | `RUN --mount=type=cache` |
+|---|---|---|
+| 무엇을 재사용 | 명령 결과 레이어 전체 | 명령 **안에서** 쓰는 디렉터리(패키지 저장소) |
+| 언제 효과 | 입력이 **완전히 같을 때** | 입력이 **조금 바뀌었을 때**(lock 에 패키지 1개 추가) |
+| 이미지에 남나 | 남음 | 안 남음 |
+| CI 에서 | `cache-to` 로 내보낼 수 있음 | 빌더 인스턴스 로컬(임시 러너면 사라짐) |
+
+락파일에 패키지 하나를 추가하면 레이어 캐시는 깨지지만, 캐시 마운트가 있으면 이미 받은 수백 개 패키지는 저장소에서 바로 링크되어 설치가 수 초로 끝난다.
+
+```dockerfile
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store,sharing=locked \
+    pnpm install --frozen-lockfile
+```
+
+`sharing=locked` 는 동시에 도는 빌드가 같은 캐시를 쓸 때 충돌을 막는다(`shared`(기본)·`private`·`locked`).
+
+## 측정: 이 프로젝트 빌드에서 시간이 어디로 가나
+
+```bash
+docker buildx build --progress=plain -t study:dev . 2>&1 | \
+  grep -E "^#[0-9]+ (\[|DONE)" | paste - - | awk '{print $NF, $0}' | sort -rn | head
+```
+
+전형적인 분포(캐시 없음, M 계열 맥):
+
+| 단계 | 시간 | 줄이는 법 |
+|---|---|---|
+| `pnpm install` | 40~90s | 캐시 마운트, lock 먼저 COPY |
+| `pnpm build`(Next) | 60~120s | `.next/cache` 를 캐시 마운트로, 불필요한 페이지 정적 생성 줄이기 |
+| 컨텍스트 전송 | 1~20s | `.dockerignore`(`.git`, `node_modules`) |
+| 베이스 pull | 5~20s | 다이제스트 고정 + 레지스트리 미러 |
+| export(레이어 압축) | 5~15s | 최종 이미지 크기 줄이기 |
+
+변경이 소스뿐일 때는 install 이 CACHED 되어 build 단계만 남는 것이 정상이다. install 이 다시 돈다면 `COPY` 순서나 `.dockerignore` 문제다.
+
+## 멀티 아키텍처의 실제 함정
+
+| 함정 | 증상 | 해결 |
+|---|---|---|
+| amd64 전용 이미지를 Apple Silicon 에서 실행 | 느림, 경고 `platform (linux/amd64) does not match` | 멀티 아치 이미지 사용, 없으면 직접 빌드 |
+| 네이티브 모듈(sharp 등)이 빌드 머신 아키텍처로 설치 | 다른 아키텍처에서 `exec format error` / `invalid ELF header` | 타깃 플랫폼 스테이지 안에서 install |
+| QEMU 에뮬레이션 빌드가 느림 | amd64 빌드 10배 지연 | 네이티브 러너(GitHub `ubuntu-24.04-arm`), 원격 빌더, 크로스 컴파일 |
+| 공개 이미지가 amd64 만 제공 | arm64 VM 에서 실행 불가/느림 | 이 프로젝트의 `study-bpftrace:local` 처럼 Dockerfile 로 직접 빌드 |
+
+마지막 행은 이 프로젝트에서 실제로 있었다. 공개 bpftrace 이미지가 amd64 전용이라 arm64 Docker VM 에서 쓸 수 없어, eBPF 실험이 Ubuntu 기반 이미지를 **처음 실행할 때 직접 빌드**한다 — [bpftrace 한 줄 관측](/ebpf/notes/02-bpftrace-one-liners).
+
+## 예시로 보기 — 이 저장소 CI 의 이미지 빌드
+
+`.github/workflows/ci.yml` 의 `image` 잡은 `docker/build-push-action` 으로 이미지를 빌드만 하고(푸시 없음) **GHA 캐시**를 쓴다.
+
+```yaml
+- uses: docker/build-push-action@v6
+  with:
+    context: .
+    push: false
+    tags: study:ci
+    cache-from: type=gha
+    cache-to: type=gha,mode=max
+```
+
+- `mode=max` 라 builder 스테이지의 install 레이어까지 캐시에 저장 → 다음 PR 은 소스 변경분만 빌드.
+- GHA 캐시는 저장소당 10GB, 오래 안 쓰면 축출된다. 캐시 적중률이 떨어지면 빌드 시간이 갑자기 늘어난다 — [CI 성능](/github-actions/notes/06-ci-performance).
+- 개선 후보: `--target` 으로 테스트 스테이지 분리, `trivy` 스캔 단계 추가, `--sbom=true --provenance=true`.
+
+## 운영·관측 포인트
+
+- 빌드 시간·캐시 적중을 CI 메트릭으로 남겨 두면 "언제부터 느려졌나" 를 답할 수 있다.
+- 빌더 캐시는 디스크를 계속 먹는다(`docker buildx du`). 로컬에서는 주기적으로 `docker builder prune --keep-storage 20GB`.
+- 같은 커밋으로 두 번 빌드해 다이제스트가 같은지 확인하는 것이 재현성 점검의 시작이다(`SOURCE_DATE_EPOCH`, 다이제스트 고정 베이스).
+
 ## 실습 체크리스트
 
 - [ ] 이 프로젝트 Dockerfile 에 `RUN --mount=type=cache` 를 추가하고 두 번째 빌드 시간 비교
 - [ ] `--platform linux/amd64,linux/arm64` 로 빌드해 `imagetools inspect` 로 매니페스트 보기
 - [ ] `--sbom=true` 로 빌드하고 SBOM 에서 의존성 하나 찾아보기
 - [ ] `--progress=plain` 출력에서 CACHED 가 아닌 단계만 골라내기
+- [ ] 쓰이지 않는 스테이지를 추가해 `--progress=plain` 에서 실행되지 않는 것 확인
+- [ ] 락파일에 패키지 하나 추가 후 캐시 마운트 유무로 install 시간 비교
+- [ ] `--progress=plain` 출력에서 가장 느린 단계 3개 뽑기

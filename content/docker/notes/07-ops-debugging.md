@@ -105,3 +105,116 @@ docker ps -a --format "{{.Names}}\t{{.Status}}"
 - `docker buildx` — 멀티 플랫폼(arm64/amd64) 빌드, 캐시 내보내기
 - Kubernetes — 컨테이너 오케스트레이션 (Pod, Deployment, Service)
 - OCI 명세 — 이미지·런타임 표준, Podman 같은 대안
+
+## 디버깅 순서 — 위에서 아래로
+
+컨테이너 문제는 "어느 층이 고장났나" 로 좁히면 빨리 끝난다.
+
+```
+1. 데몬/플랫폼   docker info, docker version            → 데몬·디스크·아키텍처
+2. 컨테이너 상태 docker ps -a, inspect .State          → 종료 코드·OOM·재시작 횟수·health
+3. 프로세스      docker logs, docker top, exec ps      → 앱 에러, PID 1 이 맞는가
+4. 네트워크      exec getent hosts, nc -zv, curl       → 이름 해석·포트·라우팅
+5. 파일·권한     exec ls -ln, docker diff, id          → UID·마운트·읽기 전용
+6. 자원          docker stats, cgroup 파일              → 메모리·CPU 스로틀
+7. 커널 수준     nsenter, strace, tcpdump(netshoot)     → 시스템 콜·패킷
+```
+
+### 실제 사례: "호스트에서 Redis 에 연결이 안 된다"
+
+이 프로젝트에서 처음 Redis 를 compose 로 띄웠을 때 실제로 겪은 문제를 위 순서로 풀어 보자.
+
+```bash
+docker ps --filter name=study-redis          # 2) running, healthy → 컨테이너는 정상
+redis-cli -p 6379 ping                       # 호스트: Error: Connection reset by peer
+docker exec study-redis redis-cli ping       # 안에서는 PONG → 프로세스 정상
+docker exec study-redis sh -c 'netstat -tln' # 4) 127.0.0.1:6379 에서만 LISTEN ← 원인
+```
+
+설정 파일의 `bind 127.0.0.1` 이 **컨테이너 안의 루프백**만 듣게 했고, 포트 포워딩으로 들어온 연결은 브리지 IP 로 도착하니 거부된 것이다. `--bind 0.0.0.0` + `127.0.0.1:` 포트 공개로 해결했다 — [Compose](/docker/notes/05-compose).
+
+## nsenter 로 바깥에서 들여다보기
+
+셸도 도구도 없는 이미지라도 **호스트(VM)의 도구로 컨테이너의 네임스페이스에 들어갈 수 있다**. 디버그 컨테이너가 하는 일의 실체다.
+
+```bash
+PID=$(docker inspect -f '{{.State.Pid}}' study-redis)
+# Docker Desktop 은 VM 안에서 해야 하므로 특권 컨테이너로 VM 의 PID 네임스페이스에 진입
+docker run --rm -it --privileged --pid=host nicolaka/netshoot \
+  nsenter -t $PID -n ss -tnp          # 네트워크 네임스페이스만 빌려 소켓 목록
+docker run --rm -it --privileged --pid=host nicolaka/netshoot \
+  nsenter -t $PID -n tcpdump -i eth0 -c 20 port 6379
+```
+
+| 플래그 | 들어가는 네임스페이스 | 쓰임 |
+|---|---|---|
+| `-n` | net | `ss`, `tcpdump`, `ip route` |
+| `-m` | mnt | 컨테이너 파일시스템을 호스트 도구로 |
+| `-p` | pid | 컨테이너 안 프로세스 트리 |
+| `-u` / `-i` | uts / ipc | 호스트명, 공유 메모리 |
+
+## strace 와 시스템 콜
+
+앱이 "멈춘 것 같다" 면 무엇을 기다리는지 시스템 콜로 본다.
+
+```bash
+docker run --rm -it --pid=container:app --cap-add SYS_PTRACE nicolaka/netshoot \
+  strace -f -p 1 -e trace=network,read,write -T
+# epoll_wait(5, ..., 10000) = 0 <10.01>      ← 이벤트 없이 10초 대기: 할 일이 없다
+# connect(12, {sa_family=AF_INET, sin_port=htons(5432), ...}) = -1 ETIMEDOUT <127.2>  ← DB 연결 타임아웃
+```
+
+`epoll_wait` 에서 오래 쉬면 정상(유휴), `connect`/`read` 에서 멈추면 외부 의존성, `futex` 에서 멈추면 락 경합이다. 더 가벼운 커널 관측은 eBPF — [bpftrace 한 줄 관측](/ebpf/notes/02-bpftrace-one-liners).
+
+## 자원 문제 진단
+
+```bash
+docker stats --no-stream study-redis
+# NAME          CPU %   MEM USAGE / LIMIT   MEM %   NET I/O   BLOCK I/O   PIDS
+# study-redis   0.35%   9.1MiB / 7.6GiB     0.12%   ...
+```
+
+- **LIMIT 이 호스트 전체 메모리**면 제한이 없는 것이다.
+- **MEM USAGE 가 앱이 말하는 RSS 보다 크면** 페이지 캐시 포함 때문이다. cgroup 의 `memory.stat` 에서 `anon`(실제 앱 메모리)과 `file`(캐시)을 나눠 본다.
+- **CPU 가 낮은데 느리면** 스로틀링을 의심한다: cgroup `cpu.stat` 의 `nr_throttled`, `throttled_usec`.
+
+```bash
+CID=$(docker inspect -f '{{.Id}}' study-redis)
+docker run --rm --privileged --pid=host alpine sh -c \
+  "cat /sys/fs/cgroup/system.slice/docker-$CID.scope/memory.stat | grep -E '^(anon|file) '; \
+   cat /sys/fs/cgroup/system.slice/docker-$CID.scope/cpu.stat"
+```
+
+## 이벤트로 장애 타임라인 만들기
+
+```bash
+docker events --since 30m --filter type=container \
+  --format '{{.Time}} {{.Actor.Attributes.name}} {{.Action}}'
+# 1760600000 study-redis pause
+# 1760600045 study-redis unpause
+# 1760600046 study-redis health_status: healthy
+```
+
+`pause`/`unpause`, `oom`, `die`, `health_status` 이벤트에 시각이 찍힌다. 장애 후 포스트모템 타임라인의 "기계 기록" 으로 쓰기 좋다 — [사고 대응과 포스트모템](/sre/notes/05-incident-postmortem).
+
+## 예시로 보기 — 이 프로젝트의 디버깅 단골
+
+| 증상 | 확인 | 원인·해결 |
+|---|---|---|
+| 첫 화면이 몇 초씩 걸림 | `docker ps` 로 study-redis 상태 | paused(장애 실험이 중단돼 원복 안 됨) → `docker unpause study-redis` |
+| 관측 스택 로그가 Loki 에 안 옴 | `docker logs study-alloy` | Alloy 가 docker.sock 을 못 읽음 / 컨테이너 이름 필터 |
+| Kafka 클라이언트가 호스트에서 메타데이터 실패 | `kafka-broker-api-versions` | advertised.listeners 가 컨테이너 주소 |
+| worktree 에서 `compose up` 시 이름 충돌 | `docker ps -a --filter name=study-` | 프로젝트 이름이 폴더 이름 → `-p study` |
+| 실험 컨테이너가 남아 있음 | `docker ps -a --filter name=lab-` | cleanup 미실행 → `docker rm -f` |
+
+## 운영·관측 포인트
+
+- `docker events` 를 Loki 로 보내면(Alloy 의 docker 이벤트 소스) "언제 재시작됐나" 를 로그와 같은 화면에서 본다.
+- 재시작 횟수(`RestartCount`)와 OOM 이벤트는 알림 대상이다. 크래시 루프는 조용히 서비스 품질을 떨어뜨린다.
+- 디버그 컨테이너(`netshoot`)는 **특권·호스트 PID** 를 쓰는 경우가 많다. 운영에서는 감사 대상이고, Falco 같은 런타임 탐지에 잡히는 것이 정상이다.
+
+## 실습 체크리스트
+
+- [ ] `nicolaka/netshoot` + `nsenter -n` 으로 study-redis 의 소켓 목록(`ss -tnp`) 보기
+- [ ] `strace -p 1` 로 유휴 Redis 가 `epoll_wait` 에서 쉬는 것 확인
+- [ ] `docker events --since 10m` 으로 pause/unpause 실험 전후 이벤트 타임라인 만들기

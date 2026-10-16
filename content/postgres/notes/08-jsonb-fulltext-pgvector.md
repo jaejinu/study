@@ -4,7 +4,7 @@ order: 8
 level: 심화
 summary: JSONB 저장·인덱싱(GIN, jsonb_path_ops)·질의 연산자와 "언제 컬럼으로 뽑을까", tsvector/tsquery 전문 검색과 한국어 처리, pgvector 로 임베딩 저장·HNSW 인덱스·하이브리드 검색, LISTEN/NOTIFY, 행 수준 보안, 자주 쓰는 확장(PostGIS·TimescaleDB·pg_cron·pg_stat_statements)
 tags: [JSONB, GIN, 전문검색, tsvector, pgvector, HNSW, LISTEN/NOTIFY, RLS, 확장]
-experiments: [pg-index-explain, vector-search-redis]
+experiments: [pg-index-explain, pg-vector-search, vector-search-redis]
 ---
 
 ## JSONB
@@ -111,6 +111,78 @@ CREATE POLICY tenant_isolation ON orders USING (tenant_id = current_setting('app
 | `citus` | 분산 샤딩 |
 | `pg_repack` | 온라인 bloat 제거 |
 
+## GIN 은 역색인이다
+
+JSONB·배열·전문 검색에 쓰는 GIN(Generalized Inverted Index)은 검색 엔진의 **역색인**과 같은 구조다: "키(단어·JSON 경로·배열 원소) → 그 키를 가진 행들의 목록(posting list)".
+
+| | B-tree | GIN |
+|---|---|---|
+| 항목 | 행 하나당 키 하나 | 행 하나당 키 **여러 개**(문서의 모든 단어) |
+| 강한 질의 | `=`, 범위, 정렬 | 포함 `@>`, 겹침 `&&`, 전문 검색 `@@` |
+| 쓰기 비용 | 행당 1항목 | 행당 수십~수백 항목 → **fastupdate**(pending list)로 모아서 반영 |
+| 크기 | 작음 | 큼(특히 `jsonb_ops`) |
+
+`fastupdate=on`(기본)이면 INSERT 는 pending list 에 쌓이고 VACUUM 이나 목록이 `gin_pending_list_limit` 를 넘을 때 본 인덱스로 합쳐진다. 그래서 대량 INSERT 직후 검색이 느려질 수 있다(pending list 를 순차로 훑기 때문). 역색인 원리와 BM25 랭킹은 [역색인과 분석기](/opensearch/notes/01-inverted-index-analyzers), 인덱스 구조 비교는 [인덱스 구조](/db-internals/notes/05-index-structures).
+
+## PostgreSQL 전문 검색 vs 검색 엔진
+
+| | PostgreSQL FTS | OpenSearch |
+|---|---|---|
+| 데이터 일관성 | 같은 트랜잭션 — 항상 최신 | 별도 색인, 수 초 지연(refresh) |
+| 랭킹 | `ts_rank`(단순 빈도) | BM25, 필드 가중치, 함수 점수 |
+| 한국어 | 기본 사전 없음(`simple` 또는 확장) | nori 형태소 분석기 |
+| 집계·패싯 | SQL 로 가능하나 대량엔 느림 | 집계에 최적화 |
+| 운영 | 추가 시스템 없음 | 클러스터 운영 |
+
+수만~수십만 문서, 단순 랭킹이면 PostgreSQL FTS 로 충분하다. 한국어 품질·대규모·패싯이 중요하면 검색 엔진을 붙이고 CDC 로 동기화한다. 실험 `search-index-notes` 가 이 사이트 노트를 OpenSearch 에 색인해 분석기 차이를 보여 준다.
+
+## pgvector 의 HNSW — 정확도와 속도의 손잡이
+
+```sql
+CREATE INDEX ON notes USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
+SET hnsw.ef_search = 40;     -- 질의 시 탐색 폭
+SELECT id, 1 - (embedding <=> $1) AS similarity FROM notes ORDER BY embedding <=> $1 LIMIT 5;
+```
+
+| 파라미터 | 올리면 | 내리면 |
+|---|---|---|
+| `m`(이웃 수) | 재현율↑, 인덱스 크기·빌드 시간↑ | 작고 빠름, 재현율↓ |
+| `ef_construction` | 그래프 품질↑, 빌드 느림 | 빌드 빠름 |
+| `hnsw.ef_search` | 재현율↑, 질의 느림 | 빠름, 놓치는 이웃↑ |
+
+HNSW 는 **근사** 검색이다. `ef_search` 를 바꿔 가며 정확 검색(인덱스 없이 Seq Scan)과 결과를 비교해 재현율(recall@k)을 재는 것이 튜닝의 기본이다. 또 하나의 함정: 필터와 함께 쓰면(`WHERE subject = 'kafka' ORDER BY embedding <=> $1 LIMIT 5`) 인덱스가 먼저 가까운 이웃을 찾은 뒤 필터로 걸러 **5개보다 적게** 나올 수 있다(pgvector 0.8 의 iterative scan 이 완화). 작은 테이블에서는 플래너가 Seq Scan 을 고르므로 실험 `pg-vector-search` 는 `enable_seqscan=off` 로 HNSW 경로를 강제로 보여 준다.
+
+| 거리 연산자 | 의미 | 인덱스 ops |
+|---|---|---|
+| `<->` | L2(유클리드) | `vector_l2_ops` |
+| `<=>` | 코사인 거리 | `vector_cosine_ops` |
+| `<#>` | 음의 내적 | `vector_ip_ops` |
+
+임베딩이 정규화돼 있으면 세 거리의 순위가 같다. 하이브리드 검색(BM25 + 벡터, RRF)과 RAG 연결은 [하이브리드 검색과 RAG](/opensearch/notes/05-hybrid-search-rag), [RAG 파이프라인](/ai-systems/notes/03-rag-design).
+
+## LISTEN/NOTIFY 의 한계
+
+- 알림은 **커밋 시점에** 전달되고, 받는 쪽이 연결돼 있지 않으면 사라진다(영속 아님).
+- 페이로드 8000바이트 상한, 큐가 가득 차면(기본 8GB) NOTIFY 하는 트랜잭션이 커밋 실패.
+- PgBouncer transaction 모드에서는 LISTEN 이 동작하지 않는다(세션 상태).
+
+그래서 "작업 큐를 깨우는 신호" 로만 쓰고 실제 작업은 테이블(SKIP LOCKED)에 둔다 — [잠금과 데드락](/postgres/notes/04-locks-deadlocks).
+
+## 예시로 보기 — 이 프로젝트에서
+
+| 무엇 | 어디서 |
+|---|---|
+| pgvector 이미지 | compose `postgres` 서비스(`pgvector/pgvector:pg16`) |
+| 벡터 검색 실험 | `pg-vector-search` (PostgreSQL), `vector-search-redis` (Redis Search) — 같은 문제를 두 저장소로 |
+| 전문 검색 비교 | `search-index-notes`, `search-hybrid-rrf` (OpenSearch) |
+| 행 수준 보안 | [데이터 저장소 하드닝](/security/notes/07-datastore-hardening) 의 RLS 예시 |
+
+## 운영·관측 포인트
+
+- GIN 인덱스 크기와 pending list 크기(`pgstatginindex`)를 본다. 쓰기 많은 테이블은 `gin_pending_list_limit` 를 조정하거나 `fastupdate=off`.
+- HNSW 빌드는 메모리를 많이 쓴다(`maintenance_work_mem`). 빌드 중 디스크로 넘치면 매우 느려진다.
+- JSONB 컬럼이 크게 자라면 TOAST 압축·분리 때문에 부분 갱신도 전체 재기록이 된다. 자주 바뀌는 필드는 일반 컬럼으로 뽑는다.
+
 ## 실습 체크리스트
 
 - [ ] 실험 DB 에 JSONB 테이블을 만들고 `@>` 질의의 GIN 사용 여부를 EXPLAIN 으로 확인
@@ -118,3 +190,5 @@ CREATE POLICY tenant_isolation ON orders USING (tenant_id = current_setting('app
 - [ ] 전문 검색 + 벡터 RRF 하이브리드 SQL 실행
 - [ ] LISTEN/NOTIFY 로 SKIP LOCKED 워커 깨우기
 - [ ] RLS 로 tenant 격리 후 다른 tenant 설정에서 조회가 비는지 확인
+- [ ] `hnsw.ef_search` 를 10/40/200 으로 바꿔 정확 검색 대비 recall@5 측정
+- [ ] PostgreSQL FTS(`simple` 사전)로 한국어 노트 제목을 검색해 OpenSearch nori 결과와 비교

@@ -4,7 +4,7 @@ order: 7
 level: 심화
 summary: 플래너가 비용을 계산하는 방식과 통계, 조인 알고리즘(Nested Loop·Hash·Merge) 선택 조건, 느린 쿼리 패턴 10가지와 고치는 법, CTE 의 materialize 여부, 윈도우 함수와 LATERAL, work_mem 과 디스크 정렬, EXPLAIN 의 숨은 신호(rows 추정 오차·Buffers·loops), 플래너 설정과 힌트
 tags: [플래너, 조인, HashJoin, CTE, 윈도우함수, LATERAL, work_mem, 통계, 최적화]
-experiments: [pg-index-explain]
+experiments: [pg-index-explain, pg-keyset-pagination]
 ---
 
 ## 플래너는 통계로 비용을 추정한다
@@ -101,6 +101,76 @@ EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SETTINGS, FORMAT TEXT) …
 - `join_collapse_limit`/`from_collapse_limit`(8): 조인이 더 많으면 순서 탐색을 포기(GEQO). 큰 조인은 쿼리를 나눈다.
 - 병렬 쿼리: `max_parallel_workers_per_gather`. 큰 스캔·집계에 `Gather` 노드가 보이면 동작 중.
 
+## 조인 선택을 숫자로 이해하기
+
+같은 조인이라도 **바깥 행 수**와 **안쪽 접근 방법**에 따라 플래너가 다른 알고리즘을 고른다.
+
+| 상황 | 선택 | 비용 감각 |
+|---|---|---|
+| 바깥 10행, 안쪽 키에 인덱스 | Nested Loop + Index Scan | 10 × 인덱스 조회(페이지 3~4) |
+| 양쪽 수십만 행, 등호 조인 | Hash Join | 작은 쪽으로 해시 테이블 1회 + 큰 쪽 1회 스캔 |
+| 양쪽이 이미 키 순으로 정렬(인덱스) | Merge Join | 두 정렬 스트림을 한 번씩 |
+| 바깥 추정 10행인데 실제 10만 행 | (잘못된) Nested Loop | 10만 × 인덱스 조회 → 느림의 대표 원인 |
+
+마지막 줄이 실무에서 가장 흔하다. **행 수 오추정 → Nested Loop 선택 → 실제로는 수만 번 반복**. EXPLAIN ANALYZE 에서 `loops=48213` 같은 큰 숫자를 찾고, 그 바깥 노드의 `rows` 추정과 실제를 비교하면 원인이 보인다.
+
+Hash Join 의 해시 테이블이 `work_mem` 을 넘으면 **배치(batch)** 로 나눠 디스크에 쓴다(`Batches: 8` 표시). 그때 `work_mem` 을 그 쿼리 세션에서만 올리는 것(`SET LOCAL work_mem = '256MB'`)이 전역 변경보다 안전하다. 조인 알고리즘의 일반 원리는 [쿼리 실행기와 열 저장](/db-internals/notes/07-query-execution-columnar).
+
+## 키셋 페이지네이션 — OFFSET 의 비용
+
+```sql
+-- OFFSET: 앞의 100,000 행을 읽고 버린 뒤 20개
+SELECT * FROM posts ORDER BY created_at DESC, id DESC OFFSET 100000 LIMIT 20;
+-- 키셋: 마지막으로 본 (created_at, id) 이후 20개 → 인덱스에서 바로 시작점
+SELECT * FROM posts WHERE (created_at, id) < ($1, $2) ORDER BY created_at DESC, id DESC LIMIT 20;
+CREATE INDEX ON posts (created_at DESC, id DESC);
+```
+
+| 페이지 깊이 | OFFSET 읽은 행 | 키셋 읽은 행 |
+|---|---|---|
+| 1 | 20 | 20 |
+| 100 | 2,000 | 20 |
+| 5,000 | 100,000 | 20 |
+
+**행 값 비교 `(a, b) < (x, y)`** 가 복합 인덱스와 정확히 맞물리는 것이 핵심이다. `a < x OR (a = x AND b < y)` 로 풀어 쓰면 플래너가 인덱스 범위로 못 바꾸는 경우가 있다. 실험 `pg-keyset-pagination` 이 깊은 페이지에서 두 방식의 Buffers·시간을 비교한다. API 설계 관점(커서를 불투명 문자열로 노출)은 [REST 설계 원칙](/api-design/notes/01-rest-principles).
+
+## EXPLAIN 실전 판독 순서
+
+1. **가장 시간이 큰 노드**를 찾는다(`actual time` 의 끝값 × `loops`).
+2. 그 노드와 자식의 **rows 추정 vs 실제** 비율을 본다(10배 이상이면 통계 문제).
+3. **Buffers: read** 가 크면 디스크, **hit** 만 크면 CPU·메모리에서 많이 읽음(필요 이상 스캔).
+4. `Rows Removed by Filter` 가 크면 인덱스가 조건을 못 쓰는 중이다.
+5. `Sort Method: external merge Disk: …` 면 `work_mem` 부족.
+6. `Heap Fetches: N`(Index Only Scan)이 크면 visibility map 이 깨끗하지 않음 → VACUUM.
+
+```
+Nested Loop  (cost=… rows=12 …) (actual time=0.04..1820.33 rows=48213 loops=1)    ← 추정 12 vs 실제 48213
+  ->  Seq Scan on orders o  (… rows=12 …) (actual … rows=48213 loops=1)
+        Filter: ((status = 'open') AND (region = 'kr'))                            ← 두 컬럼 상관 → 과소 추정
+        Rows Removed by Filter: 951787
+  ->  Index Scan using users_pkey on users u  (actual time=0.03..0.03 rows=1 loops=48213)
+```
+
+처방: `CREATE STATISTICS ... (dependencies) ON status, region FROM orders; ANALYZE orders;` → Hash Join 으로 바뀌는지 확인.
+
+## 예시로 보기 — 이 사이트의 쿼리였다면
+
+이 사이트는 노트를 파일에서 읽지만, 학습 기록을 PostgreSQL 에 둔다고 하면 자주 나올 쿼리와 처방은 이렇다.
+
+| 화면 | 쿼리 형태 | 처방 |
+|---|---|---|
+| 첫 화면 "이어서 학습" | 사용자별 최근 N개 | `(user_id, viewed_at DESC)` 인덱스 + LIMIT |
+| 주제별 진행률 | 사용자 × 주제 GROUP BY | 부분 집계 테이블(머티리얼라이즈드 뷰), 또는 Redis 카운터 |
+| 퀴즈 복습 대상 | `due <= now()` 인 카드 | `(user_id, due)` 인덱스, 부분 인덱스 `WHERE due IS NOT NULL` |
+| 주간 학습 시간 | 날짜 범위 합계 | 날짜 파티션 + 일별 집계 |
+
+실제 이 사이트는 이 데이터들을 Redis(Set·Hash·Sorted Set)로 처리한다. 같은 요구를 두 저장소로 풀어 보면 "인덱스가 하는 일을 Redis 에선 자료구조가 한다" 는 대응이 보인다 — [Redis 자료구조](/redis/notes/02-data-types).
+
+## 운영·관측 포인트
+
+- `auto_explain.log_min_duration = '500ms'` + `log_analyze = on`(오버헤드 주의, 샘플링 `sample_rate`)으로 느린 쿼리의 실제 계획을 로그에 남긴다.
+- 계획 변화 감지: 같은 `queryid` 의 평균 시간이 갑자기 뛰면 통계 변화·데이터 분포 변화로 계획이 바뀐 것이다.
+
 ## 실습 체크리스트
 
 - [ ] 실험 테이블(10만 행)에 `OFFSET 90000 LIMIT 10` 과 keyset 페이지네이션 EXPLAIN 비교
@@ -108,3 +178,5 @@ EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SETTINGS, FORMAT TEXT) …
 - [ ] `work_mem` 을 1MB 로 낮춰 `ORDER BY` 가 external merge 가 되는 것을 보고 64MB 로 올려 비교
 - [ ] `random_page_cost = 1.1` 전후로 인덱스 선택이 바뀌는 쿼리 찾기
 - [ ] pg_trgm 으로 `LIKE '%keyboard%'` 를 인덱스 스캔으로 만들기
+- [ ] 깊은 페이지(OFFSET 100000)와 키셋의 `EXPLAIN (ANALYZE, BUFFERS)` 비교
+- [ ] `loops` 가 큰 Nested Loop 를 만들고 `CREATE STATISTICS` 로 Hash Join 으로 바꿔 보기

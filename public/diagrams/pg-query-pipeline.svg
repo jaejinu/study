@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="420" fill="#0d1117"/>
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker>
+  </defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">PostgreSQL 쿼리 처리 — SQL 문자열이 결과가 되기까지</text>
+  <!-- client -->
+  <rect x="30" y="70" width="120" height="70" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="90" y="98" text-anchor="middle" fill="#e6edf3" font-weight="600">클라이언트</text>
+  <text x="90" y="118" text-anchor="middle" fill="#8b949e" font-size="11">SELECT … WHERE</text>
+  <text x="90" y="132" text-anchor="middle" fill="#8b949e" font-size="11">email = $1</text>
+  <line x1="150" y1="105" x2="188" y2="105" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+  <!-- backend box -->
+  <rect x="190" y="55" width="740" height="230" rx="10" fill="none" stroke="#336791" stroke-dasharray="5 4"/>
+  <text x="205" y="75" fill="#58a6ff" font-size="12">백엔드 프로세스 (커넥션당 1개, fork)</text>
+  <g font-size="12">
+    <rect x="205" y="90" width="120" height="60" rx="8" fill="#161b22" stroke="#58a6ff"/>
+    <text x="265" y="114" text-anchor="middle" fill="#e6edf3" font-weight="600">1. Parser</text>
+    <text x="265" y="132" text-anchor="middle" fill="#8b949e" font-size="11">문법 → 파스 트리</text>
+    <rect x="345" y="90" width="120" height="60" rx="8" fill="#161b22" stroke="#58a6ff"/>
+    <text x="405" y="114" text-anchor="middle" fill="#e6edf3" font-weight="600">2. Analyzer</text>
+    <text x="405" y="132" text-anchor="middle" fill="#8b949e" font-size="11">카탈로그 조회·타입</text>
+    <rect x="485" y="90" width="120" height="60" rx="8" fill="#161b22" stroke="#58a6ff"/>
+    <text x="545" y="114" text-anchor="middle" fill="#e6edf3" font-weight="600">3. Rewriter</text>
+    <text x="545" y="132" text-anchor="middle" fill="#8b949e" font-size="11">뷰·RULE 펼침</text>
+    <rect x="625" y="90" width="130" height="60" rx="8" fill="#161b22" stroke="#d29922"/>
+    <text x="690" y="114" text-anchor="middle" fill="#e6edf3" font-weight="600">4. Planner</text>
+    <text x="690" y="132" text-anchor="middle" fill="#8b949e" font-size="11">통계로 비용 추정</text>
+    <rect x="775" y="90" width="140" height="60" rx="8" fill="#161b22" stroke="#3fb950"/>
+    <text x="845" y="114" text-anchor="middle" fill="#e6edf3" font-weight="600">5. Executor</text>
+    <text x="845" y="132" text-anchor="middle" fill="#8b949e" font-size="11">계획 트리 실행</text>
+  </g>
+  <line x1="325" y1="120" x2="343" y2="120" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="465" y1="120" x2="483" y2="120" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="605" y1="120" x2="623" y2="120" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="755" y1="120" x2="773" y2="120" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+  <!-- planner inputs -->
+  <rect x="610" y="175" width="160" height="90" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="690" y="197" text-anchor="middle" fill="#d29922" font-size="12">플래너가 보는 것</text>
+  <text x="625" y="218" fill="#8b949e" font-size="11">pg_statistic (ANALYZE)</text>
+  <text x="625" y="235" fill="#8b949e" font-size="11">relpages / reltuples</text>
+  <text x="625" y="252" fill="#8b949e" font-size="11">*_cost, work_mem</text>
+  <line x1="690" y1="175" x2="690" y2="152" stroke="#d29922" stroke-width="1.5" marker-end="url(#a)"/>
+  <!-- prepared -->
+  <rect x="205" y="175" width="380" height="90" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="220" y="197" fill="#e6edf3" font-size="12" font-weight="600">Prepared statement</text>
+  <text x="220" y="218" fill="#8b949e" font-size="11">1~3 단계를 한 번만, 계획은 처음 5회 커스텀 → 이후 generic 계획 재사용 가능</text>
+  <text x="220" y="236" fill="#8b949e" font-size="11">EXPLAIN 의 Planning Time = 2~4 단계, Execution Time = 5 단계</text>
+  <text x="220" y="254" fill="#8b949e" font-size="11">느림의 대부분은 5 단계, 단 파티션 수천·조인 10개 이상이면 4 단계도</text>
+  <!-- storage -->
+  <rect x="775" y="305" width="155" height="95" rx="8" fill="#161b22" stroke="#3fb950"/>
+  <text x="852" y="327" text-anchor="middle" fill="#3fb950" font-size="12">shared_buffers</text>
+  <text x="852" y="347" text-anchor="middle" fill="#8b949e" font-size="11">hit → 메모리</text>
+  <text x="852" y="365" text-anchor="middle" fill="#8b949e" font-size="11">read → OS 캐시/디스크</text>
+  <text x="852" y="383" text-anchor="middle" fill="#8b949e" font-size="11">(EXPLAIN BUFFERS)</text>
+  <line x1="845" y1="150" x2="845" y2="303" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a)"/>
+  <!-- result -->
+  <line x1="775" y1="352" x2="152" y2="352" stroke="#8b949e" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="460" y="344" text-anchor="middle" fill="#8b949e" font-size="12">결과 행 스트리밍 (DataRow 메시지)</text>
+  <rect x="30" y="327" width="120" height="50" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="90" y="357" text-anchor="middle" fill="#e6edf3">결과</text>
+</svg>

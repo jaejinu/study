@@ -76,3 +76,123 @@ docker version                # Client 와 Server 둘 다 나오면 준비 완�
 ```
 
 대시보드의 환경 점검 카드가 데몬 연결 여부와 실행 중인 컨테이너를 보여준다.
+
+## 컨테이너는 "가벼운 VM" 이 아니라 "격리된 프로세스" 다
+
+이 차이가 Docker 를 이해하는 출발점이다. 컨테이너 안에서 `redis-server` 를 실행하면, 호스트(리눅스) 입장에서는 **그냥 프로세스 하나**가 늘어난 것이다. 커널은 하나뿐이고, 그 프로세스에게 "보이는 세계" 와 "쓸 수 있는 자원" 만 줄여 놓았을 뿐이다.
+
+```bash
+# 호스트(또는 Docker Desktop VM)에서 보면 컨테이너 프로세스가 그대로 보인다
+docker run -d --name ps-demo redis:8-alpine
+docker top ps-demo
+# UID   PID    PPID   C  STIME  TTY  TIME      CMD
+# 999   41237  41215  0  10:02  ?    00:00:00  redis-server *:6379
+
+# 컨테이너 안에서 보면 자기가 PID 1 이다 (PID 네임스페이스)
+docker exec ps-demo ps
+# PID   USER     TIME  COMMAND
+#     1 redis     0:00 redis-server *:6379
+docker rm -f ps-demo
+```
+
+같은 프로세스가 바깥에서는 41237, 안에서는 1 이다. 이것이 **네임스페이스**다. 커널이 "이 프로세스에게는 PID 번호를 이렇게 보여 줘라" 라고 테이블을 따로 두는 것이다.
+
+| 커널 기능 | 무엇을 격리/제한 | 컨테이너에서 보이는 효과 |
+|---|---|---|
+| PID 네임스페이스 | 프로세스 번호 공간 | 안에서 자기가 PID 1, 다른 컨테이너 프로세스 안 보임 |
+| NET 네임스페이스 | 네트워크 인터페이스·라우팅·포트 | 컨테이너마다 `eth0`, 같은 6379 포트를 여러 컨테이너가 사용 |
+| MNT 네임스페이스 | 마운트 테이블 | 이미지 파일시스템이 `/` 로 보임 |
+| UTS 네임스페이스 | 호스트 이름 | `hostname` 이 컨테이너 ID |
+| IPC / USER 네임스페이스 | 공유 메모리, UID 매핑 | (USER 는 rootless 모드에서 핵심) |
+| cgroup | CPU·메모리·PID 수·I/O 사용량 | `--memory 512m` 을 넘으면 OOMKilled |
+| seccomp / capabilities | 쓸 수 있는 시스템 콜·권한 | `mount`, `reboot` 같은 위험한 호출 차단 |
+
+이 세 묶음(네임스페이스로 **보이는 것**, cgroup 으로 **쓰는 양**, seccomp·capability 로 **할 수 있는 일**)을 합친 것이 컨테이너다. 내부를 더 깊게는 [Docker 내부 — 네임스페이스와 cgroup](/docker/notes/08-internals-namespaces-cgroups), 커널 관점은 [운영체제 내부 — 컨테이너는 결국 프로세스](/os-internals/notes/07-containers-are-processes) 와 [스케줄러와 cgroup](/os-internals/notes/03-scheduler-cgroups) 에서 다룬다.
+
+### 그래서 생기는 결과들
+
+- **시작이 빠르다**: 부팅할 OS 가 없다. `fork` + `exec` + 네임스페이스 설정이 전부라 수십~수백 ms.
+- **커널 버전은 호스트 것**: 컨테이너 안에서 `uname -r` 을 치면 호스트 커널이 나온다. "Ubuntu 컨테이너" 는 Ubuntu 의 **유저 공간(파일들)** 이지 Ubuntu 커널이 아니다.
+- **격리 강도는 커널이 한계**: 커널 취약점 하나로 컨테이너 밖으로 탈출할 수 있다. 다른 고객의 코드를 실행하는 서비스가 gVisor·Firecracker 같은 더 강한 경계를 쓰는 이유다 ([보안 — 컨테이너와 공급망](/security/notes/05-container-supply-chain)).
+- **리눅스 바이너리만 돈다**: macOS 의 Docker Desktop 은 그래서 리눅스 VM 을 하나 띄운다. Apple Silicon 에서는 이 VM 이 arm64 라 `linux/amd64` 이미지는 에뮬레이션(Rosetta/QEMU)으로 느리게 돈다 → [BuildKit 과 멀티 플랫폼](/docker/notes/09-buildkit-multiplatform).
+
+## docker run 한 줄이 실제로 하는 일
+
+```
+docker CLI ──REST(/var/run/docker.sock)──▶ dockerd
+   dockerd: 이미지 확인/pull → 컨테이너 설정(JSON) 생성 → 네트워크·볼륨 준비
+   dockerd ──gRPC──▶ containerd: 스냅샷(overlay) 준비, 태스크 생성
+   containerd ──▶ containerd-shim ──▶ runc: 네임스페이스·cgroup 설정 후 exec(앱)
+   runc 는 종료되고 shim 이 남아 컨테이너 프로세스의 부모 역할(로그·종료 코드 수집)
+```
+
+| 단계 | 누가 | 실패하면 보이는 메시지 |
+|---|---|---|
+| 데몬 연결 | CLI → dockerd | `Cannot connect to the Docker daemon at unix:///var/run/docker.sock` |
+| 이미지 확보 | dockerd → 레지스트리 | `pull access denied`, `manifest unknown`, `no matching manifest for linux/arm64` |
+| 파일시스템 준비 | containerd snapshotter | `no space left on device` |
+| 네트워크·포트 | dockerd (iptables/vpnkit) | `port is already allocated` |
+| 프로세스 실행 | runc | `exec format error`(아키텍처 불일치), `executable file not found in $PATH` |
+
+메시지가 **어느 층**에서 나왔는지 알면 디버깅 시간이 반으로 준다. 예를 들어 `exec format error` 는 이미지 문제(arm64 머신에서 amd64 전용 바이너리)지 네트워크 문제가 아니다.
+
+### 소켓 = 루트 권한
+
+CLI 와 데몬은 `/var/run/docker.sock` 유닉스 소켓으로 통신한다. 이 소켓에 쓸 수 있으면 `docker run -v /:/host --privileged ...` 로 호스트 전체를 조작할 수 있다. 그래서 **`docker` 그룹 = root** 이고, 컨테이너에 docker.sock 을 마운트하는 것(CI 러너에서 흔함)은 호스트를 넘겨주는 것과 같다.
+
+## 이미지 다이제스트와 멀티 아키텍처 매니페스트
+
+태그는 **움직이는 포인터**, 다이제스트는 **내용 해시**다.
+
+```bash
+docker buildx imagetools inspect redis:8-alpine
+# Name:      docker.io/library/redis:8-alpine
+# MediaType: application/vnd.oci.image.index.v1+json
+# Digest:    sha256:…(인덱스)
+# Manifests:
+#   Name: …@sha256:…   Platform: linux/amd64
+#   Name: …@sha256:…   Platform: linux/arm64
+#   …
+```
+
+`redis:8-alpine` 하나가 실제로는 **이미지 인덱스**이고, 그 안에 아키텍처별 매니페스트가 들어 있다. `docker pull` 은 내 플랫폼(Apple Silicon 이면 `linux/arm64`)에 맞는 것을 고른다. 그래서 같은 태그가 내 맥과 CI(amd64)에서 서로 다른 바이트를 받는다. 운영 배포에서 "어제와 같은 이미지" 를 보장하려면 `image@sha256:…` 로 고정한다.
+
+## Docker 대안과 생태계 지도
+
+| 도구 | 성격 | 언제 |
+|---|---|---|
+| Docker Engine / Desktop | 데몬 + CLI + 빌드(BuildKit) | 대부분의 개발·CI |
+| Podman | 데몬 없음, rootless 기본, `docker` 와 거의 같은 CLI | 데몬 없는 환경, 보안 정책상 root 데몬 금지 |
+| containerd + nerdctl | Docker 아래층을 직접 | Kubernetes 노드, 가벼운 런타임 |
+| OrbStack / Colima | macOS 용 VM 관리자 | Docker Desktop 대체(가벼움) |
+| BuildKit / buildx | 빌더 | 병렬·캐시·멀티 플랫폼 빌드 |
+| Kubernetes(CRI) | 오케스트레이터, Docker 없이 containerd 사용 | 운영 배포 |
+
+"Kubernetes 가 Docker 를 버렸다" 는 말은 **dockershim 을 제거했다**는 뜻이다. Docker 로 만든 이미지는 OCI 표준이라 containerd 위에서 그대로 돈다.
+
+## 예시로 보기 — 이 프로젝트에서
+
+이 저장소는 Docker 를 세 가지 방식으로 쓴다.
+
+1. **의존 서비스 띄우기**: `docker-compose.yml` 의 `redis`(기본), `kafka`, `postgres`, `observability`(Prometheus·Grafana·Loki·Tempo), `search`(OpenSearch), `mq`(RabbitMQ·NATS) 등을 **프로파일**로 나눠 필요한 것만 올린다 — [Compose](/docker/notes/05-compose).
+2. **앱 자체를 이미지로**: 루트 `Dockerfile` 이 멀티스테이지로 Next.js standalone 산출물만 담은 `study:dev` 를 만든다 — [이미지와 Dockerfile](/docker/notes/03-images-dockerfile).
+3. **실험 도구**: 셸 실험이 `docker pause`(장애 주입), 특권 컨테이너(bpftrace·perf), 일회용 컨테이너(`--rm`)를 쓴다. 컨테이너가 "그냥 프로세스" 라서 가능한 일들이다.
+
+```bash
+docker compose ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}"
+docker info --format '{{.OSType}} {{.Architecture}} kernel={{.KernelVersion}} cgroup={{.CgroupVersion}}'
+# linux aarch64 kernel=6.12.x-linuxkit cgroup=2   ← Docker Desktop 의 리눅스 VM 정보
+```
+
+## 운영·관측 포인트
+
+- `docker system df` 로 이미지·컨테이너·볼륨·빌드 캐시가 차지하는 디스크를 주기적으로 본다. Docker Desktop VM 디스크가 차면 모든 컨테이너가 이상하게 실패한다.
+- 컨테이너 메트릭은 cgroup 파일에서 나온다. `docker stats` 의 MEM USAGE 는 페이지 캐시를 일부 포함하므로 앱 RSS 보다 크게 보일 수 있다.
+- 로그 드라이버 기본값은 `json-file` 이고 **크기 제한이 없다**. 오래 도는 컨테이너는 `--log-opt max-size=10m --log-opt max-file=3` 을 준다.
+
+## 실습 체크리스트
+
+- [ ] `docker top` 과 `docker exec ... ps` 로 같은 프로세스의 PID 가 안팎에서 다른 것 확인
+- [ ] `docker info` 로 커널 버전·cgroup 버전·아키텍처 확인, 컨테이너 안 `uname -r` 과 비교
+- [ ] `docker buildx imagetools inspect redis:8-alpine` 으로 아키텍처별 매니페스트 보기
+- [ ] `docker system df` 로 디스크 사용량 확인

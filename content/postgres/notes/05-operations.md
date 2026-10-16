@@ -4,7 +4,7 @@ order: 5
 level: 심화
 summary: pg_dump 와 PITR, 스트리밍·논리 복제, PgBouncer, 느린 쿼리 찾기(pg_stat_statements), 흔한 장애
 tags: [백업, PITR, 복제, PgBouncer, pg_stat_statements, 운영]
-experiments: []
+experiments: [chaos-pg-connection-exhaustion, cdc-outbox-debezium]
 ---
 
 ## 백업
@@ -83,3 +83,132 @@ FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 10;
 - "PostgreSQL 14 Internals" (Rogov)
 - pgMustard / explain.dalibo.com — EXPLAIN 시각화
 - 확장: PostGIS, pgvector, TimescaleDB, pg_partman(파티셔닝)
+
+## 백업 전략 고르기 — RPO 와 RTO 로
+
+백업은 도구가 아니라 **"얼마나 잃어도 되나(RPO)" 와 "얼마나 빨리 돌아와야 하나(RTO)"** 로 고른다.
+
+| 방식 | RPO | RTO(100GB 기준 감) | 비고 |
+|---|---|---|---|
+| 매일 `pg_dump` | 최대 24시간 | 수십 분~수 시간(인덱스 재생성 포함) | 단순, 버전 간 이동 |
+| 물리 베이스백업 + WAL 아카이브(PITR) | 수 초~분(아카이브 주기) | 베이스 복원 + WAL 재생 시간 | 운영 표준 |
+| 스트리밍 복제 스탠바이 승격 | 비동기: 수 초, 동기: 0 | 수 초~분 | **백업이 아님**(실수도 복제됨) |
+| 지연 복제(`recovery_min_apply_delay=1h`) | 실수 1시간 안에 발견 시 0 | 분 | 사람 실수 대비 |
+
+"복제가 있으니 백업은 됐다" 는 착각이 가장 흔한 사고 원인이다. `DROP TABLE` 은 스탠바이에도 수 ms 만에 복제된다.
+
+### PITR 복원 연습 절차
+
+```bash
+# 1) 베이스백업 (실행 중에 가능)
+pg_basebackup -D /backup/base -Ft -z -X stream -P
+# 2) 사고: 14:03 에 실수로 DELETE
+# 3) 새 데이터 디렉터리에 베이스 풀고, 복구 목표 설정
+cat >> postgresql.auto.conf <<'CONF'
+restore_command = 'cp /backup/wal/%f %p'
+recovery_target_time = '2026-10-17 14:02:59'
+recovery_target_action = 'pause'      # 목표에서 멈추고 확인
+CONF
+touch recovery.signal && pg_ctl start
+# 4) 확인 후 SELECT pg_wal_replay_resume(); 또는 필요한 테이블만 덤프해 원본에 복원
+```
+
+## 복제의 내부 — WAL 송신자와 수신자
+
+```
+primary:  백엔드 → WAL 버퍼 → WAL 파일 ─▶ walsender ──TCP──▶ walreceiver ─▶ standby WAL 파일 ─▶ startup 프로세스가 재생
+                                            ▲ 복제 슬롯: "이 스탠바이는 여기(LSN)까지 받았다" 를 primary 가 기억
+```
+
+`pg_stat_replication` 의 LSN 4개가 지연이 **어느 구간**에 있는지 알려 준다.
+
+| 컬럼 | 의미 | 여기서 막히면 |
+|---|---|---|
+| `sent_lsn` | primary 가 보낸 위치 | 네트워크 |
+| `write_lsn` | 스탠바이가 OS 에 쓴 위치 | 스탠바이 I/O |
+| `flush_lsn` | 스탠바이가 fsync 한 위치 | 스탠바이 디스크 |
+| `replay_lsn` | 스탠바이가 재생한 위치 | 재생 충돌·긴 쿼리(hot standby) |
+
+```sql
+SELECT application_name, state, sync_state,
+       pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)) AS replay_gap, replay_lag
+FROM pg_stat_replication;
+```
+
+스탠바이에서 긴 쿼리가 돌면 재생이 그 쿼리가 보는 행을 지우려 할 때 충돌한다. `max_standby_streaming_delay` 만큼 기다렸다가 쿼리를 취소하거나(`canceling statement due to conflict with recovery`), `hot_standby_feedback=on` 으로 primary 의 VACUUM 을 늦춘다(대가: primary bloat).
+
+### 복제 슬롯 — 유실 방지와 디스크 폭발의 양날
+
+슬롯이 있으면 primary 는 스탠바이(또는 Debezium)가 받기 전까지 WAL 을 지우지 않는다. 받는 쪽이 멈추면 WAL 이 무한히 쌓인다.
+
+```sql
+SELECT slot_name, slot_type, active,
+       pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS retained
+FROM pg_replication_slots;
+ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';   -- 상한(넘으면 슬롯이 무효화됨)
+```
+
+이 프로젝트의 CDC 실험이 실험 끝에 슬롯을 반드시 지우는 이유다 — [CDC 와 Outbox](/kafka/notes/08-cdc-outbox-debezium).
+
+## PgBouncer 풀 모드 비교
+
+| 모드 | 서버 커넥션을 돌려받는 시점 | 깨지는 기능 |
+|---|---|---|
+| session | 클라이언트 연결 종료 | 없음(다중화 효과 작음) |
+| transaction | 트랜잭션 종료 | 세션 `SET`, 세션 advisory lock, `LISTEN`, 임시 테이블, (1.21 이전) prepared statement |
+| statement | 문장 종료 | 다문장 트랜잭션 불가 |
+
+크기 잡기 예: 앱 Pod 20개 × 앱 풀 10 = 클라이언트 200 → PgBouncer `default_pool_size=20` → DB 서버 커넥션 20. 대기는 PgBouncer 큐에서 일어나고 DB 는 코어 수에 맞는 동시성만 받는다. PgBouncer 의 `SHOW POOLS;` 에서 `cl_waiting` 과 `maxwait` 가 늘면 풀이 작거나 쿼리가 느린 것이다.
+
+## pg_stat_statements 를 제대로 읽기
+
+```sql
+SELECT queryid, calls,
+       round(total_exec_time::numeric / 1000, 1) AS total_s,
+       round(mean_exec_time::numeric, 2) AS mean_ms,
+       round((100 * total_exec_time / sum(total_exec_time) OVER ())::numeric, 1) AS pct,
+       rows / nullif(calls, 0) AS rows_per_call,
+       round(100.0 * shared_blks_hit / nullif(shared_blks_hit + shared_blks_read, 0), 1) AS hit_pct,
+       left(query, 60)
+FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 10;
+```
+
+| 패턴 | 해석 |
+|---|---|
+| calls 매우 큼 + mean 작음 + pct 큼 | N+1·과도한 호출 → 앱에서 배치/캐시 |
+| calls 작음 + mean 큼 | 무거운 단일 쿼리 → 계획·인덱스 |
+| hit_pct 낮음 | 디스크 읽기 → 캐시 부족 또는 큰 스캔 |
+| rows_per_call 큼 | 필요 이상 가져옴 → LIMIT·컬럼 줄이기 |
+
+**총 시간(total)** 순으로 보는 것이 핵심이다. 평균이 빠르더라도 호출이 많으면 DB 시간의 대부분을 쓴다 — [데이터 접근 병목](/performance/notes/05-data-access-bottlenecks).
+
+## 예시로 보기 — 이 프로젝트에서 연습하는 운영 작업
+
+```bash
+pnpm pg:up
+# 논리 백업과 복원
+docker exec study-postgres pg_dump -U study -Fc study > /tmp/study.dump
+docker exec -i study-postgres pg_restore -U study -d postgres --create --clean < /tmp/study.dump
+# 느린 쿼리 Top 10
+docker exec -it study-postgres psql -U study -c "SELECT calls, round(mean_exec_time::numeric,2) ms, left(query,60) FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 10;"
+# 복제 슬롯 확인 (CDC 실험 후 남아 있으면 안 됨)
+docker exec -it study-postgres psql -U study -c "SELECT slot_name, active FROM pg_replication_slots;"
+```
+
+장애 실험 `chaos-pg-connection-exhaustion` 은 `max_connections` 를 다 채워 새 연결이 `too many clients` 로 거부되는 상황과, 앱 풀이 그것을 어떻게 흡수(또는 실패)하는지 보여 준다. 관측은 postgres_exporter → Prometheus → Grafana 로 이어 붙일 수 있다 — [계측과 exporter](/observability/notes/03-instrumentation-exporters).
+
+## 운영·관측 포인트
+
+| 알림 | 조건(예) | 이유 |
+|---|---|---|
+| 복제 지연 | `replay_lag > 30s` 5분 | 읽기 복제본의 오래된 데이터, 장애 조치 시 유실 |
+| 슬롯 보존 WAL | `retained > 5GB` | 디스크 폭발 전조 |
+| xid age | `age(datfrozenxid) > 1e9` | 랩어라운드 위험 |
+| 커넥션 사용률 | `numbackends / max_connections > 0.8` | 고갈 직전 |
+| 체크포인트 강제 비율 | requested 비율 상승 | `max_wal_size` 부족 → I/O 스파이크 |
+
+## 실습 체크리스트
+
+- [ ] `pg_dump -Fc` → `pg_restore --create` 로 이 프로젝트 DB 복원 연습(복원 시간 기록)
+- [ ] `pg_stat_statements` 를 total 기준으로 정렬해 Top 3 쿼리의 hit_pct·rows_per_call 해석
+- [ ] CDC 실험 전후 `pg_replication_slots` 확인 — 슬롯이 남지 않는지

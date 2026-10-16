@@ -102,6 +102,99 @@ ctr --namespace moby containers list          # containerd 직접 보기 (VM 안
 - 시간대·로케일은 이미지에 없음 → `TZ` 환경 변수.
 - `/proc/sys` 일부는 읽기 전용 → `--sysctl net.core.somaxconn=4096`.
 
+## 직접 만들어 보는 "미니 컨테이너"
+
+Docker 없이 리눅스 명령만으로 컨테이너의 핵심을 재현하면 구성 요소가 확실히 보인다(Docker Desktop VM 안에서, 또는 리눅스 호스트에서).
+
+```bash
+# 1) 루트 파일시스템 준비: alpine 이미지를 디렉터리로 풀기
+mkdir -p /tmp/mini/rootfs && docker export $(docker create alpine) | tar -x -C /tmp/mini/rootfs
+
+# 2) 새 네임스페이스들 + 루트 바꾸기
+unshare --pid --fork --mount --uts --net --ipc --mount-proc=/tmp/mini/rootfs/proc \
+  chroot /tmp/mini/rootfs /bin/sh -c 'hostname mini; hostname; ps; ip link'
+# mini
+# PID USER TIME COMMAND
+#   1 root  0:00 /bin/sh -c ...      ← 자기가 PID 1
+# 1: lo: <LOOPBACK> ...              ← 네트워크는 lo 뿐 (veth 를 안 꽂았으니)
+
+# 3) cgroup 으로 메모리 제한 걸기 (cgroup v2)
+mkdir /sys/fs/cgroup/mini && echo 50M > /sys/fs/cgroup/mini/memory.max
+echo $$ > /sys/fs/cgroup/mini/cgroup.procs    # 현재 셸을 cgroup 에 넣고 위 unshare 를 실행
+```
+
+| 직접 한 것 | Docker 에서 대응하는 부분 |
+|---|---|
+| `docker export` + tar | 이미지 레이어 → overlay 스냅샷(containerd snapshotter) |
+| `unshare` | runc 의 `clone(CLONE_NEWPID|CLONE_NEWNET|...)` |
+| `chroot` | runc 의 `pivot_root`(chroot 보다 안전) |
+| cgroup 디렉터리 쓰기 | runc 가 `/sys/fs/cgroup/.../docker-<id>.scope` 생성 |
+| (안 한 것) veth + 브리지 | dockerd/CNI 의 네트워크 설정 |
+| (안 한 것) seccomp·capability | runc 가 OCI `config.json` 대로 적용 |
+
+`chroot` 대신 `pivot_root` 를 쓰는 이유: chroot 는 루트가 바뀐 프로세스가 `..` 를 따라 탈출하는 고전 기법이 있고, pivot_root 는 마운트 네임스페이스 안에서 옛 루트를 아예 떼어 낸다.
+
+## OCI 번들을 직접 보기
+
+runc 가 받는 입력은 `rootfs/` 디렉터리 + `config.json` 하나다. 이것이 **OCI 런타임 명세**의 전부다.
+
+```bash
+mkdir -p /tmp/bundle/rootfs && cd /tmp/bundle
+docker export $(docker create alpine) | tar -x -C rootfs
+runc spec                     # 기본 config.json 생성
+grep -A3 '"namespaces"' config.json   # pid, network, ipc, uts, mount
+grep -A2 '"capabilities"' config.json # bounding/effective 집합
+runc run demo                 # 이게 컨테이너다
+```
+
+containerd 는 이미지에서 이 번들을 만들어 runc 에 넘긴다. Kubernetes 도 같은 번들로 끝난다. 그래서 Docker 로 만든 이미지가 어디서나 돈다.
+
+## 메모리 회계 — cgroup 이 세는 것
+
+cgroup v2 `memory.current` 는 **anon(프로세스 힙·스택) + file(페이지 캐시) + kernel(소켓 버퍼·slab)** 을 모두 센다.
+
+| 항목 | 예 | 제한에 걸리면 |
+|---|---|---|
+| anon | Redis 데이터, Node 힙 | 회수 불가 → OOM kill |
+| file(페이지 캐시) | 로그 파일 쓰기, RDB 읽기 | 커널이 먼저 회수(깨끗한 캐시) |
+| kernel | 많은 TCP 연결의 버퍼 | 회수 어려움 |
+
+그래서 `docker stats` 의 사용량이 limit 근처여도 대부분이 캐시라면 위험하지 않을 수 있고, 반대로 anon 이 꽉 차면 즉시 OOM 이다. `memory.events` 의 `high`/`max`/`oom_kill` 카운터로 실제로 압박이 있었는지 확인한다. 페이지 캐시 동작 자체는 [가상 메모리와 페이지 캐시](/os-internals/notes/02-virtual-memory-page-cache), 실험 `os-page-cache`.
+
+## PID 1 의 특별한 책임
+
+컨테이너의 PID 1 은 리눅스에서 init 이 하는 두 가지를 떠맡는다.
+
+1. **신호 기본 동작 없음**: 커널은 PID 1 에게 핸들러가 없는 SIGTERM·SIGINT 를 **무시**한다. 앱이 핸들러를 등록하지 않으면 `docker stop` 이 10초 기다렸다 SIGKILL 한다(종료 코드 137).
+2. **좀비 수거**: 고아 프로세스는 PID 1 의 자식이 된다. PID 1 이 `wait()` 를 안 하면 좀비가 쌓여 `--pids-limit` 에 걸린다.
+
+```bash
+docker run -d --name z alpine sh -c 'while true; do (sleep 1 &) ; sleep 0.1; done'
+docker exec z ps -o pid,stat,comm | grep -c Z      # 좀비(Z) 증가
+docker rm -f z
+docker run -d --init --name z2 alpine sh -c '...'  # tini 가 PID 1 이 되어 수거
+```
+
+`--init`(tini), Kubernetes 의 `shareProcessNamespace` + pause 컨테이너가 이 역할을 한다.
+
+## 예시로 보기 — 이 프로젝트의 실험들이 쓰는 내부 기능
+
+| 실험 | 쓰는 커널 기능 | 이 노트의 어느 부분 |
+|---|---|---|
+| `docker-image-layers` | overlay2 레이어·whiteout | overlay2 |
+| `chaos-redis-hang`, `alert-pipeline-redis-down` | cgroup **freezer**(`docker pause`) | cgroup |
+| `os-cgroup-limits` | `cpu.max` 스로틀·`memory.max` OOM | cgroup v2 |
+| `ebpf-*`, `os-context-switch` | `--privileged --pid=host` 로 VM 의 PID 네임스페이스 공유 | namespace |
+| `sec-k8s-networkpolicy` | Pod 의 net 네임스페이스 + Calico | namespace |
+| `sec-falco-runtime` | eBPF 가 **커널 단위**로 보므로 kind 노드·compose 컨테이너 모두 관측 | 런타임 계층 |
+
+마지막 항목이 흥미롭다. kind 의 Kubernetes 노드도 결국 Docker 컨테이너이고, compose 의 Redis 도 같은 VM 커널 위의 프로세스라, 커널을 보는 도구에게는 "다른 클러스터" 라는 경계가 없다.
+
+## 운영·관측 포인트
+
+- cAdvisor(kubelet 내장)가 cgroup 파일을 읽어 `container_memory_working_set_bytes`, `container_cpu_cfs_throttled_periods_total` 같은 메트릭을 낸다. 이 노트의 파일들이 그 메트릭의 원천이다 — [Kubernetes 모니터링 스택](/kubernetes/notes/10-monitoring-stack).
+- working_set = usage − 비활성 파일 캐시. Kubernetes 가 OOM·축출 판단에 쓰는 값이라 `docker stats` 와 숫자가 다를 수 있다.
+
 ## 실습 체크리스트
 
 - [ ] `docker run --pid=host` 로 호스트 프로세스가 보이는 것과 기본 격리 비교
@@ -109,3 +202,6 @@ ctr --namespace moby containers list          # containerd 직접 보기 (VM 안
 - [ ] `--cpus 0.2` 로 벤치마크를 돌려 throttling 이 지연에 미치는 영향 보기
 - [ ] `docker diff` 로 컨테이너 쓰기 레이어 변화 확인
 - [ ] `--network=container:` 로 사이드카처럼 다른 컨테이너의 포트를 localhost 로 접근
+- [ ] `unshare --pid --fork --mount-proc` + `chroot` 로 미니 컨테이너를 만들어 PID 1 확인
+- [ ] `runc spec` 으로 config.json 을 열어 namespaces·capabilities 항목 읽기
+- [ ] 좀비 생성 컨테이너를 `--init` 없이/있이 띄워 비교

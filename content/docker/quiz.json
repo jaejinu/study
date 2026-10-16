@@ -1,72 +1,197 @@
 [
- {
-  "note": "01-docker-overview",
-  "q": "컨테이너가 VM 보다 가벼운 이유는?",
-  "a": "게스트 OS 없이 호스트 커널을 공유하고 namespace/cgroup 으로 프로세스만 격리하기 때문."
- },
- {
-  "note": "02-first-container",
-  "q": "docker stop 과 docker rm 후 컨테이너 안 데이터는 각각 어떻게 되나?",
-  "a": "stop 은 쓰기 레이어가 남아 start 하면 그대로. rm 은 레이어가 지워져 데이터가 사라진다 → 볼륨 필요."
- },
- {
-  "note": "02-first-container",
-  "q": "CMD [\"sh\",\"-c\",\"node app.js\"] 가 SIGTERM 을 못 받는 이유는?",
-  "a": "셸이 PID 1 이 되어 신호를 자식에 전달하지 않는다. exec 형식 CMD [\"node\",\"app.js\"] 또는 --init 사용."
- },
- {
-  "note": "03-images-dockerfile",
-  "q": "COPY . . 를 pnpm install 보다 먼저 두면 왜 느려지나?",
-  "a": "소스 한 줄만 바뀌어도 COPY 레이어가 무효화되어 그 아래 install 레이어까지 다시 빌드된다. 의존성 파일만 먼저 COPY."
- },
- {
-  "note": "03-images-dockerfile",
-  "q": "RUN 에서 만든 임시 파일을 다음 RUN 에서 지우면 이미지 크기는?",
-  "a": "줄지 않는다. 레이어는 불변이고 삭제는 whiteout 으로 기록될 뿐. 같은 RUN 에서 지워야 한다."
- },
- {
-  "note": "04-volumes-networks",
-  "q": "기본 bridge 네트워크에서 컨테이너 이름으로 접속이 안 되는 이유는?",
-  "a": "내장 DNS 는 사용자 정의 네트워크에만 있다. docker network create 로 만든 네트워크를 쓴다."
- },
- {
-  "note": "05-compose",
-  "q": "depends_on 만으로 DB 준비를 보장할 수 없는 이유는?",
-  "a": "컨테이너 '시작' 만 기다린다. healthcheck 와 condition: service_healthy 를 함께 쓴다."
- },
- {
-  "note": "06-optimization-security",
-  "q": "이미지에 ENV API_KEY=... 를 넣으면 안 되는 이유는?",
-  "a": "레이어 메타데이터에 영구히 남아 docker history 로 보인다. 런타임 주입이나 --mount=type=secret 사용."
- },
- {
-  "note": "08-internals-namespaces-cgroups",
-  "q": "CPU limit 이 '느려짐' 이 아니라 '멈춤' 으로 나타나는 이유는?",
-  "a": "cgroup 의 cpu.max 는 주기(100ms) 안 할당량을 다 쓰면 남은 시간 동안 throttling 한다. nr_throttled 로 확인."
- },
- {
-  "note": "08-internals-namespaces-cgroups",
-  "q": "컨테이너 안 nproc 이 호스트 코어 수를 보여주는 이유는?",
-  "a": "CPU 는 namespace 가 아니라 cgroup 으로 제한되어 가시성은 그대로다. 런타임이 cgroup 을 읽게 설정해야 한다."
- },
- {
-  "note": "09-buildkit-multiplatform",
-  "q": "RUN --mount=type=cache 와 레이어 캐시의 차이는?",
-  "a": "캐시 마운트는 패키지 매니저 캐시를 빌드 간 유지하되 레이어에 남기지 않는다. 레이어 캐시는 명령 결과 자체의 재사용."
- },
- {
-  "note": "09-buildkit-multiplatform",
-  "q": "멀티플랫폼 이미지를 pull 하면 어떻게 자기 플랫폼 이미지를 받나?",
-  "a": "태그가 매니페스트 리스트를 가리키고, 클라이언트가 자기 OS/arch 에 맞는 다이제스트를 골라 받는다."
- },
- {
-  "note": "10-security-hardening",
-  "q": "docker.sock 을 :ro 로 마운트해도 위험한 이유는?",
-  "a": "읽기 전용 마운트라도 API 호출로 컨테이너 생성이 가능해 사실상 호스트 root 와 같다. 소켓 프록시나 파일 경로 마운트로 대체."
- },
- {
-  "note": "10-security-hardening",
-  "q": "Redis 컨테이너에 --cap-drop ALL 을 해도 되는 이유는?",
-  "a": "비특권 포트에서 동작하고 특별한 capability 가 필요 없다. 80 포트 바인딩 같은 경우만 NET_BIND_SERVICE 추가."
- }
+  {
+    "note": "01-docker-overview",
+    "q": "컨테이너가 VM 보다 가벼운 이유는?",
+    "a": "게스트 OS 없이 호스트 커널을 공유하고 namespace/cgroup 으로 프로세스만 격리하기 때문."
+  },
+  {
+    "note": "02-first-container",
+    "q": "docker stop 과 docker rm 후 컨테이너 안 데이터는 각각 어떻게 되나?",
+    "a": "stop 은 쓰기 레이어가 남아 start 하면 그대로. rm 은 레이어가 지워져 데이터가 사라진다 → 볼륨 필요."
+  },
+  {
+    "note": "02-first-container",
+    "q": "CMD [\"sh\",\"-c\",\"node app.js\"] 가 SIGTERM 을 못 받는 이유는?",
+    "a": "셸이 PID 1 이 되어 신호를 자식에 전달하지 않는다. exec 형식 CMD [\"node\",\"app.js\"] 또는 --init 사용."
+  },
+  {
+    "note": "03-images-dockerfile",
+    "q": "COPY . . 를 pnpm install 보다 먼저 두면 왜 느려지나?",
+    "a": "소스 한 줄만 바뀌어도 COPY 레이어가 무효화되어 그 아래 install 레이어까지 다시 빌드된다. 의존성 파일만 먼저 COPY."
+  },
+  {
+    "note": "03-images-dockerfile",
+    "q": "RUN 에서 만든 임시 파일을 다음 RUN 에서 지우면 이미지 크기는?",
+    "a": "줄지 않는다. 레이어는 불변이고 삭제는 whiteout 으로 기록될 뿐. 같은 RUN 에서 지워야 한다."
+  },
+  {
+    "note": "04-volumes-networks",
+    "q": "기본 bridge 네트워크에서 컨테이너 이름으로 접속이 안 되는 이유는?",
+    "a": "내장 DNS 는 사용자 정의 네트워크에만 있다. docker network create 로 만든 네트워크를 쓴다."
+  },
+  {
+    "note": "05-compose",
+    "q": "depends_on 만으로 DB 준비를 보장할 수 없는 이유는?",
+    "a": "컨테이너 '시작' 만 기다린다. healthcheck 와 condition: service_healthy 를 함께 쓴다."
+  },
+  {
+    "note": "06-optimization-security",
+    "q": "이미지에 ENV API_KEY=... 를 넣으면 안 되는 이유는?",
+    "a": "레이어 메타데이터에 영구히 남아 docker history 로 보인다. 런타임 주입이나 --mount=type=secret 사용."
+  },
+  {
+    "note": "08-internals-namespaces-cgroups",
+    "q": "CPU limit 이 '느려짐' 이 아니라 '멈춤' 으로 나타나는 이유는?",
+    "a": "cgroup 의 cpu.max 는 주기(100ms) 안 할당량을 다 쓰면 남은 시간 동안 throttling 한다. nr_throttled 로 확인."
+  },
+  {
+    "note": "08-internals-namespaces-cgroups",
+    "q": "컨테이너 안 nproc 이 호스트 코어 수를 보여주는 이유는?",
+    "a": "CPU 는 namespace 가 아니라 cgroup 으로 제한되어 가시성은 그대로다. 런타임이 cgroup 을 읽게 설정해야 한다."
+  },
+  {
+    "note": "09-buildkit-multiplatform",
+    "q": "RUN --mount=type=cache 와 레이어 캐시의 차이는?",
+    "a": "캐시 마운트는 패키지 매니저 캐시를 빌드 간 유지하되 레이어에 남기지 않는다. 레이어 캐시는 명령 결과 자체의 재사용."
+  },
+  {
+    "note": "09-buildkit-multiplatform",
+    "q": "멀티플랫폼 이미지를 pull 하면 어떻게 자기 플랫폼 이미지를 받나?",
+    "a": "태그가 매니페스트 리스트를 가리키고, 클라이언트가 자기 OS/arch 에 맞는 다이제스트를 골라 받는다."
+  },
+  {
+    "note": "10-security-hardening",
+    "q": "docker.sock 을 :ro 로 마운트해도 위험한 이유는?",
+    "a": "읽기 전용 마운트라도 API 호출로 컨테이너 생성이 가능해 사실상 호스트 root 와 같다. 소켓 프록시나 파일 경로 마운트로 대체."
+  },
+  {
+    "note": "10-security-hardening",
+    "q": "Redis 컨테이너에 --cap-drop ALL 을 해도 되는 이유는?",
+    "a": "비특권 포트에서 동작하고 특별한 capability 가 필요 없다. 80 포트 바인딩 같은 경우만 NET_BIND_SERVICE 추가."
+  },
+  {
+    "note": "01-docker-overview",
+    "q": "컨테이너 안에서 uname -r 을 실행하면 무엇이 나오나? 왜?",
+    "a": "호스트(또는 Docker Desktop VM)의 커널 버전. 컨테이너는 커널을 공유하는 격리된 프로세스이고, 'Ubuntu 컨테이너' 는 Ubuntu 의 유저 공간 파일일 뿐이다."
+  },
+  {
+    "note": "01-docker-overview",
+    "q": "같은 태그 redis:8-alpine 을 맥과 CI 에서 받으면 같은 바이트인가?",
+    "a": "아니다. 태그는 이미지 인덱스를 가리키고, 각자 자기 플랫폼(linux/arm64, linux/amd64) 매니페스트를 받는다. 완전히 고정하려면 플랫폼별 다이제스트를 쓴다."
+  },
+  {
+    "note": "01-docker-overview",
+    "q": "docker.sock 에 쓸 수 있는 사용자나 컨테이너가 위험한 이유는?",
+    "a": "데몬 API 로 호스트 루트를 마운트한 특권 컨테이너를 만들 수 있어 사실상 호스트 root 권한과 같다."
+  },
+  {
+    "note": "02-first-container",
+    "q": "종료 코드 137 과 143 의 차이는?",
+    "a": "137 = 128+9(SIGKILL: OOM 또는 강제 종료·stop 타임아웃), 143 = 128+15(SIGTERM 에 정상 반응해 종료). 137 이면 inspect 의 OOMKilled 를 먼저 본다."
+  },
+  {
+    "note": "02-first-container",
+    "q": "-p 6379:6379 처럼 IP 없이 포트를 공개하면 어떤 위험이 있나?",
+    "a": "0.0.0.0 으로 열려 같은 네트워크의 다른 기기에서 접근할 수 있고, 리눅스에서는 Docker 의 iptables 규칙이 ufw 같은 방화벽보다 먼저 적용돼 막은 줄 알았던 포트가 열려 있을 수 있다."
+  },
+  {
+    "note": "03-images-dockerfile",
+    "q": "RUN apt-get update 가 캐시되면 생기는 문제는?",
+    "a": "RUN 캐시 키는 명령 문자열이라 외부 상태가 바뀌어도 옛 레이어를 재사용한다. 오래된 패키지 목록이 남으므로 update 와 install 을 한 RUN 에 묶고 주기적으로 --no-cache 빌드한다."
+  },
+  {
+    "note": "03-images-dockerfile",
+    "q": "ARG GIT_SHA 를 Dockerfile 맨 위에 두면 왜 나쁜가?",
+    "a": "선언 이후 레이어의 캐시 키에 값이 들어가 매 빌드마다 바뀌므로 그 아래 모든 레이어 캐시가 깨진다. 바뀌는 값은 맨 아래에 둔다."
+  },
+  {
+    "note": "04-volumes-networks",
+    "q": "빈 named volume 과 bind mount 를 이미지에 파일이 있는 경로에 붙일 때 차이는?",
+    "a": "빈 named volume 은 최초 1회 이미지 파일을 볼륨으로 복사해 주고, bind mount 는 호스트 디렉터리로 덮어써 이미지 파일을 가린다."
+  },
+  {
+    "note": "04-volumes-networks",
+    "q": "사용자 정의 네트워크의 컨테이너 resolv.conf 에 있는 127.0.0.11 은 무엇인가?",
+    "a": "dockerd 가 그 네트워크 네임스페이스 안에서 돌리는 내장 DNS. 컨테이너·서비스 이름과 별칭을 답하고 모르는 이름은 호스트 DNS 로 넘긴다."
+  },
+  {
+    "note": "04-volumes-networks",
+    "q": "리눅스에서 bind mount 한 디렉터리에 컨테이너가 쓰지 못하는 흔한 원인은?",
+    "a": "파일 접근은 숫자 UID 로 판단하므로 호스트 디렉터리 소유 UID 와 컨테이너 프로세스 UID(예: redis 999)가 다르면 권한 거부가 난다."
+  },
+  {
+    "note": "05-compose",
+    "q": "같은 compose 파일을 다른 폴더(git worktree)에서 up 하면 무슨 일이 생기나?",
+    "a": "프로젝트 이름이 디렉터리 이름이라 네트워크·볼륨이 따로 만들어지고, container_name 이 같으면 충돌한다. -p 로 프로젝트 이름을 고정한다."
+  },
+  {
+    "note": "05-compose",
+    "q": "depends_on 의 service_completed_successfully 조건은 언제 쓰나?",
+    "a": "마이그레이션·초기화 잡처럼 0 으로 끝나야 다음 서비스가 시작돼야 할 때."
+  },
+  {
+    "note": "05-compose",
+    "q": "healthcheck 에서 start_period 의 역할은?",
+    "a": "부팅 중 실패를 retries 에 세지 않는 유예 기간. 느리게 뜨는 서비스가 시작 직후 unhealthy 로 판정되지 않게 한다."
+  },
+  {
+    "note": "06-optimization-security",
+    "q": "COPY .env 후 다음 RUN 에서 rm 하면 비밀이 사라지나?",
+    "a": "아니다. 이전 레이어에 그대로 남아 docker save 로 꺼낼 수 있다. .dockerignore 로 애초에 넣지 않고, 빌드 비밀은 --mount=type=secret 을 쓴다."
+  },
+  {
+    "note": "06-optimization-security",
+    "q": "--cpus 1 컨테이너에서 앱이 nproc 를 보고 스레드를 많이 만들면?",
+    "a": "nproc 는 호스트 코어 수를 보여 줘 스레드가 많아지고, CFS 쿼터를 금방 소진해 스로틀링으로 p99 가 튄다. GOMAXPROCS 등 cgroup 기준으로 맞춘다."
+  },
+  {
+    "note": "06-optimization-security",
+    "q": "이미지 크기를 줄이는 방법 중 효과가 가장 큰 것은?",
+    "a": "멀티스테이지 빌드. 빌드 도구·devDependencies·소스를 최종 이미지에서 빼 GB 단위로 줄인다."
+  },
+  {
+    "note": "07-ops-debugging",
+    "q": "셸이 없는 distroless 컨테이너의 소켓 목록을 보는 방법은?",
+    "a": "netshoot 같은 디버그 이미지로 --network container:<name> 을 쓰거나, 특권 컨테이너에서 nsenter -t <PID> -n 으로 그 네트워크 네임스페이스에 들어가 ss 를 실행한다."
+  },
+  {
+    "note": "07-ops-debugging",
+    "q": "strace 로 본 프로세스가 epoll_wait 에서 오래 머물면 무슨 뜻인가?",
+    "a": "처리할 이벤트가 없는 유휴 상태다. connect/read 에서 멈추면 외부 의존성, futex 에서 멈추면 락 경합을 의심한다."
+  },
+  {
+    "note": "07-ops-debugging",
+    "q": "docker stats 의 메모리 사용량이 앱 RSS 보다 큰 이유는?",
+    "a": "cgroup 메모리는 페이지 캐시(file)를 포함한다. memory.stat 의 anon 과 file 을 나눠 실제 앱 메모리를 본다."
+  },
+  {
+    "note": "08-internals-namespaces-cgroups",
+    "q": "컨테이너의 PID 1 이 SIGTERM 핸들러가 없으면 어떻게 되나?",
+    "a": "커널은 PID 1 에게 기본 동작을 적용하지 않아 신호가 무시되고, docker stop 이 10초 뒤 SIGKILL 한다(종료 코드 137)."
+  },
+  {
+    "note": "08-internals-namespaces-cgroups",
+    "q": "runc 가 실행하는 OCI 번들은 무엇으로 이뤄지나?",
+    "a": "rootfs 디렉터리와 config.json(네임스페이스·cgroup·capabilities·마운트 등 명세) 두 가지."
+  },
+  {
+    "note": "09-buildkit-multiplatform",
+    "q": "레이어 캐시와 RUN --mount=type=cache 는 각각 언제 효과가 있나?",
+    "a": "레이어 캐시는 입력이 완전히 같을 때 명령을 건너뛰고, 캐시 마운트는 입력이 조금 바뀌어 명령이 다시 돌 때 패키지 저장소를 재사용해 빨라진다."
+  },
+  {
+    "note": "09-buildkit-multiplatform",
+    "q": "arm64 머신에서 amd64 전용 이미지만 있는 도구를 써야 하면?",
+    "a": "에뮬레이션은 느리고 일부는 동작하지 않으므로 Dockerfile 로 arm64 이미지를 직접 빌드한다(이 프로젝트의 study-bpftrace:local)."
+  },
+  {
+    "note": "10-security-hardening",
+    "q": "eBPF·perf 실험 컨테이너에 --privileged 가 필요한 이유는?",
+    "a": "Docker 기본 seccomp 프로파일이 bpf·perf_event_open 시스템 콜을 막고, 필요한 capability 도 없기 때문이다. 그래서 실험 중에만 일회용으로 띄운다."
+  },
+  {
+    "note": "10-security-hardening",
+    "q": "rootless Docker 에서 컨테이너 UID 0 은 호스트에서 누구인가?",
+    "a": "user namespace 매핑으로 데몬을 실행한 일반 사용자(예: UID 501)다. 탈출해도 호스트 root 가 아니다."
+  }
 ]

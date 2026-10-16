@@ -1,77 +1,162 @@
 [
- {
-  "note": "01-postgres-overview",
-  "q": "PostgreSQL 에서 커넥션 풀러(PgBouncer)가 중요한 이유는?",
-  "a": "커넥션마다 백엔드 프로세스를 fork 하므로 수천 커넥션은 메모리·CPU 부담이 크다."
- },
- {
-  "note": "02-indexes-explain",
-  "q": "인덱스가 있는데 Seq Scan 을 고르는 대표적 이유 두 가지는?",
-  "a": "조건의 선택도가 낮아(결과가 테이블의 큰 비율) 랜덤 I/O 보다 전체 읽기가 싸거나, 통계가 낡았거나(ANALYZE), 함수/타입 불일치로 인덱스를 못 쓴다."
- },
- {
-  "note": "02-indexes-explain",
-  "q": "복합 인덱스 (a, b) 가 WHERE b = ? 에 쓰이지 않는 이유는?",
-  "a": "B-tree 는 왼쪽 접두어부터 정렬되어 있어 a 없이 b 만으로는 탐색할 수 없다."
- },
- {
-  "note": "03-mvcc-isolation",
-  "q": "READ COMMITTED 에서 같은 행을 두 번 읽을 때 값이 달라질 수 있는 이유는?",
-  "a": "문장마다 새 스냅샷을 잡아 사이에 커밋된 변경이 보인다(non-repeatable read). REPEATABLE READ 는 트랜잭션 스냅샷을 유지."
- },
- {
-  "note": "03-mvcc-isolation",
-  "q": "오래 열린 idle in transaction 세션이 위험한 이유는?",
-  "a": "그 스냅샷이 필요한 dead tuple 을 VACUUM 이 지우지 못해 테이블이 부푼다(bloat)."
- },
- {
-  "note": "04-locks-deadlocks",
-  "q": "데드락을 예방하는 가장 기본적인 규칙은?",
-  "a": "모든 트랜잭션이 같은 순서(예: id 오름차순)로 행을 잠근다. 트랜잭션은 짧게."
- },
- {
-  "note": "04-locks-deadlocks",
-  "q": "FOR UPDATE SKIP LOCKED 가 작업 큐에 유용한 이유는?",
-  "a": "잠긴 행을 건너뛰어 여러 워커가 서로 다른 작업을 동시에 집고, 트랜잭션 동안 '처리 중' 이 자동 표시된다."
- },
- {
-  "note": "05-operations",
-  "q": "pg_dump 와 PITR 의 차이는?",
-  "a": "pg_dump 는 특정 시점 논리 백업. PITR 은 베이스 백업 + WAL 아카이브로 임의 시점(예: 실수 직전)으로 복구한다."
- },
- {
-  "note": "06-partitioning-scale",
-  "q": "파티션 프루닝이 안 되는 WHERE 조건의 예는?",
-  "a": "파티션 키에 함수를 적용한 조건(date_trunc(created_at)). 키를 상수/파라미터와 직접 비교해야 한다."
- },
- {
-  "note": "06-partitioning-scale",
-  "q": "오래된 데이터 삭제에 DELETE 대신 무엇을 쓰나?",
-  "a": "DETACH PARTITION … CONCURRENTLY 후 DROP TABLE. 수 ms, 잠금 최소, VACUUM 불필요."
- },
- {
-  "note": "07-query-optimization-deep",
-  "q": "OFFSET 페이지네이션이 느린 이유와 대안은?",
-  "a": "앞 N 행을 읽고 버린다. (created_at, id) < ($1,$2) 조건의 keyset 페이지네이션 + 해당 인덱스."
- },
- {
-  "note": "07-query-optimization-deep",
-  "q": "Hash Join 에서 'Batches: 8' 이 보이면?",
-  "a": "work_mem 이 부족해 해시 테이블을 디스크로 나눴다. 세션에서 work_mem 을 올린다."
- },
- {
-  "note": "07-query-optimization-deep",
-  "q": "SSD 에서 random_page_cost 를 낮추는 이유는?",
-  "a": "기본 4 는 HDD 가정. 1.1 로 낮추면 플래너가 인덱스 스캔을 더 올바르게 선호한다."
- },
- {
-  "note": "08-jsonb-fulltext-pgvector",
-  "q": "attrs->>'brand' = 'x' 가 GIN 인덱스를 못 타는 이유는?",
-  "a": "GIN 은 @>, ? 연산자용이다. 특정 키 등호 조회는 표현식 B-tree 인덱스를 따로 만든다."
- },
- {
-  "note": "08-jsonb-fulltext-pgvector",
-  "q": "pgvector 에서 WHERE 필터 + ORDER BY 거리 조합의 함정은?",
-  "a": "필터가 선택적이면 플래너가 HNSW 를 버리고 전수 비교할 수 있다. 파티셔닝이나 반복 스캔 옵션으로 대응."
- }
+  {
+    "note": "01-postgres-overview",
+    "q": "PostgreSQL 에서 커넥션 풀러(PgBouncer)가 중요한 이유는?",
+    "a": "커넥션마다 백엔드 프로세스를 fork 하므로 수천 커넥션은 메모리·CPU 부담이 크다."
+  },
+  {
+    "note": "02-indexes-explain",
+    "q": "인덱스가 있는데 Seq Scan 을 고르는 대표적 이유 두 가지는?",
+    "a": "조건의 선택도가 낮아(결과가 테이블의 큰 비율) 랜덤 I/O 보다 전체 읽기가 싸거나, 통계가 낡았거나(ANALYZE), 함수/타입 불일치로 인덱스를 못 쓴다."
+  },
+  {
+    "note": "02-indexes-explain",
+    "q": "복합 인덱스 (a, b) 가 WHERE b = ? 에 쓰이지 않는 이유는?",
+    "a": "B-tree 는 왼쪽 접두어부터 정렬되어 있어 a 없이 b 만으로는 탐색할 수 없다."
+  },
+  {
+    "note": "03-mvcc-isolation",
+    "q": "READ COMMITTED 에서 같은 행을 두 번 읽을 때 값이 달라질 수 있는 이유는?",
+    "a": "문장마다 새 스냅샷을 잡아 사이에 커밋된 변경이 보인다(non-repeatable read). REPEATABLE READ 는 트랜잭션 스냅샷을 유지."
+  },
+  {
+    "note": "03-mvcc-isolation",
+    "q": "오래 열린 idle in transaction 세션이 위험한 이유는?",
+    "a": "그 스냅샷이 필요한 dead tuple 을 VACUUM 이 지우지 못해 테이블이 부푼다(bloat)."
+  },
+  {
+    "note": "04-locks-deadlocks",
+    "q": "데드락을 예방하는 가장 기본적인 규칙은?",
+    "a": "모든 트랜잭션이 같은 순서(예: id 오름차순)로 행을 잠근다. 트랜잭션은 짧게."
+  },
+  {
+    "note": "04-locks-deadlocks",
+    "q": "FOR UPDATE SKIP LOCKED 가 작업 큐에 유용한 이유는?",
+    "a": "잠긴 행을 건너뛰어 여러 워커가 서로 다른 작업을 동시에 집고, 트랜잭션 동안 '처리 중' 이 자동 표시된다."
+  },
+  {
+    "note": "05-operations",
+    "q": "pg_dump 와 PITR 의 차이는?",
+    "a": "pg_dump 는 특정 시점 논리 백업. PITR 은 베이스 백업 + WAL 아카이브로 임의 시점(예: 실수 직전)으로 복구한다."
+  },
+  {
+    "note": "06-partitioning-scale",
+    "q": "파티션 프루닝이 안 되는 WHERE 조건의 예는?",
+    "a": "파티션 키에 함수를 적용한 조건(date_trunc(created_at)). 키를 상수/파라미터와 직접 비교해야 한다."
+  },
+  {
+    "note": "06-partitioning-scale",
+    "q": "오래된 데이터 삭제에 DELETE 대신 무엇을 쓰나?",
+    "a": "DETACH PARTITION … CONCURRENTLY 후 DROP TABLE. 수 ms, 잠금 최소, VACUUM 불필요."
+  },
+  {
+    "note": "07-query-optimization-deep",
+    "q": "OFFSET 페이지네이션이 느린 이유와 대안은?",
+    "a": "앞 N 행을 읽고 버린다. (created_at, id) < ($1,$2) 조건의 keyset 페이지네이션 + 해당 인덱스."
+  },
+  {
+    "note": "07-query-optimization-deep",
+    "q": "Hash Join 에서 'Batches: 8' 이 보이면?",
+    "a": "work_mem 이 부족해 해시 테이블을 디스크로 나눴다. 세션에서 work_mem 을 올린다."
+  },
+  {
+    "note": "07-query-optimization-deep",
+    "q": "SSD 에서 random_page_cost 를 낮추는 이유는?",
+    "a": "기본 4 는 HDD 가정. 1.1 로 낮추면 플래너가 인덱스 스캔을 더 올바르게 선호한다."
+  },
+  {
+    "note": "08-jsonb-fulltext-pgvector",
+    "q": "attrs->>'brand' = 'x' 가 GIN 인덱스를 못 타는 이유는?",
+    "a": "GIN 은 @>, ? 연산자용이다. 특정 키 등호 조회는 표현식 B-tree 인덱스를 따로 만든다."
+  },
+  {
+    "note": "08-jsonb-fulltext-pgvector",
+    "q": "pgvector 에서 WHERE 필터 + ORDER BY 거리 조합의 함정은?",
+    "a": "필터가 선택적이면 플래너가 HNSW 를 버리고 전수 비교할 수 있다. 파티셔닝이나 반복 스캔 옵션으로 대응."
+  },
+  {
+    "note": "01-postgres-overview",
+    "q": "PostgreSQL 커넥션이 비싼 이유는?",
+    "a": "커넥션마다 백엔드 프로세스를 fork 하고 카탈로그 캐시를 새로 채우며, 수 MB 메모리와 work_mem 이 곱해진다. 그래서 앱 풀과 PgBouncer 를 쓴다."
+  },
+  {
+    "note": "01-postgres-overview",
+    "q": "shared_buffers 를 RAM 의 25% 정도로 두는 이유는?",
+    "a": "PostgreSQL 은 OS 페이지 캐시도 거치므로 너무 크게 잡으면 같은 페이지가 이중 캐시되고 체크포인트 쓰기 부담이 커진다."
+  },
+  {
+    "note": "01-postgres-overview",
+    "q": "pg_stat_activity 의 wait_event_type 이 Lock 과 IO 일 때 각각 의미는?",
+    "a": "Lock 은 다른 트랜잭션의 잠금 대기, IO 는 데이터 파일 읽기나 WAL fsync 같은 디스크 대기다."
+  },
+  {
+    "note": "02-indexes-explain",
+    "q": "Seq Scan 비용을 손으로 계산하면?",
+    "a": "대략 페이지 수 × seq_page_cost(1.0) + 행 수 × cpu_tuple_cost(0.01). pg_class 의 relpages·reltuples 로 계산해 EXPLAIN 과 비교할 수 있다."
+  },
+  {
+    "note": "02-indexes-explain",
+    "q": "SSD 에서 random_page_cost 를 낮추면 어떤 변화가 있나?",
+    "a": "힙 임의 읽기 비용 추정이 줄어 플래너가 인덱스 스캔을 더 자주 선택한다(보통 1.1~1.5)."
+  },
+  {
+    "note": "03-mvcc-isolation",
+    "q": "HOT 업데이트가 일어나는 조건과 이점은?",
+    "a": "인덱스 컬럼을 바꾸지 않고 같은 페이지에 공간이 있을 때. 새 버전을 같은 페이지에 두고 인덱스를 갱신하지 않아 쓰기 증폭과 bloat 가 줄어든다(fillfactor 로 여유 확보)."
+  },
+  {
+    "note": "03-mvcc-isolation",
+    "q": "READ COMMITTED 에서 조건부 UPDATE 가 잔액 초과 인출을 막는 원리는?",
+    "a": "잠긴 행을 기다린 뒤 최신 버전으로 WHERE 조건을 다시 검사(EvalPlanQual)하므로, 먼저 커밋된 차감이 반영된 값으로 판단한다."
+  },
+  {
+    "note": "04-locks-deadlocks",
+    "q": "ALTER TABLE 이 1ms 짜리인데 서비스 전체가 멈추는 이유는?",
+    "a": "ACCESS EXCLUSIVE 잠금이 긴 쿼리 뒤 큐에서 기다리는 동안 뒤에 온 모든 SELECT 가 그 뒤에 줄 서기 때문이다. lock_timeout 으로 짧게 포기하고 재시도한다."
+  },
+  {
+    "note": "04-locks-deadlocks",
+    "q": "행 잠금 대기가 pg_locks 에서 transactionid 로 보이는 이유는?",
+    "a": "행 잠금은 튜플 헤더의 xmax 에 기록되고, 기다리는 쪽은 잠근 트랜잭션의 xid 자체에 대한 ShareLock 을 기다리기 때문이다."
+  },
+  {
+    "note": "05-operations",
+    "q": "스트리밍 복제가 있으면 백업이 필요 없나?",
+    "a": "아니다. DROP TABLE 같은 실수도 즉시 복제된다. PITR(베이스백업 + WAL 아카이브)이나 지연 복제가 필요하다."
+  },
+  {
+    "note": "05-operations",
+    "q": "pg_stat_statements 에서 calls 는 많고 mean 은 작은데 total 비중이 크면?",
+    "a": "N+1 이나 과도한 호출 패턴이다. 쿼리 자체보다 앱에서 배치·캐시로 호출 수를 줄인다."
+  },
+  {
+    "note": "05-operations",
+    "q": "복제 슬롯이 디스크를 채우는 이유와 대책은?",
+    "a": "받는 쪽이 멈추면 primary 가 그 LSN 이후 WAL 을 지우지 않는다. 보존량을 알림으로 보고 max_slot_wal_keep_size 로 상한을 둔다."
+  },
+  {
+    "note": "06-partitioning-scale",
+    "q": "시계열 보존 기간 관리를 DELETE 대신 파티션 DETACH+DROP 으로 하는 이유는?",
+    "a": "DELETE 는 대량의 WAL·dead tuple·VACUUM 부담과 복제 지연을 만들지만, 파티션을 떼고 지우면 메타데이터 변경과 파일 삭제로 끝난다."
+  },
+  {
+    "note": "06-partitioning-scale",
+    "q": "EXPLAIN 의 Subplans Removed 는 무엇을 뜻하나?",
+    "a": "now()·매개변수처럼 플래닝 때 모르는 값으로 실행 시점에 제외한 파티션 수(실행 시 프루닝)."
+  },
+  {
+    "note": "07-query-optimization-deep",
+    "q": "OFFSET 대신 키셋 페이지네이션을 쓰는 이유는?",
+    "a": "OFFSET 은 앞의 행을 모두 읽고 버려 깊은 페이지일수록 느려지지만, 키셋은 (정렬키, id) 인덱스에서 바로 시작점을 찾아 항상 LIMIT 만큼만 읽는다."
+  },
+  {
+    "note": "08-jsonb-fulltext-pgvector",
+    "q": "GIN 인덱스의 fastupdate 가 켜져 있으면 생기는 현상은?",
+    "a": "INSERT 가 pending list 에 쌓였다가 나중에 합쳐져 쓰기는 빠르지만, 목록이 크면 검색 시 pending list 를 순차로 훑어 느려질 수 있다."
+  },
+  {
+    "note": "08-jsonb-fulltext-pgvector",
+    "q": "HNSW 의 hnsw.ef_search 를 올리면?",
+    "a": "탐색 폭이 넓어져 재현율이 오르고 질의가 느려진다. 정확 검색과 비교해 recall@k 를 재며 조정한다."
+  }
 ]

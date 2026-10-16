@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="430" fill="#0d1117"/>
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker>
+  </defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">빌드 캐시 무효화 — 한 단계가 깨지면 그 아래는 전부 다시 빌드</text>
+  <text x="250" y="62" text-anchor="middle" fill="#3fb950" font-weight="600">좋은 순서 (소스만 바뀜)</text>
+  <text x="710" y="62" text-anchor="middle" fill="#f85149" font-weight="600">나쁜 순서 (소스만 바뀜)</text>
+  <!-- left column -->
+  <g>
+    <rect x="70" y="80" width="360" height="40" rx="8" fill="#161b22" stroke="#3fb950"/>
+    <text x="88" y="105" fill="#e6edf3" font-family="ui-monospace, monospace" font-size="12">FROM node:22-alpine</text>
+    <text x="412" y="105" text-anchor="end" fill="#3fb950" font-size="12">CACHED</text>
+    <rect x="70" y="132" width="360" height="40" rx="8" fill="#161b22" stroke="#3fb950"/>
+    <text x="88" y="157" fill="#e6edf3" font-family="ui-monospace, monospace" font-size="12">COPY package.json pnpm-lock.yaml ./</text>
+    <text x="412" y="157" text-anchor="end" fill="#3fb950" font-size="12">CACHED</text>
+    <rect x="70" y="184" width="360" height="40" rx="8" fill="#161b22" stroke="#3fb950"/>
+    <text x="88" y="209" fill="#e6edf3" font-family="ui-monospace, monospace" font-size="12">RUN pnpm install --frozen-lockfile</text>
+    <text x="412" y="209" text-anchor="end" fill="#3fb950" font-size="12">CACHED  (60s 절약)</text>
+    <rect x="70" y="236" width="360" height="40" rx="8" fill="#161b22" stroke="#d29922"/>
+    <text x="88" y="261" fill="#e6edf3" font-family="ui-monospace, monospace" font-size="12">COPY . .</text>
+    <text x="412" y="261" text-anchor="end" fill="#d29922" font-size="12">소스 체크섬 변경 → 재실행</text>
+    <rect x="70" y="288" width="360" height="40" rx="8" fill="#161b22" stroke="#d29922"/>
+    <text x="88" y="313" fill="#e6edf3" font-family="ui-monospace, monospace" font-size="12">RUN pnpm build</text>
+    <text x="412" y="313" text-anchor="end" fill="#d29922" font-size="12">재실행</text>
+  </g>
+  <!-- right column -->
+  <g>
+    <rect x="530" y="80" width="360" height="40" rx="8" fill="#161b22" stroke="#3fb950"/>
+    <text x="548" y="105" fill="#e6edf3" font-family="ui-monospace, monospace" font-size="12">FROM node:22-alpine</text>
+    <text x="872" y="105" text-anchor="end" fill="#3fb950" font-size="12">CACHED</text>
+    <rect x="530" y="132" width="360" height="40" rx="8" fill="#161b22" stroke="#f85149"/>
+    <text x="548" y="157" fill="#e6edf3" font-family="ui-monospace, monospace" font-size="12">COPY . .</text>
+    <text x="872" y="157" text-anchor="end" fill="#f85149" font-size="12">무효화 지점</text>
+    <rect x="530" y="184" width="360" height="40" rx="8" fill="#161b22" stroke="#f85149"/>
+    <text x="548" y="209" fill="#e6edf3" font-family="ui-monospace, monospace" font-size="12">RUN pnpm install</text>
+    <text x="872" y="209" text-anchor="end" fill="#f85149" font-size="12">재실행 (매번 60s)</text>
+    <rect x="530" y="236" width="360" height="40" rx="8" fill="#161b22" stroke="#f85149"/>
+    <text x="548" y="261" fill="#e6edf3" font-family="ui-monospace, monospace" font-size="12">RUN pnpm build</text>
+    <text x="872" y="261" text-anchor="end" fill="#f85149" font-size="12">재실행</text>
+  </g>
+  <line x1="480" y1="80" x2="480" y2="330" stroke="#30363d" stroke-dasharray="4 4"/>
+  <!-- legend / rules -->
+  <rect x="70" y="350" width="820" height="62" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="88" y="374" fill="#e6edf3">캐시 키: <tspan fill="#58a6ff">RUN</tspan> = 명령 문자열 + 부모 레이어,  <tspan fill="#58a6ff">COPY</tspan> = 파일 내용 체크섬,  <tspan fill="#58a6ff">ARG/ENV</tspan> = 값</text>
+  <text x="88" y="396" fill="#8b949e" font-size="12">자주 바뀌는 것(소스·ARG GIT_SHA)은 아래로, 드물게 바뀌는 것(베이스·락파일·의존성)은 위로.  .dockerignore 로 무관한 파일이 COPY 체크섬을 깨지 않게.</text>
+</svg>

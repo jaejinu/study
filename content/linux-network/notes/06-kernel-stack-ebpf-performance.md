@@ -9,6 +9,8 @@ experiments: [net-ports-sockets, net-dns-http]
 
 ## 패킷의 수신 경로
 
+![패킷 수신 경로 — NIC 에서 소켓까지](/diagrams/net-rx-path.svg)
+
 ```
 NIC (DMA 로 링 버퍼에 패킷) → 하드웨어 인터럽트 → NAPI 폴링 (softirq, ksoftirqd)
 → 드라이버가 sk_buff 생성 → L2 (브리지/veth) → netfilter PREROUTING (conntrack, DNAT)
@@ -92,6 +94,60 @@ ethtool -g eth0 ; ethtool -k eth0 | grep -E "offload|gro|tso"
 
 지연에 민감한 Redis·DB 는 호스트 네트워크 또는 같은 노드 배치, 오버레이 대신 라우팅 모드(Calico BGP, VPC CNI)를 고려한다.
 
+## 지연을 단계별로 쪼개는 감각
+
+같은 데이터센터 안 요청 하나(작은 RPC)의 지연 예산(대략):
+
+| 구간 | 시간 | 비고 |
+|---|---|---|
+| 시스템 콜 + 소켓 버퍼 복사 | 1~5µs | 작은 메시지 |
+| 커널 스택 송신(TCP/IP, qdisc) | 수 µs | |
+| NIC·스위치·케이블 | 수~수십 µs | 같은 랙이면 매우 작음 |
+| 수신 인터럽트 → softirq → 소켓 | 수~수십 µs | 인터럽트 병합(coalescing)으로 늘어남 |
+| 앱 깨어나기(epoll → 스케줄링) | 수~수백 µs | CPU 경합·전원 절약 상태면 커짐 |
+| 앱 처리 | 수 µs~ms | Redis GET 은 수 µs |
+
+결론: 데이터센터 안에서 **네트워크 자체는 대개 수십 µs**이고, p99 를 키우는 것은 스케줄링 지연·GC·큐잉이다. 그래서 "네트워크가 느리다" 는 보고의 상당수는 실제로는 수신 측 CPU 문제다. 꼬리 지연의 일반론은 [꼬리 지연과 대규모](/performance/notes/08-tail-latency-at-scale).
+
+## softirq 와 CPU — 측정하는 법
+
+```bash
+# Docker Desktop VM 안에서
+cat /proc/softirqs | grep -E "NET_RX|NET_TX"      # CPU 별 누적 횟수
+mpstat -P ALL 1 3 | awk '/Average/'                # %soft 가 높은 코어
+cat /proc/net/softnet_stat                          # 열 2: 백로그 드롭, 열 3: time_squeeze(예산 소진)
+```
+
+`time_squeeze` 가 계속 늘면 softirq 가 한 번에 처리할 예산(`net.core.netdev_budget`)을 다 써서 다음 차례로 미룬 것이다. 패킷이 많은 서버에서 `ksoftirqd` 가 CPU 를 많이 쓰면 이 상황이다. eBPF 로 softirq 지연 분포를 재는 방법은 [BCC/libbpf 도구](/ebpf/notes/03-bcc-libbpf-tools)의 `softirqs`, `runqlat`.
+
+## epoll 과 이벤트 루프의 연결
+
+소켓 수신 버퍼에 데이터가 들어오면 커널은 그 소켓을 **기다리는 epoll 인스턴스의 준비 목록**에 올리고 대기 중인 스레드를 깨운다. Redis·Nginx·Node 가 연결 수만 개를 스레드 하나로 처리하는 비결이다.
+
+| 모델 | 연결 1만 개일 때 | 대표 |
+|---|---|---|
+| 연결당 스레드/프로세스 | 스레드 1만 개(스택 메모리·문맥 교환) | 전통 Apache prefork, PostgreSQL 백엔드 |
+| 이벤트 루프(epoll) | 스레드 1개 + 준비된 소켓만 처리 | Redis, Nginx 워커, Node.js |
+| io_uring | 제출·완료 링, 시스템 콜 감소 | 최신 고성능 서버 |
+
+이벤트 루프의 약점은 **한 핸들러가 오래 걸리면 모든 연결이 기다린다**는 것이다(Redis 의 `KEYS *`, Node 의 동기 JSON 파싱). 레벨/엣지 트리거 차이와 io_uring 은 [시스템 콜과 인터럽트](/os-internals/notes/05-syscalls-interrupts), Redis 의 이벤트 루프는 [Redis 내부 심화](/redis/notes/16-internals-deep-dive).
+
+## 예시로 보기 — 이 프로젝트의 커널 네트워크 실험들
+
+| 실험 | 커널 네트워크의 어디를 보나 |
+|---|---|
+| `ebpf-tcp-latency` | kprobe 로 앱 → Redis 연결 수명·RTT, keepalive 유무에 따른 연결 수 차이 |
+| `ebpf-bpftrace-syscalls` | Redis 의 read/write/epoll_wait 시스템 콜 분포 |
+| `os-context-switch` | 파이프라인 크기에 따른 Redis 의 voluntary 문맥 교환 감소 |
+| `sec-k8s-networkpolicy` | Calico 가 netfilter/eBPF 로 정책을 강제하는 모습 |
+
+`ebpf-tcp-latency` 의 실측에서 keepalive 없이 요청마다 연결하면 같은 작업에 연결이 수천 개 생기고, keepalive 를 켜면 수십 개로 줄었다. TIME_WAIT 와 포트 고갈 이야기([포트·소켓·TCP 상태](/linux-network/notes/02-ip-ports-sockets))가 커널 이벤트로 그대로 보인다.
+
+## 운영·관측 포인트
+
+- node_exporter 의 `node_netstat_*`, `node_softnet_*`, `node_network_*_drop_total` 을 수집해 "드롭이 어느 층에서" 를 대시보드로.
+- 커널 파라미터 변경은 sysctl 파일로 버전 관리하고, 변경 전후 벤치마크(같은 부하)를 남긴다. 튜닝 값을 복사해 오는 것은 측정 없이는 의미가 없다.
+
 ## 실습 체크리스트
 
 - [ ] Docker Desktop VM 에 들어가(`docker run --privileged --pid=host -it alpine nsenter -t 1 -m -u -n -i sh`) `ss -ti`, `nstat`, `/proc/interrupts` 보기
@@ -99,3 +155,5 @@ ethtool -g eth0 ; ethtool -k eth0 | grep -E "offload|gro|tso"
 - [ ] 컨테이너 Redis 를 `--network host`(리눅스 호스트에서) 와 브리지로 각각 벤치마크해 차이 측정
 - [ ] (리눅스) bcc 의 `tcpconnect`/`tcpretrans` 를 띄워 두고 Redis 실험을 돌리며 연결·재전송 관찰
 - [ ] `nf_conntrack_count` 를 지켜보며 짧은 연결 1만 개를 만들어 증가·만료 확인
+- [ ] `/proc/net/softnet_stat` 의 열 2·3 을 부하 전후로 비교
+- [ ] `ebpf-tcp-latency` 실험 결과에서 keepalive 유무에 따른 연결 수 차이 해석

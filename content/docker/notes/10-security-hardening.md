@@ -91,9 +91,105 @@ docker run --read-only --tmpfs /tmp --tmpfs /run -v data:/data app     # 루트 
 - [ ] docker.sock·`--privileged` 없음
 - [ ] 로그에 비밀 없음
 
+## seccomp 프로파일은 실제로 무엇을 막나
+
+Docker 기본 seccomp 프로파일은 **허용 목록** 방식으로 300여 개 시스템 콜 중 위험한 40~50개를 막는다.
+
+| 막히는 호출(일부) | 왜 위험한가 |
+|---|---|
+| `mount`, `umount2`, `pivot_root` | 파일시스템 재구성 → 탈출 경로 |
+| `kexec_load`, `reboot` | 호스트 커널 교체·재부팅 |
+| `bpf`, `perf_event_open` | 커널 안 코드 실행·관측(특권 도구 전용) |
+| `ptrace` | 다른 프로세스 메모리 조작 |
+| `unshare`(일부 플래그), `setns` | 새 네임스페이스·다른 네임스페이스 진입 |
+| `keyctl`, `add_key` | 커널 키링 — 네임스페이스화 안 됨 |
+
+```bash
+docker run --rm alpine unshare --map-root-user --user sh -c 'id'
+# unshare: unshare(0x10000000): Operation not permitted   ← seccomp 가 막음
+docker run --rm --security-opt seccomp=unconfined alpine unshare --map-root-user --user sh -c 'id'
+# uid=0(root) ...                                         ← 해제하면 됨 (하지 말 것)
+```
+
+eBPF·perf 실험이 `--privileged` 를 요구하는 이유가 바로 `bpf`·`perf_event_open` 이 막혀 있기 때문이다. 그래서 그런 실험 컨테이너는 **실험 중에만, 일회용(`--rm`)으로** 띄운다 — [eBPF 란](/ebpf/notes/01-what-is-ebpf).
+
+### 프로파일 좁히기 절차
+
+1. 앱을 평소처럼 돌리며 쓰는 시스템 콜을 수집한다: `strace -f -c`, 또는 eBPF 로 `tracepoint:raw_syscalls:sys_enter` 집계.
+2. 그 목록만 허용하는 JSON 프로파일을 만든다(`defaultAction: SCMP_ACT_ERRNO`).
+3. 스테이징에서 `SCMP_ACT_LOG` 로 먼저 돌려 빠진 호출을 찾는다.
+4. Kubernetes 에서는 `securityContext.seccompProfile: { type: Localhost, localhostProfile: ... }` 또는 Security Profiles Operator.
+
+## 컨테이너 탈출의 대표 경로와 차단
+
+| 경로 | 조건 | 차단 |
+|---|---|---|
+| docker.sock 마운트 | 소켓 접근 | 마운트 금지, docker-socket-proxy 로 API 제한 |
+| `--privileged` | 모든 capability·장치 | 금지, 필요한 cap 만 |
+| `SYS_ADMIN` cap | mount 등 | 금지 |
+| 호스트 경로 마운트(`/`, `/etc`, `/var/run`) | 쓰기 권한 | 최소 경로 + `:ro` |
+| `--pid=host` / `--net=host` | 호스트 프로세스·네트워크 접근 | 관측 도구 외 금지 |
+| 커널 취약점 | 비패치 커널 | 커널 업데이트, gVisor·Kata |
+| root + 쓰기 가능 루트 FS | 바이너리 변조 | 비루트, `--read-only` |
+
+Kubernetes 에서는 이 목록이 **Pod Security Standards(restricted)** 로 한 번에 강제된다 — [Kubernetes 보안](/security/notes/06-kubernetes-security).
+
+## Rootless 의 실제 동작
+
+Rootless Docker 는 **user namespace** 로 컨테이너의 UID 0 을 호스트의 내 UID(예: 501)에, 컨테이너 UID 1~65535 를 `/etc/subuid` 범위(예: 100000~165535)에 매핑한다.
+
+```
+컨테이너 안            호스트
+UID 0     (root)  →   UID 501   (나)
+UID 999   (redis) →   UID 100998
+```
+
+탈출해도 호스트에서는 일반 사용자다. 대가:
+- 1024 미만 포트 바인드 불가(`net.ipv4.ip_unprivileged_port_start` 조정 가능).
+- overlay 대신 fuse-overlayfs 등으로 I/O 가 느릴 수 있다.
+- 네트워크가 slirp4netns/pasta 로 처리되어 처리량이 낮다.
+
+## 보안 감사 자동화
+
+```bash
+# 실행 중인 컨테이너의 위험 설정 한 번에 훑기
+docker ps -q | xargs docker inspect -f \
+'{{.Name}} priv={{.HostConfig.Privileged}} user={{.Config.User}} ro={{.HostConfig.ReadonlyRootfs}} caps+={{.HostConfig.CapAdd}} pidmode={{.HostConfig.PidMode}} binds={{.HostConfig.Binds}}'
+```
+
+| 도구 | 하는 일 |
+|---|---|
+| `docker bench security` | CIS Docker Benchmark 항목 점검(데몬·호스트·컨테이너) |
+| `trivy config`, `hadolint` | Dockerfile·compose 의 나쁜 설정 정적 검사 |
+| `trivy image`, `docker scout` | 이미지 CVE |
+| Falco | 런타임 이상 행위 |
+
+## 예시로 보기 — 이 프로젝트 컨테이너 감사 결과
+
+위 `inspect` 명령을 이 프로젝트의 compose 서비스에 돌리면 대략 이렇게 나온다.
+
+| 컨테이너 | 사용자 | 특이 설정 | 평가 |
+|---|---|---|---|
+| study-redis | 빈 값(이미지 기본) | 설정 `:ro`, 포트 루프백 | redis 이미지는 엔트리포인트가 redis 사용자로 강등 — 실제 프로세스는 999 |
+| study-alloy | root | **docker.sock 마운트** | 로그 수집 때문. 운영이면 socket-proxy 나 파일 경로 수집 |
+| study-grafana | 472 | 익명 Admin 허용 | 로컬 전용이라 허용, 운영 금지 |
+| study-web(app) | node(1000) | HEALTHCHECK | 양호, `--read-only` 는 미적용 |
+| 실험용 `study-bpftrace`, `study-os-tools` | root | `--privileged --pid=host` | 실험 중에만, `--rm` 일회용 |
+
+마지막 줄은 의도된 예외다. 특권 컨테이너는 Falco 의 "특권 컨테이너 실행" 규칙에 걸리는 것이 정상이고, 그 알림을 보고 "이건 실험이다" 라고 판단할 수 있어야 한다 — 실험 `sec-falco-runtime`.
+
+## 운영·관측 포인트
+
+- 보안 설정 위반은 배포 전에 막는다: CI 의 `hadolint`·`trivy config`, 클러스터의 어드미션(Kyverno·PSA).
+- 런타임 신호: Falco 알림, `docker events` 의 `exec_start`(누가 운영 컨테이너에 exec 했나), 예상 밖 아웃바운드 연결.
+- 예외(특권·호스트 마운트)는 **목록으로 관리**하고 이유·소유자를 적는다. 예외가 늘어나는 것 자체가 지표다.
+
 ## 실습 체크리스트
 
 - [ ] `docker run --rm --cap-drop ALL redis:8-alpine redis-server --port 80` 이 실패하고 `--cap-add NET_BIND_SERVICE` 로 성공하는지
 - [ ] `--read-only` 로 Redis 를 띄워 RDB 저장 실패를 보고 `--tmpfs /data` 로 해결
 - [ ] `trivy image redis:8-alpine` 실행 (brew install trivy)
 - [ ] 이 프로젝트 compose 의 Alloy 가 docker.sock 을 쓰는 이유와 대안 정리
+- [ ] 기본 seccomp 에서 `unshare --user` 가 막히는 것 확인(해제 비교는 일회용 컨테이너에서만)
+- [ ] 위 `docker inspect` 감사 명령을 이 프로젝트 컨테이너에 돌려 표 채우기
+- [ ] `hadolint Dockerfile` 로 이 프로젝트 Dockerfile 정적 검사

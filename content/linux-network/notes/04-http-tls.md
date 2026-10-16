@@ -71,9 +71,80 @@ curl -vI https://example.com 2>&1 | grep -E "SSL connection|subject|issuer|expir
 - 자체 서명 인증서는 `curl -k`, Node `NODE_TLS_REJECT_UNAUTHORIZED=0` 는 **개발에서만**.
 - 내부 서비스 간엔 서비스 메시(mTLS) 또는 사설 CA.
 
+## HTTP/1.1, 2, 3 를 한 표로
+
+| | HTTP/1.1 | HTTP/2 | HTTP/3 |
+|---|---|---|---|
+| 전송 | TCP | TCP | QUIC(UDP) |
+| 형식 | 텍스트 | 바이너리 프레임 | 바이너리 프레임 |
+| 동시 요청 | 연결당 1개(파이프라이닝은 사실상 미사용) | 연결 하나에 스트림 다중화 | 스트림 다중화 |
+| HOL 블로킹 | 응용·전송 둘 다 | 전송 계층만(패킷 손실 시 모든 스트림 대기) | 없음(스트림별 손실 복구) |
+| 헤더 압축 | 없음 | HPACK | QPACK |
+| 연결 수립 | TCP 1 + TLS 1~2 RTT | 같음 | 1 RTT(재개 시 0) |
+| 연결 이동 | 불가(IP 바뀌면 끊김) | 불가 | 연결 ID 로 유지 |
+| 관측 | tcpdump 로 평문 가능 | TLS 라 키 필요 | UDP+암호화, 중간 장비가 거의 못 봄 |
+
+손실이 없는 데이터센터 내부에서는 HTTP/2 로 충분하다. 손실·지연이 큰 모바일 망에서 HTTP/3 의 이득이 크다. 서비스 간 RPC 는 HTTP/2 위의 gRPC 가 표준이다 — [Protobuf 와 gRPC](/api-design/notes/03-protobuf-grpc).
+
+### HTTP/2 의 함정 — 연결이 하나라서 생기는 일
+
+- **L4 로드밸런서와 쏠림**: 클라이언트가 연결 하나로 모든 요청을 보내므로, 연결 단위로 분산하는 L4 LB 뒤에서는 한 백엔드에 몰린다. L7(요청 단위) 분산이나 클라이언트 측 분산이 필요하다.
+- **흐름 제어 창**: 스트림·연결마다 수신 창이 있어 기본값(64KB)이 작으면 고지연 링크에서 처리량이 막힌다.
+- **동시 스트림 상한**: `SETTINGS_MAX_CONCURRENT_STREAMS`(흔히 100) 을 넘는 요청은 대기한다.
+
+## TLS 1.3 핸드셰이크를 시간으로 보기
+
+```
+t=0      ClientHello (key_share 포함)                       →
+t=1 RTT  ← ServerHello, {EncryptedExtensions, Certificate, CertificateVerify, Finished}
+t=1 RTT  {Finished}, {HTTP 요청}                            →   ← 요청이 1 RTT 만에 나감
+t=2 RTT  ← {HTTP 응답}
+```
+
+| 비용 | 크기 | 줄이는 법 |
+|---|---|---|
+| RTT | 1(1.3) / 2(1.2) | TLS 1.3, 세션 재개(PSK), 0-RTT(재전송 공격 주의 — 멱등 요청만) |
+| 인증서 체인 전송 | 수 KB(RSA 4096 체인이면 더 큼) | ECDSA 인증서, 불필요한 중간 인증서 빼기 |
+| 서명 연산(CPU) | RSA 2048 서명은 ECDSA P-256 의 수 배 | ECDSA |
+| OCSP 확인 | 클라이언트가 별도 질의하면 + RTT | OCSP stapling |
+
+`curl -w` 의 `time_appconnect − time_connect` 가 TLS 비용이다. 같은 서버에 keepalive 로 두 번째 요청을 보내면 이 값이 0 이 된다 — 연결 재사용이 왜 중요한지 숫자로 보인다. 인증서·PKI 의 깊은 내용과 직접 CA 만들기는 [TLS 와 인증서](/security/notes/02-tls-certificates), 이 프로젝트의 Nginx TLS 종단은 실험 `sec-nginx-tls`.
+
+## 캐시 헤더의 의미를 정확히
+
+| 헤더 | 브라우저/CDN 동작 |
+|---|---|
+| `Cache-Control: max-age=3600` | 1시간은 서버에 묻지 않고 재사용 |
+| `no-cache` | 저장은 하되 **매번 재검증**(If-None-Match) |
+| `no-store` | 저장 자체 금지(민감 데이터) |
+| `private` | 브라우저만, CDN 은 저장 금지(사용자별 응답) |
+| `s-maxage` | CDN(공유 캐시)용 max-age |
+| `stale-while-revalidate=60` | 만료 후 60초는 옛 응답을 주며 백그라운드 갱신 |
+| `ETag` + `If-None-Match` | 바뀌지 않았으면 304(본문 없음) |
+
+`no-cache` 를 "캐시 안 함" 으로 오해하는 경우가 많다. 캐시 계층 설계 전체는 [캐시 계층과 CDN](/architecture/notes/10-cache-layers-cdn).
+
+## 예시로 보기 — 이 프로젝트의 HTTP 들
+
+```bash
+curl -sI http://localhost:3000/ | head -5                 # Next.js 개발 서버(HTTP/1.1, keep-alive)
+curl -sI http://localhost:18080/health                    # Nginx 리버스 프록시
+curl -sI --cacert nginx/tls/certs/ca.crt https://localhost:18444/health   # Nginx TLS 종단(HSTS 헤더 확인)
+curl -sN -X POST localhost:3000/api/ask -H 'Content-Type: application/json' -d '{...}'   # SSE 스트리밍(text/event-stream)
+```
+
+마지막 줄의 SSE(Server-Sent Events)는 HTTP 응답을 끊지 않고 `data: ...\n\n` 을 계속 흘려 보내는 방식이다. "AI 에게 묻기" 패널이 토큰을 하나씩 보여 주는 원리이고, 중간 프록시가 응답을 버퍼링하면(`proxy_buffering on`) 스트리밍이 끝날 때 한꺼번에 도착하는 고장이 난다 — [캐시·TLS·레이트리밋](/nginx/notes/03-cache-tls-ratelimit).
+
+## 운영·관측 포인트
+
+- 프록시 로그에 `$ssl_protocol`, `$ssl_cipher`, `$request_time`, `$upstream_response_time` 을 남기면 TLS 버전 분포와 "프록시 vs 업스트림" 지연을 분리할 수 있다(이 프로젝트 `nginx-tls.conf` 의 `log_format tls`).
+- 인증서 만료는 반드시 알림으로 — 만료 30일·7일 전. 실험 `sec-tls-inspect` 가 남은 일수를 계산한다.
+
 ## 실습 체크리스트
 
 - [ ] `curl -v` 로 요청/응답 헤더 읽기, `Connection: keep-alive` 와 `Content-Length` 확인 (실험실)
 - [ ] `curl --http2 -I https://example.com` 로 `HTTP/2 200` 확인, `--http1.1` 과 시간 비교
 - [ ] `openssl s_client` 로 인증서 체인·만료일·ALPN 보기
 - [ ] `nc localhost 3000` 에 손으로 HTTP 요청을 쳐서 응답 받기
+- [ ] 같은 URL 에 keepalive 로 두 번 요청(`curl URL URL -w ...`)해 두 번째의 connect·TLS 시간이 0 인 것 확인
+- [ ] `Cache-Control: no-cache` 응답을 두 번 요청해 304 재검증이 일어나는지 `curl -v` 로 확인

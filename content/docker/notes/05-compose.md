@@ -127,12 +127,126 @@ docker compose --profile tools up -d
 docker compose -f compose.yml -f compose.prod.yml up -d   # 여러 파일 병합
 ```
 
+## Compose 가 실제로 만드는 것들
+
+`docker compose up` 은 YAML 을 해석해 Docker API 호출 여러 개로 바꾼다. 무엇이 생기는지 이름 규칙을 알면 정리·디버깅이 쉽다.
+
+| 자원 | 이름 규칙 | 예(프로젝트 `study`) |
+|---|---|---|
+| 네트워크 | `<project>_default` | `study_default` |
+| 볼륨 | `<project>_<volume>` | `study_redis-data` |
+| 컨테이너 | `<project>-<service>-<n>` (또는 `container_name`) | `study-redis` |
+| 레이블 | `com.docker.compose.project/service/config-hash` | 재생성 판단에 사용 |
+
+**프로젝트 이름**은 기본적으로 compose 파일이 있는 **디렉터리 이름**이다. 같은 compose 를 다른 폴더(예: git worktree)에서 실행하면 프로젝트 이름이 달라져 **네트워크와 볼륨이 따로** 만들어지고, `container_name` 이 같으면 충돌한다. 그래서 이 저장소의 스크립트는 `docker compose -p study ...` 처럼 프로젝트 이름을 고정한다.
+
+### 언제 컨테이너를 다시 만드나
+
+Compose 는 서비스 설정의 해시(`config-hash` 레이블)를 저장해 두고, `up` 할 때 바뀐 서비스만 **재생성**한다.
+
+```bash
+docker compose up -d                # 설정이 그대로면 "Running" — 아무것도 안 함
+docker compose up -d --force-recreate redis   # 강제 재생성
+docker compose up -d --no-deps web            # 의존 서비스는 건드리지 않고 web 만
+docker inspect -f '{{index .Config.Labels "com.docker.compose.config-hash"}}' study-redis
+```
+
+- 이미지 태그는 같은데 레지스트리에서 새 버전이 나왔다면 `pull` 후 `up` 해야 재생성된다.
+- 바인드한 설정 파일 **내용**이 바뀌어도 해시는 그대로다 → `restart` 로 다시 읽게 한다(Redis 는 `CONFIG REWRITE` 와 다르니 주의).
+
+## healthcheck 를 제대로
+
+```yaml
+healthcheck:
+  test: ["CMD", "redis-cli", "ping"]   # exit 0 = healthy
+  interval: 5s       # 검사 주기
+  timeout: 3s        # 이보다 오래 걸리면 실패 1회
+  retries: 5         # 연속 실패 N회면 unhealthy
+  start_period: 20s  # 이 기간의 실패는 retries 에 안 셈(부팅 시간)
+```
+
+| 형식 | 실행 방식 | 주의 |
+|---|---|---|
+| `["CMD", "redis-cli", "ping"]` | 직접 실행 | 바이너리가 이미지에 있어야 함 |
+| `["CMD-SHELL", "pg_isready -U study || exit 1"]` | `/bin/sh -c` | 셸 필요, 파이프·`||` 가능 |
+| `["NONE"]` | 상속된 헬스체크 끄기 | — |
+
+좋은 헬스체크는 **"프로세스가 떠 있다" 가 아니라 "요청을 받을 수 있다"** 를 검사한다. 그러나 너무 많은 것(DB, 외부 API)을 검사하면 의존성 하나 장애로 앱 전체가 unhealthy → 재시작 연쇄가 난다. 의존성 상태는 readiness 에, 자기 자신은 liveness 에 — Kubernetes 의 [프로브 구분](/kubernetes/notes/03-pod-deployment) 과 같은 원리다.
+
+주의: 헬스체크 명령도 컨테이너 **안에서 실행되는 프로세스**다. 5초마다 `pg_isready` 가 도는 것이 Falco 의 "민감 파일 읽기" 규칙에 잡히는 것도 그래서다 — [Falco 런타임 탐지](/security/notes/05-container-supply-chain).
+
+## depends_on 의 세 조건
+
+| 조건 | 기다리는 것 | 쓰임 |
+|---|---|---|
+| `service_started`(기본) | 컨테이너 시작 | 순서만 필요할 때 |
+| `service_healthy` | healthcheck 통과 | DB·브로커 의존 |
+| `service_completed_successfully` | 컨테이너가 0 으로 종료 | 마이그레이션·초기화 잡 |
+
+```yaml
+services:
+  migrate:
+    image: study:dev
+    command: ["node", "scripts/migrate.js"]
+    depends_on: { postgres: { condition: service_healthy } }
+  web:
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+```
+
+## 여러 파일·확장·변수의 우선순위
+
+```bash
+docker compose -f compose.yml -f compose.override.yml config   # 병합 결과 확인
+```
+
+- `compose.override.yml` 은 **자동으로** 병합된다(개발용 덮어쓰기에 쓰기 좋다).
+- 병합 규칙: 스칼라는 뒤 파일이 이김, `ports`·`volumes` 같은 목록은 합쳐짐(중복 주의), `environment` 는 키별 병합.
+- `extends` 로 서비스 정의를 상속하거나, YAML 앵커(`x-common: &common`)로 반복을 줄인다.
+- 변수 우선순위(높은 순): 셸 환경 > `--env-file` > `.env` > 기본값 `${VAR:-x}`.
+
+## 예시로 보기 — 이 프로젝트의 프로파일 지도
+
+이 저장소의 `docker-compose.yml` 은 한 파일에 학습 주제별 인프라를 **프로파일**로 나눠 둔다. 아무 프로파일 없이 `up` 하면 `redis` 만 뜬다.
+
+| 프로파일 | 서비스 | 호스트 포트 | 스크립트 |
+|---|---|---|---|
+| (기본) | redis | 6379 | `pnpm redis:docker` |
+| app | web(이 사이트) | 3200 | `docker compose --profile app up -d --build` |
+| kafka / cdc | kafka, connect(Debezium) | 19092, 18083 | `pnpm kafka:up`, `pnpm cdc:up` |
+| postgres | postgres(pgvector) | 15432 | `pnpm pg:up` |
+| observability | prometheus, alertmanager, loki, alloy, tempo, grafana, redis-exporter | 19090, 19093, 13100, 13200, 13000 | `pnpm obs:up` |
+| search | opensearch | 19200 | `pnpm search:up` |
+| mq | rabbitmq, nats | 5673/15674, 14222/18222 | `pnpm mq:up` |
+| mlflow / clickhouse / lake | mlflow, clickhouse, minio | 15000, 18123, 19100 | `pnpm mlflow:up` 등 |
+| nginx / nginx-tls | nginx | 18080, 18444 | `pnpm nginx:up`, `pnpm nginx:tls` |
+
+설계 원칙 세 가지가 보인다.
+1. **모든 포트를 `127.0.0.1:` 에만** 공개 — 비밀번호 없는 개발용 서비스가 LAN 에 노출되지 않게.
+2. **기본 포트를 비켜 잡음**(5432 → 15432, 9092 → 19092) — 같은 맥에서 다른 프로젝트 컨테이너가 기본 포트를 쓰고 있어도 충돌하지 않게.
+3. **헬스체크 + `service_healthy`** — `web` 은 Redis 가 PONG 을 돌려줄 때까지 기다린다. Connect 는 Kafka·Postgres 가 healthy 여야 시작한다.
+
+```bash
+docker compose -p study --profile observability --profile kafka ps --format "table {{.Service}}\t{{.Status}}\t{{.Ports}}"
+docker compose -p study config --profiles     # 정의된 프로파일 목록
+```
+
+## 운영·관측 포인트
+
+- `docker compose events` 로 생성·시작·헬스 변화 이벤트를 실시간으로 본다. 크래시 루프를 잡을 때 유용하다.
+- `docker compose logs --since 10m -f web redis` 로 여러 서비스 로그를 시간순으로 섞어 본다.
+- Compose 는 **단일 호스트** 도구다. 여러 노드·롤링 배포·자동 복구가 필요해지면 Kubernetes 로 간다. 같은 구성을 쿠버네티스로 옮긴 것이 `k8s/` 디렉터리다 — [Kubernetes 로 넘어가기](/kubernetes/notes/01-kubernetes-overview).
+
 ## 실습 체크리스트
 
 - [ ] `pnpm redis:docker` 로 Redis 를 띄우고 Redis 대시보드에 연결되는지 확인
 - [ ] `docker compose ps` 에서 healthy 상태 확인
 - [ ] `docker compose down` 후 `up` 해도 데이터가 남는지, `down -v` 후엔 사라지는지 확인
 - [ ] `docker compose --profile app up -d --build` 로 앱(`web`)까지 띄우고 http://localhost:3200 접속 — `depends_on: condition: service_healthy` 로 Redis 가 healthy 된 뒤 앱이 뜬다
+- [ ] 같은 compose 를 `-p` 없이 다른 디렉터리에서 `config` 해 프로젝트·네트워크 이름이 달라지는 것 확인
+- [ ] `depends_on: condition: service_completed_successfully` 로 초기화 잡 → 앱 순서 만들어 보기
+- [ ] `docker compose events` 를 켜 두고 `restart redis` 해서 health_status 이벤트 관찰
 
 ## 관련 노트
 

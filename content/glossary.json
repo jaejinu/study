@@ -2494,5 +2494,191 @@
     "subject": "ai-agents",
     "def": "에이전트 루프의 라운드·토큰·시간 상한과 상한 도달 시 마무리 방식. 평균이 아니라 최악의 비용·지연을 묶는다. 이 사이트는 ask 5회, assistant 6회.",
     "link": "/ai-agents/notes/07-eval-observability-cost"
+  },
+  {
+    "term": "copy-up",
+    "subject": "docker",
+    "def": "overlayfs 에서 컨테이너가 이미지 레이어의 파일을 수정할 때 파일 전체를 쓰기 레이어(upperdir)로 복사한 뒤 고치는 동작. 큰 파일일수록 비싸서 DB 데이터는 볼륨에 둔다.",
+    "link": "/docker/notes/03-images-dockerfile"
+  },
+  {
+    "term": "veth 쌍",
+    "subject": "docker",
+    "def": "한쪽 끝은 컨테이너 네트워크 네임스페이스의 eth0, 다른 끝은 호스트 브리지에 꽂힌 가상 이더넷 케이블. 컨테이너·Pod 네트워크의 기본 부품.",
+    "link": "/docker/notes/04-volumes-networks"
+  },
+  {
+    "term": "Docker 내장 DNS (127.0.0.11)",
+    "subject": "docker",
+    "def": "사용자 정의 네트워크의 컨테이너에 dockerd 가 제공하는 DNS. 컨테이너·서비스 이름과 별칭을 답하고 나머지는 호스트 DNS 로 넘긴다. 기본 bridge 네트워크에는 없다.",
+    "link": "/docker/notes/04-volumes-networks"
+  },
+  {
+    "term": "compose 프로젝트 이름",
+    "subject": "docker",
+    "def": "Compose 가 네트워크·볼륨·컨테이너 이름 접두어로 쓰는 값. 기본은 compose 파일이 있는 디렉터리 이름이라 다른 폴더(worktree)에서 실행하면 자원이 따로 생긴다. -p 로 고정한다.",
+    "link": "/docker/notes/05-compose"
+  },
+  {
+    "term": "BuildKit 캐시 마운트",
+    "subject": "docker",
+    "def": "RUN --mount=type=cache 로 패키지 저장소 같은 디렉터리를 빌드 간에 유지하는 기능. 이미지에 남지 않고, 입력이 조금 바뀌어 명령이 다시 돌 때도 빠르다.",
+    "link": "/docker/notes/09-buildkit-multiplatform"
+  },
+  {
+    "term": "이미지 인덱스 (manifest list)",
+    "subject": "docker",
+    "def": "태그 하나가 가리키는 플랫폼별 매니페스트 목록. pull 하는 쪽이 자기 아키텍처(linux/arm64 등)에 맞는 이미지를 고른다.",
+    "link": "/docker/notes/01-docker-overview"
+  },
+  {
+    "term": "OCI 런타임 번들",
+    "subject": "docker",
+    "def": "rootfs 디렉터리와 config.json(네임스페이스·cgroup·capabilities·마운트 명세)으로 이뤄진, runc 같은 OCI 런타임의 입력. Docker·containerd·Kubernetes 가 결국 이것을 만든다.",
+    "link": "/docker/notes/08-internals-namespaces-cgroups"
+  },
+  {
+    "term": "tini (--init)",
+    "subject": "docker",
+    "def": "컨테이너의 PID 1 로 들어가 신호를 앱에 전달하고 좀비 프로세스를 수거하는 작은 init. docker run --init 이 넣어 준다.",
+    "link": "/docker/notes/08-internals-namespaces-cgroups"
+  },
+  {
+    "term": "종료 코드 137 / 143",
+    "subject": "docker",
+    "def": "128+신호 번호. 137 은 SIGKILL(OOM·강제 종료·stop 타임아웃), 143 은 SIGTERM 에 정상 반응해 종료. 137 이면 inspect 의 OOMKilled 를 먼저 본다.",
+    "link": "/docker/notes/02-first-container"
+  },
+  {
+    "term": "쿼리 처리 단계 (PostgreSQL)",
+    "subject": "postgres",
+    "def": "Parser → Analyzer → Rewriter → Planner → Executor. EXPLAIN 의 Planning Time 은 앞 단계, Execution Time 은 실행 단계이며 느림의 대부분은 실행에 있다.",
+    "link": "/postgres/notes/01-postgres-overview"
+  },
+  {
+    "term": "generic 계획 / custom 계획",
+    "subject": "postgres",
+    "def": "prepared statement 가 처음 몇 번은 매개변수마다 커스텀 계획을 만들고 이후 비용이 비슷하면 매개변수 무관한 generic 계획을 재사용하는 방식. 편향된 데이터에서 갑작스러운 성능 변화의 원인이 된다(plan_cache_mode).",
+    "link": "/postgres/notes/01-postgres-overview"
+  },
+  {
+    "term": "대기 이벤트 (wait event)",
+    "subject": "postgres",
+    "def": "pg_stat_activity 의 wait_event_type/wait_event. 세션이 지금 무엇을 기다리는지(Lock, LWLock, IO, Client)를 보여 주는 PostgreSQL 성능 진단의 출발점.",
+    "link": "/postgres/notes/01-postgres-overview"
+  },
+  {
+    "term": "random_page_cost",
+    "subject": "postgres",
+    "def": "플래너가 임의 페이지 읽기에 매기는 비용(기본 4.0, 순차 읽기 1.0 기준). SSD 에서는 1.1~1.5 로 낮춰 인덱스 스캔이 더 자주 선택되게 한다.",
+    "link": "/postgres/notes/02-indexes-explain"
+  },
+  {
+    "term": "확장 통계 (CREATE STATISTICS)",
+    "subject": "postgres",
+    "def": "상관된 컬럼들의 의존성·고유값 수를 따로 수집해 플래너의 행 수 과소·과대 추정을 바로잡는 기능.",
+    "link": "/postgres/notes/02-indexes-explain"
+  },
+  {
+    "term": "Bitmap Heap Scan",
+    "subject": "postgres",
+    "def": "인덱스로 후보 페이지 비트맵을 만든 뒤 페이지 순서대로 힙을 읽는 스캔. 중간 선택도에서 Index Scan 과 Seq Scan 의 절충이며, work_mem 을 넘으면 lossy 가 되어 Recheck 한다.",
+    "link": "/postgres/notes/02-indexes-explain"
+  },
+  {
+    "term": "EvalPlanQual (재검사)",
+    "subject": "postgres",
+    "def": "READ COMMITTED 에서 UPDATE 가 잠긴 행을 기다린 뒤 최신 버전으로 WHERE 조건을 다시 평가하는 동작. 조건부 UPDATE 한 문장이 동시성에 안전한 이유다.",
+    "link": "/postgres/notes/03-mvcc-isolation"
+  },
+  {
+    "term": "SSI (Serializable Snapshot Isolation)",
+    "subject": "postgres",
+    "def": "PostgreSQL SERIALIZABLE 의 구현. 트랜잭션 간 읽기-쓰기 의존성을 SIRead 표식으로 추적해 위험한 구조가 생기면 하나를 40001 로 abort 한다. 재시도 루프가 필수.",
+    "link": "/postgres/notes/03-mvcc-isolation"
+  },
+  {
+    "term": "잠금 큐 (lock queue)",
+    "subject": "postgres",
+    "def": "강한 잠금(ACCESS EXCLUSIVE)을 기다리는 요청 뒤에 이후의 약한 잠금 요청까지 줄 서는 현상. 짧은 DDL 이 긴 쿼리 때문에 서비스 전체를 멈추게 만든다. lock_timeout 으로 막는다.",
+    "link": "/postgres/notes/04-locks-deadlocks"
+  },
+  {
+    "term": "PITR (Point-In-Time Recovery)",
+    "subject": "postgres",
+    "def": "베이스백업에 WAL 아카이브를 원하는 시각(recovery_target_time)까지 재생해 임의 시점으로 복구하는 방법. 사람 실수 복구의 핵심.",
+    "link": "/postgres/notes/05-operations"
+  },
+  {
+    "term": "GIN pending list (fastupdate)",
+    "subject": "postgres",
+    "def": "GIN 인덱스가 쓰기를 모아 두는 임시 목록. INSERT 를 빠르게 하지만 목록이 크면 검색 때 순차로 훑어 느려지고 VACUUM 때 본 인덱스로 합쳐진다.",
+    "link": "/postgres/notes/08-jsonb-fulltext-pgvector"
+  },
+  {
+    "term": "MSS (Maximum Segment Size)",
+    "subject": "linux-network",
+    "def": "TCP 세그먼트 하나에 실을 수 있는 최대 페이로드. MTU 1500 에서 IP·TCP 헤더(+옵션)를 빼 보통 1448. 핸드셰이크 때 서로 알린다.",
+    "link": "/linux-network/notes/01-layers-tcpip"
+  },
+  {
+    "term": "PMTU 발견",
+    "subject": "linux-network",
+    "def": "경로상 가장 작은 MTU 를 ICMP fragmentation needed 응답으로 알아내는 과정. ICMP 가 막히면 큰 패킷만 사라지는 블랙홀이 생긴다(MSS clamping 으로 완화).",
+    "link": "/linux-network/notes/01-layers-tcpip"
+  },
+  {
+    "term": "accept 큐 / SYN 큐",
+    "subject": "linux-network",
+    "def": "listen 소켓이 가진 두 큐. SYN 큐는 핸드셰이크 중인 연결, accept 큐는 완료됐지만 앱이 accept 하지 않은 연결. accept 큐가 넘치면 ListenOverflows 가 늘고 연결이 지연·실패한다.",
+    "link": "/linux-network/notes/02-ip-ports-sockets"
+  },
+  {
+    "term": "임시 포트 고갈",
+    "subject": "linux-network",
+    "def": "같은 목적지로 짧은 연결을 너무 많이 만들어 TIME_WAIT 가 임시 포트 범위를 다 차지한 상태. connect 가 EADDRNOTAVAIL 로 실패한다. 연결 재사용이 근본 해결.",
+    "link": "/linux-network/notes/02-ip-ports-sockets"
+  },
+  {
+    "term": "zero window",
+    "subject": "linux-network",
+    "def": "수신 측 소켓 버퍼가 가득 차 TCP 윈도우를 0 으로 광고한 상태. 송신자는 멈추고 Send-Q 가 쌓인다. 수신 앱이 느리다는 신호.",
+    "link": "/linux-network/notes/02-ip-ports-sockets"
+  },
+  {
+    "term": "ndots",
+    "subject": "linux-network",
+    "def": "resolv.conf 옵션. 이름의 점 개수가 이 값보다 적으면 search 도메인을 먼저 붙여 질의한다. Kubernetes 기본 5 라 외부 도메인 질의가 여러 번 실패한 뒤 성공한다.",
+    "link": "/linux-network/notes/03-dns"
+  },
+  {
+    "term": "부정 캐시 (negative caching)",
+    "subject": "linux-network",
+    "def": "NXDOMAIN 같은 '없다' 응답도 SOA 의 minimum TTL 동안 캐시되는 것. 레코드를 만들기 전에 조회하면 만든 뒤에도 한동안 없다고 나온다.",
+    "link": "/linux-network/notes/03-dns"
+  },
+  {
+    "term": "HPACK / QPACK",
+    "subject": "linux-network",
+    "def": "HTTP/2 와 HTTP/3 의 헤더 압축. 반복되는 헤더를 정적·동적 테이블 인덱스로 보낸다. QPACK 은 QUIC 의 순서 없는 전송에 맞춘 변형.",
+    "link": "/linux-network/notes/04-http-tls"
+  },
+  {
+    "term": "OCSP stapling",
+    "subject": "linux-network",
+    "def": "서버가 인증서 폐기 상태 응답(OCSP)을 미리 받아 핸드셰이크에 붙여 보내는 것. 클라이언트의 별도 OCSP 질의(추가 RTT)와 프라이버시 노출을 없앤다.",
+    "link": "/linux-network/notes/04-http-tls"
+  },
+  {
+    "term": "netfilter 훅",
+    "subject": "linux-network",
+    "def": "리눅스 커널 패킷 경로의 PREROUTING·INPUT·FORWARD·OUTPUT·POSTROUTING 지점. iptables/nftables 규칙이 여기에 걸리며 Docker -p 의 DNAT 는 PREROUTING, 컨테이너 송신 SNAT 는 POSTROUTING.",
+    "link": "/linux-network/notes/05-tools"
+  },
+  {
+    "term": "time_squeeze",
+    "subject": "linux-network",
+    "def": "/proc/net/softnet_stat 의 세 번째 열. softirq 가 한 번에 처리할 패킷 예산(netdev_budget)을 다 써서 미룬 횟수로, 패킷 처리 CPU 부족 신호.",
+    "link": "/linux-network/notes/06-kernel-stack-ebpf-performance"
   }
 ]

@@ -1,57 +1,122 @@
 [
- {
-  "note": "01-layers-tcpip",
-  "q": "curl http://example.com 이 거치는 단계를 순서대로?",
-  "a": "DNS 해석 → 라우팅/ARP → TCP 3-way 핸드셰이크 → (TLS) → HTTP 요청/응답 → FIN 종료."
- },
- {
-  "note": "02-ip-ports-sockets",
-  "q": "서버 포트 하나(80)로 수만 연결을 동시에 받을 수 있는 이유는?",
-  "a": "연결은 (로컬 IP:포트, 원격 IP:포트) 4-tuple 로 식별되어 원격 쪽이 다르면 구분된다."
- },
- {
-  "note": "02-ip-ports-sockets",
-  "q": "CLOSE_WAIT 가 쌓이면 무엇을 의심하나?",
-  "a": "상대는 끊었는데 내 앱이 소켓을 close 하지 않는 fd 누수 버그."
- },
- {
-  "note": "02-ip-ports-sockets",
-  "q": "TIME_WAIT 가 많을 때 근본 해결은?",
-  "a": "짧은 연결을 반복하지 말고 keepalive 로 연결을 재사용한다."
- },
- {
-  "note": "03-dns",
-  "q": "Kubernetes Pod 에서 외부 도메인 질의가 느린 흔한 이유는?",
-  "a": "resolv.conf 의 ndots:5 와 search 도메인 때문에 cluster.local 접미사를 붙인 질의를 여러 번 먼저 시도한다. FQDN(끝에 점) 사용."
- },
- {
-  "note": "04-http-tls",
-  "q": "HTTP/2 가 해결한 것과 못 해결한 HOL 은?",
-  "a": "응용 계층 HOL(한 연결에서 요청 다중화)은 해결, TCP 패킷 손실이 모든 스트림을 막는 전송 계층 HOL 은 HTTP/3(QUIC) 에서 해결."
- },
- {
-  "note": "04-http-tls",
-  "q": "중간 인증서를 서버가 보내지 않으면?",
-  "a": "일부 클라이언트만 체인 검증에 실패한다(캐시된 클라이언트는 성공). fullchain 을 배포해야 한다."
- },
- {
-  "note": "05-tools",
-  "q": "ECONNREFUSED 와 타임아웃의 차이는?",
-  "a": "거부는 포트에 아무도 안 들음(RST 응답). 타임아웃은 방화벽/보안그룹이 SYN 을 버림."
- },
- {
-  "note": "06-kernel-stack-ebpf-performance",
-  "q": "BDP 가 처리량에 미치는 영향은?",
-  "a": "대역폭×RTT 만큼 윈도우가 필요하다. 소켓 버퍼 상한이 작으면 처리량이 RTT 에 반비례해 떨어진다."
- },
- {
-  "note": "06-kernel-stack-ebpf-performance",
-  "q": "nf_conntrack: table full 이 뜨면?",
-  "a": "연결 추적 테이블이 가득 차 패킷이 조용히 버려진다. nf_conntrack_max 를 늘리고 TIME_WAIT 타임아웃을 줄인다."
- },
- {
-  "note": "06-kernel-stack-ebpf-performance",
-  "q": "XDP 가 iptables 보다 DDoS 방어에 유리한 이유는?",
-  "a": "드라이버 수신 직후 sk_buff 생성 전에 패킷을 드롭해 커널 스택 비용을 아예 쓰지 않는다."
- }
+  {
+    "note": "01-layers-tcpip",
+    "q": "curl http://example.com 이 거치는 단계를 순서대로?",
+    "a": "DNS 해석 → 라우팅/ARP → TCP 3-way 핸드셰이크 → (TLS) → HTTP 요청/응답 → FIN 종료."
+  },
+  {
+    "note": "02-ip-ports-sockets",
+    "q": "서버 포트 하나(80)로 수만 연결을 동시에 받을 수 있는 이유는?",
+    "a": "연결은 (로컬 IP:포트, 원격 IP:포트) 4-tuple 로 식별되어 원격 쪽이 다르면 구분된다."
+  },
+  {
+    "note": "02-ip-ports-sockets",
+    "q": "CLOSE_WAIT 가 쌓이면 무엇을 의심하나?",
+    "a": "상대는 끊었는데 내 앱이 소켓을 close 하지 않는 fd 누수 버그."
+  },
+  {
+    "note": "02-ip-ports-sockets",
+    "q": "TIME_WAIT 가 많을 때 근본 해결은?",
+    "a": "짧은 연결을 반복하지 말고 keepalive 로 연결을 재사용한다."
+  },
+  {
+    "note": "03-dns",
+    "q": "Kubernetes Pod 에서 외부 도메인 질의가 느린 흔한 이유는?",
+    "a": "resolv.conf 의 ndots:5 와 search 도메인 때문에 cluster.local 접미사를 붙인 질의를 여러 번 먼저 시도한다. FQDN(끝에 점) 사용."
+  },
+  {
+    "note": "04-http-tls",
+    "q": "HTTP/2 가 해결한 것과 못 해결한 HOL 은?",
+    "a": "응용 계층 HOL(한 연결에서 요청 다중화)은 해결, TCP 패킷 손실이 모든 스트림을 막는 전송 계층 HOL 은 HTTP/3(QUIC) 에서 해결."
+  },
+  {
+    "note": "04-http-tls",
+    "q": "중간 인증서를 서버가 보내지 않으면?",
+    "a": "일부 클라이언트만 체인 검증에 실패한다(캐시된 클라이언트는 성공). fullchain 을 배포해야 한다."
+  },
+  {
+    "note": "05-tools",
+    "q": "ECONNREFUSED 와 타임아웃의 차이는?",
+    "a": "거부는 포트에 아무도 안 들음(RST 응답). 타임아웃은 방화벽/보안그룹이 SYN 을 버림."
+  },
+  {
+    "note": "06-kernel-stack-ebpf-performance",
+    "q": "BDP 가 처리량에 미치는 영향은?",
+    "a": "대역폭×RTT 만큼 윈도우가 필요하다. 소켓 버퍼 상한이 작으면 처리량이 RTT 에 반비례해 떨어진다."
+  },
+  {
+    "note": "06-kernel-stack-ebpf-performance",
+    "q": "nf_conntrack: table full 이 뜨면?",
+    "a": "연결 추적 테이블이 가득 차 패킷이 조용히 버려진다. nf_conntrack_max 를 늘리고 TIME_WAIT 타임아웃을 줄인다."
+  },
+  {
+    "note": "06-kernel-stack-ebpf-performance",
+    "q": "XDP 가 iptables 보다 DDoS 방어에 유리한 이유는?",
+    "a": "드라이버 수신 직후 sk_buff 생성 전에 패킷을 드롭해 커널 스택 비용을 아예 쓰지 않는다."
+  },
+  {
+    "note": "01-layers-tcpip",
+    "q": "MTU 1500 에서 TCP 페이로드(MSS)가 보통 1448 인 이유는?",
+    "a": "IPv4 20바이트 + TCP 20바이트 + 타임스탬프 옵션 12바이트를 빼기 때문이다."
+  },
+  {
+    "note": "01-layers-tcpip",
+    "q": "홉을 지날 때마다 바뀌는 주소와 NAT 에서 바뀌는 주소는?",
+    "a": "MAC 주소는 매 홉 바뀌고(같은 링크 안에서만 의미), IP·포트는 유지되다가 NAT 에서 출발지(SNAT)나 목적지(DNAT)가 바뀐다."
+  },
+  {
+    "note": "01-layers-tcpip",
+    "q": "핸드셰이크는 되는데 큰 응답만 오지 않는다면 의심할 것은?",
+    "a": "경로 MTU 문제. ICMP fragmentation needed 가 막혀 PMTU 발견이 실패하면 큰 패킷만 버려진다. MSS clamping 이나 MTU 조정으로 해결한다."
+  },
+  {
+    "note": "02-ip-ports-sockets",
+    "q": "listen 소켓의 ss 출력에서 Recv-Q 가 Send-Q 에 가까우면?",
+    "a": "accept 큐가 거의 찼다. 앱이 accept 를 따라가지 못하는 중이며 넘치면 ListenOverflows 가 증가한다."
+  },
+  {
+    "note": "03-dns",
+    "q": "NXDOMAIN 과 SERVFAIL 은 어떻게 다르게 처리해야 하나?",
+    "a": "NXDOMAIN 은 이름이 없는 설정 오류(ENOTFOUND)이고, SERVFAIL·타임아웃은 일시적 실패(EAI_AGAIN)라 재시도할 만하다. 부정 응답도 캐시된다."
+  },
+  {
+    "note": "03-dns",
+    "q": "Kubernetes Pod 에서 외부 도메인 질의가 여러 번 실패한 뒤 성공하는 이유는?",
+    "a": "ndots:5 와 search 도메인 때문에 점이 5개 미만인 이름에 클러스터 도메인을 붙여 먼저 질의한다. FQDN(끝 점)이나 ndots 조정으로 줄인다."
+  },
+  {
+    "note": "03-dns",
+    "q": "DNS TTL 을 낮췄는데 장애 조치 후에도 옛 서버에 붙는 이유는?",
+    "a": "커넥션 풀이 장수 연결을 유지해 다시 해석하지 않기 때문이다. 풀 연결에 최대 수명을 둔다."
+  },
+  {
+    "note": "04-http-tls",
+    "q": "HTTP/2 를 L4 로드밸런서 뒤에 두면 생기는 문제는?",
+    "a": "클라이언트가 연결 하나로 모든 요청을 보내 연결 단위로 분산하는 L4 LB 에서는 한 백엔드로 쏠린다. L7 분산이 필요하다."
+  },
+  {
+    "note": "04-http-tls",
+    "q": "Cache-Control: no-cache 의 실제 의미는?",
+    "a": "캐시 금지가 아니라 저장은 하되 매번 서버에 재검증(If-None-Match → 304)하라는 뜻이다. 저장 금지는 no-store."
+  },
+  {
+    "note": "05-tools",
+    "q": "tcpdump 에서 SYN 만 1초, 3초, 7초 간격으로 재전송되면 무슨 뜻인가?",
+    "a": "SYN 이 중간에서 버려지고 있다(방화벽 DROP, 라우팅). 거부라면 RST 가 돌아온다."
+  },
+  {
+    "note": "05-tools",
+    "q": "Docker -p 포트 매핑의 DNAT 는 netfilter 어느 지점에서 일어나나?",
+    "a": "nat 테이블 PREROUTING(DOCKER 체인). 컨테이너가 인터넷으로 나갈 때의 SNAT 는 POSTROUTING MASQUERADE 다."
+  },
+  {
+    "note": "05-tools",
+    "q": "tcpdump -ttt 로 Redis 요청·응답 간격을 보면 무엇을 알 수 있나?",
+    "a": "요청과 응답 사이는 서버 처리 시간, 응답과 다음 요청 사이는 클라이언트(앱) 시간이라 지연이 어느 쪽인지 가를 수 있다."
+  },
+  {
+    "note": "06-kernel-stack-ebpf-performance",
+    "q": "/proc/net/softnet_stat 의 time_squeeze 가 늘면?",
+    "a": "softirq 가 한 번에 처리할 패킷 예산을 다 써서 미룬 것이다. 패킷 처리 CPU 가 부족하다는 신호다."
+  }
 ]
