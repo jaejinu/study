@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 460" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="460" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">LLM 추론 = prefill(한 번에) + decode(하나씩) — 그리고 동시 요청을 어떻게 처리하나</text>
+  <!-- timeline single request -->
+  <text x="40" y="70" fill="#8b949e" font-size="12">요청 1개 (이 Mac, qwen2.5 1.5B 실측)</text>
+  <rect x="40" y="82" width="70" height="34" rx="4" fill="#3b82f6" opacity="0.85"/>
+  <text x="75" y="104" text-anchor="middle" fill="#0d1117" font-size="11" font-weight="600">prefill</text>
+  <g fill="#22c55e" opacity="0.85">
+    <rect x="112" y="82" width="10" height="34"/><rect x="124" y="82" width="10" height="34"/><rect x="136" y="82" width="10" height="34"/><rect x="148" y="82" width="10" height="34"/><rect x="160" y="82" width="10" height="34"/><rect x="172" y="82" width="10" height="34"/><rect x="184" y="82" width="10" height="34"/><rect x="196" y="82" width="10" height="34"/><rect x="208" y="82" width="10" height="34"/><rect x="220" y="82" width="10" height="34"/><rect x="232" y="82" width="10" height="34"/><rect x="244" y="82" width="10" height="34"/><rect x="256" y="82" width="10" height="34"/><rect x="268" y="82" width="10" height="34"/>
+  </g>
+  <text x="290" y="104" fill="#22c55e" font-size="12">… decode: 토큰마다 한 칸</text>
+  <line x1="40" y1="126" x2="110" y2="126" stroke="#3b82f6"/><text x="40" y="142" fill="#3b82f6" font-size="11">TTFT — 입력 길이에 비례</text>
+  <line x1="112" y1="126" x2="124" y2="126" stroke="#22c55e"/><text x="200" y="142" fill="#22c55e" font-size="11">TPOT ≈ 6ms — 메모리 대역폭에 묶임</text>
+  <!-- table -->
+  <rect x="520" y="60" width="400" height="118" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="540" y="84" fill="#e6edf3" font-weight="600" font-size="12">실측 (mlops-ollama-serving)</text>
+  <text x="540" y="106" fill="#8b949e" font-size="12">짧은 입력 69토큰, 캐시 미스</text><text x="890" y="106" text-anchor="end" fill="#e6edf3" font-size="12">TTFT 31ms</text>
+  <text x="540" y="126" fill="#8b949e" font-size="12">긴 입력 ~2,000토큰, 캐시 미스</text><text x="890" y="126" text-anchor="end" fill="#e6edf3" font-size="12">TTFT 347ms (prefill 5,700 tok/s)</text>
+  <text x="540" y="146" fill="#8b949e" font-size="12">같은 입력 재전송 (접두 캐시 적중)</text><text x="890" y="146" text-anchor="end" fill="#22c55e" font-size="12">TTFT 13ms</text>
+  <text x="540" y="166" fill="#8b949e" font-size="12">decode</text><text x="890" y="166" text-anchor="end" fill="#e6edf3" font-size="12">TPOT 6.1ms ≈ 160 tok/s</text>
+  <!-- queue vs batching -->
+  <text x="40" y="214" fill="#e6edf3" font-weight="600">동시 요청 4개</text>
+  <text x="40" y="240" fill="#ef4444" font-size="12" font-weight="600">대기열 (Ollama, NUM_PARALLEL=1)</text>
+  <g>
+    <rect x="40" y="250" width="100" height="22" rx="3" fill="#ef4444" opacity="0.7"/><text x="90" y="266" text-anchor="middle" fill="#0d1117" font-size="11">요청 A</text>
+    <rect x="140" y="276" width="100" height="22" rx="3" fill="#ef4444" opacity="0.55"/><text x="190" y="292" text-anchor="middle" fill="#0d1117" font-size="11">요청 B</text>
+    <rect x="240" y="302" width="100" height="22" rx="3" fill="#ef4444" opacity="0.45"/><text x="290" y="318" text-anchor="middle" fill="#0d1117" font-size="11">요청 C</text>
+    <rect x="340" y="328" width="100" height="22" rx="3" fill="#ef4444" opacity="0.35"/><text x="390" y="344" text-anchor="middle" fill="#e6edf3" font-size="11">요청 D</text>
+  </g>
+  <text x="40" y="372" fill="#8b949e" font-size="12">TTFT 33ms → 1,277ms 계단, 처리량 152 → 154 tok/s (그대로)</text>
+  <text x="520" y="240" fill="#22c55e" font-size="12" font-weight="600">연속 배칭 (vLLM 등)</text>
+  <g>
+    <rect x="520" y="250" width="150" height="22" rx="3" fill="#22c55e" opacity="0.7"/><text x="595" y="266" text-anchor="middle" fill="#0d1117" font-size="11">A</text>
+    <rect x="530" y="276" width="130" height="22" rx="3" fill="#22c55e" opacity="0.6"/><text x="595" y="292" text-anchor="middle" fill="#0d1117" font-size="11">B</text>
+    <rect x="540" y="302" width="160" height="22" rx="3" fill="#22c55e" opacity="0.5"/><text x="620" y="318" text-anchor="middle" fill="#0d1117" font-size="11">C</text>
+    <rect x="550" y="328" width="120" height="22" rx="3" fill="#22c55e" opacity="0.4"/><text x="610" y="344" text-anchor="middle" fill="#0d1117" font-size="11">D</text>
+  </g>
+  <text x="520" y="372" fill="#8b949e" font-size="12">스텝마다 요청을 넣고 뺀다 → 처리량 ↑, TPOT 은 조금 ↑</text>
+  <rect x="40" y="392" width="880" height="52" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="60" y="414" fill="#e6edf3" font-size="12">총 지연 ≈ TTFT + TPOT × (출력 토큰 − 1)   ·   KV 캐시 = 2 × 층 × KV헤드 × 헤드차원 × 토큰 × 바이트 → 동시성 상한</text>
+  <text x="60" y="434" fill="#8b949e" font-size="12">PagedAttention: KV 캐시를 16토큰 블록으로 나눠 단편화 제거·접두 공유(CoW) — 운영체제의 페이지 테이블과 같은 아이디어</text>
+</svg>

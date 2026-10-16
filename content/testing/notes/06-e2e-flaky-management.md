@@ -1,0 +1,161 @@
+---
+title: "E2E 와 플레이키 관리 — Playwright, 대기 전략, 재시도의 함정, 격리와 추적"
+order: 6
+level: 심화
+summary: "E2E 테스트가 맡을 범위(핵심 사용자 여정 몇 개), Playwright 의 구조(로케이터·자동 대기·웹 우선 단언·트레이스), 좋은 로케이터 고르기, 데이터 준비와 격리, 플레이키의 원인 분류(타이밍·순서·공유 상태·외부 의존·자원·환경)와 탐지(반복·셔플·병렬), 재시도가 숨기는 것, 격리(quarantine)·소유자·통과율 추적의 운영, 실측(시간 대기 36% 실패, 재시도 6%, 공유 상태 46%), 그리고 이 사이트의 핵심 흐름 E2E 설계"
+tags: [E2E, Playwright, 플레이키, 대기 전략, 로케이터, 재시도, quarantine, 테스트 격리, 트레이스]
+experiments: [test-flaky-detector]
+---
+
+## E2E 는 무엇을 맡나
+
+E2E(End-to-End)는 실제 브라우저로 실제 서버·DB 까지 거치는 테스트다. 가장 사용자에 가깝고, 가장 느리고, 가장 쉽게 깨진다.
+
+| E2E 로 할 것 | E2E 로 하지 않을 것 |
+|---|---|
+| **돈이 되는 핵심 여정** 5~20개 (가입, 결제, 핵심 기능 한 바퀴) | 입력 검증의 모든 조합 → 단위·속성 테스트 |
+| 여러 계층이 엮여야만 드러나는 것 (인증 쿠키 + 리다이렉트 + 서버 액션) | API 응답 형태 → 계약 테스트 |
+| 배포 직후 스모크 (프로덕션에서 핵심 흐름이 도는가) | 시각적 세부 → 시각 회귀 도구 또는 수동 |
+
+[테스트 트로피](/testing/notes/01-test-pyramid-trophy) 의 꼭대기 — 적게, 확실한 것만.
+
+## Playwright 의 핵심
+
+```ts
+import { test, expect } from "@playwright/test";
+
+test("노트를 읽음으로 표시하면 대시보드 진행률이 오른다", async ({ page }) => {
+  await page.goto("/redis/notes/06-pipelining");
+  await page.getByRole("button", { name: "읽음으로 표시" }).click();
+  await expect(page.getByRole("button", { name: /읽음 \(취소\)/ })).toBeVisible();   // 자동 재시도 단언
+  await page.goto("/redis");
+  await expect(page.getByText(/읽음 \d+\/\d+/)).toContainText("1/");
+});
+```
+
+| 개념 | 설명 |
+|---|---|
+| **로케이터** | 요소를 찾는 방법을 저장. 실행 시점에 다시 찾는다 (DOM 이 바뀌어도) |
+| **자동 대기 (actionability)** | 클릭 전에 보이는지·활성인지·움직임이 멈췄는지 기다린다 |
+| **웹 우선 단언** | `expect(locator).toBeVisible()` 은 조건이 참이 될 때까지 **재시도**한다 (기본 5초) |
+| 트레이스 | 실패한 테스트의 DOM 스냅샷·네트워크·콘솔을 시간순으로 — `trace: "on-first-retry"` |
+| 브라우저 컨텍스트 | 테스트마다 새 쿠키·저장소 — 기본적으로 격리 |
+
+### 로케이터 우선순위
+
+| 순위 | 로케이터 | 이유 |
+|---|---|---|
+| 1 | `getByRole("button", { name: "읽음으로 표시" })` | 사용자·스크린리더가 보는 것. 접근성도 검증 |
+| 2 | `getByLabel`, `getByPlaceholder`, `getByText` | 사용자에게 보이는 텍스트 |
+| 3 | `getByTestId("read-toggle")` | 텍스트가 자주 바뀌는 곳 |
+| ✗ | `.btn.btn-primary > span:nth-child(2)` | CSS 구조가 바뀌면 깨진다 |
+
+## 대기 — 시간이 아니라 조건을 기다린다
+
+```ts
+await page.waitForTimeout(2000);                         // ✗ 느리거나 부족하다
+await expect(page.getByText("저장됨")).toBeVisible();     // ✓ 조건이 참이 될 때까지
+await page.waitForResponse((r) => r.url().includes("/api/ask") && r.ok());   // ✓ 특정 응답
+await expect.poll(() => countRows()).toBe(3);            // ✓ 임의 조건 폴링
+```
+
+실험 [`test-flaky-detector`](/testing/lab/test-flaky-detector) 의 실측:
+
+| 테스트 (50회) | 실패율 | 평균 소요 |
+|---|---|---|
+| `sleep(15)` 후 확인 (작업은 5~25ms) | **36%** | 16ms |
+| 완료 약속(promise)을 기다림 | **0%** | 17ms |
+| `sleep(15)` + 재시도 2회 | 6% | 27ms |
+
+조건 대기는 **더 안정적이면서 느리지 않다.** 고정 대기를 늘리면(`sleep(30)`) 실패는 줄지만 모든 실행이 30ms 를 낭비한다. 테스트 수천 개에서는 CI 를 몇 분씩 늘린다.
+
+## 플레이키의 원인 분류
+
+| 원인 | 예 | 탐지 | 고치기 |
+|---|---|---|---|
+| **타이밍** | 고정 대기, 애니메이션, 디바운스 | 반복 실행, CPU 부하를 걸고 실행 | 조건 대기, 웹 우선 단언 |
+| **순서 의존** | 앞 테스트가 만든 데이터에 의존 | `--sequence.shuffle`, 단독 실행 | 테스트마다 준비 (`beforeEach`) |
+| **공유 상태** | 모듈 변수, 같은 DB 행, 같은 Redis 키 | 병렬도를 바꿔 실행 | 고유 키·사용자, 격리 |
+| 외부 의존 | 실제 결제 샌드박스, 외부 API | 외부 상태와 상관관계 | 목 서버·계약 테스트 |
+| 자원 | 포트 충돌, 디스크, 메모리 | 병렬 실행 시만 실패 | 임의 포트, 정리 |
+| 환경 | 시간대·로캘, 날짜 경계 | 특정 시각에만 실패 | 시간 주입, `TZ=UTC` |
+| 비결정적 코드 | `Set` 순회 순서, 정렬 안정성, 난수 | 반복 | 결정적 정렬·시드 |
+
+실험에서 재현한 순서 의존 사례:
+
+| 묶음 (무작위 순서 50회) | 실패율 | 순서별 실패 |
+|---|---|---|
+| 모듈 수준 `cart` 배열 공유 | **46%** | `addItem → emptyCartTotal` 에서만 23회, 반대 순서 0회 |
+| 테스트마다 초기화 | 0% | — |
+
+"`addItem` 이 먼저 돌면 실패" 라는 패턴이 원인을 정확히 가리킨다. 순서를 고정한 CI 에서는 이 버그가 **영원히** 안 보이다가, 누군가 테스트를 하나 추가해 순서가 바뀌는 날 터진다.
+
+## 재시도의 함정
+
+재시도 2회를 켜면 실패율 p 가 대략 p³ 으로 떨어진다 (실측 36% → 6%). 녹색이 많아지니 좋아 보인다. 하지만:
+
+| 재시도가 하는 일 | 결과 |
+|---|---|
+| 원인을 그대로 둔다 | 실제 사용자도 같은 타이밍 문제를 겪을 수 있다 (제품 버그일 수도) |
+| 실행 시간을 늘린다 | 실측 평균 16ms → 27ms. 큰 묶음에서는 분 단위 |
+| 신호를 숨긴다 | 플레이키가 늘어나는 추세를 아무도 모른다 |
+| 진짜 회귀를 가린다 | 새 버그가 "가끔 실패" 형태면 재시도로 통과 |
+
+**재시도는 써도 된다. 단, 재시도로 통과한 테스트를 '플레이키' 로 기록하고 집계해야 한다.** Playwright 는 결과를 `flaky` 상태로 따로 보고한다.
+
+## 운영 — 플레이키를 관리하는 시스템
+
+1. **측정**: 테스트별 통과율을 시계열로 저장 (CI 결과 JUnit XML → DB). "main 에서 코드 변경 없이 실패한 횟수" 가 플레이키 지표
+2. **격리(quarantine)**: 통과율이 임계(예: 98%) 아래로 떨어진 테스트는 필수 검사에서 빼고 별도 잡으로 — 다른 사람의 PR 을 막지 않게
+3. **소유자와 티켓**: 격리된 테스트마다 소유 팀·기한. 기한이 지나면 고치거나 지운다
+4. **재현 도구**: 실패 시 트레이스·스크린샷·로그를 아티팩트로 — [CI 아티팩트](/github-actions/notes/02-cache-matrix-artifacts)
+5. **탐지 잡**: 야간에 반복(`--repeat-each=10`)·셔플·높은 병렬도로 돌려 플레이키를 먼저 찾는다
+
+```bash
+# Playwright: 같은 테스트를 반복해 플레이키 탐지
+npx playwright test --repeat-each=20 --workers=4 tests/notes.spec.ts
+# vitest: 순서 섞기·반복
+npx vitest run --sequence.shuffle --sequence.seed=$RANDOM
+```
+
+플레이키는 [SRE 의 페이지 피로](/sre/notes/04-oncall-runbooks) 와 같은 구조다. 신뢰할 수 없는 신호가 쌓이면 모든 신호를 무시하게 된다.
+
+## 데이터 준비와 격리
+
+| 방법 | 설명 |
+|---|---|
+| API 로 준비 | UI 로 가입·로그인하지 말고 API·DB 로 직접 상태를 만든다 (빠르고 안정) |
+| 로그인 상태 재사용 | `storageState` 로 인증 쿠키를 저장해 테스트마다 재사용 |
+| 고유 데이터 | 테스트마다 고유 사용자·이름 (`user-${testInfo.workerIndex}-${Date.now()}`) |
+| 정리 | 테스트가 만든 데이터는 지운다. 또는 테스트 전용 네임스페이스를 통째로 |
+
+## 예시로 보기 — 이 사이트의 E2E 설계
+
+이 사이트의 진행률은 공용 Redis 의 `progress:*` 키에 저장된다. E2E 가 그 키를 건드리면 실제 학습 기록이 오염된다. 그래서:
+
+```ts
+// playwright.config.ts (설계안)
+export default defineConfig({
+  webServer: { command: "REDIS_URL=redis://127.0.0.1:6379/15 pnpm dev --port 3400", port: 3400, reuseExistingServer: false },
+  use: { baseURL: "http://localhost:3400", trace: "on-first-retry" },
+  retries: process.env.CI ? 1 : 0,
+});
+// 테스트 전용 Redis DB 15 를 쓰고, globalSetup 에서 FLUSHDB
+```
+
+| 핵심 여정 | 검증 |
+|---|---|
+| 첫 화면 → 주제 → 노트 → 읽음 표시 → 진행률 | 서버 액션 + Redis + 재렌더 |
+| 퀴즈: 답 보기 → 틀렸다 → 복습 기한 카드 수 | 간격 반복 기록 |
+| 실험실: Redis 실험 실행 → 결과 요약 ✓ | 서버 액션 + 실제 Redis |
+| AI 에게 묻기 패널 열기(⌘/) → 키 없을 때 안내 표시 | 키 없는 경로 (LLM 호출 없이) |
+
+LLM 응답 내용은 E2E 로 단언하지 않는다(비결정적). 패널이 열리고 스트림이 시작되는지까지만, 품질은 [평가 CI](/mlops/notes/07-eval-ci-prompt-regression) 가 맡는다.
+
+## 실습 체크리스트
+
+- [ ] 실험 `test-flaky-detector` 를 돌려 시간 대기·재시도·공유 상태 세 표를 읽고 원인을 설명하기
+- [ ] 이 사이트의 "읽음 표시" 흐름을 Playwright 로 작성하고, 테스트 전용 Redis DB 로 격리하기
+- [ ] `vitest run --sequence.shuffle` 을 이 저장소에서 돌려 순서 의존 테스트가 있는지 확인하기
+- [ ] 재시도로 통과한 테스트를 집계하는 방법(JUnit XML, Playwright `flaky` 상태)을 조사하기
+- [ ] 플레이키 격리 정책(임계 통과율, 기한, 소유자)을 팀 규칙 문서로 한 문단 써 보기
