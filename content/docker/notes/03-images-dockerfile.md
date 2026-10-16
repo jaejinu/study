@@ -19,6 +19,18 @@ docker images                           # 로컬 이미지 목록
 
 컨테이너를 실행하면 맨 위에 **쓰기 가능한 컨테이너 레이어**가 얹힌다 (copy-on-write). 컨테이너를 지우면 이 레이어만 사라진다.
 
+![레이어와 컨테이너](/diagrams/docker-layers.svg)
+
+### 예시로 보기: 같은 Dockerfile, 다른 결과
+
+| Dockerfile 조각 | 이미지 크기 | 이유 |
+|---|---|---|
+| `RUN apt-get update && apt-get install -y curl` | +60MB | apt 캐시(`/var/lib/apt/lists`)가 레이어에 남음 |
+| `RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*` | +25MB | 같은 RUN 에서 지워 레이어에 없음 |
+| 위 두 줄을 별도 RUN 으로 | +60MB | 다음 레이어의 삭제는 whiteout 일 뿐 |
+
+실험실의 **이미지 레이어** 실험이 5MB 파일로 같은 현상을 재현하고 레이어 크기를 막대로 보여준다. [BuildKit 심화](/docker/notes/09-buildkit-multiplatform)에서 캐시 마운트로 더 줄인다.
+
 ## Dockerfile 핵심 명령
 
 ```dockerfile

@@ -40,6 +40,8 @@ sentinel failover-timeout mymaster 60000
 클라이언트(ioredis) 는 `new Redis({ sentinels: [...], name: 'mymaster' })` 로 자동 추적한다.
 한계: 데이터는 여전히 한 마스터에 다 들어간다 (수직 확장만 가능).
 
+![복제와 Sentinel](/diagrams/redis-replication-sentinel.svg)
+
 ## Cluster
 
 데이터를 **16384 개 해시 슬롯**으로 나누고 여러 마스터가 슬롯을 나눠 가진다. 각 마스터는 레플리카를 둔다.
@@ -60,6 +62,19 @@ slot = CRC16(key) mod 16384
 - `SELECT` 불가 (DB 0 만).
 - `KEYS`, `SCAN` 은 노드별로 돌려야 한다.
 - Pub/Sub 은 전 노드 브로드캐스트 → `SSUBSCRIBE` 사용.
+
+![Cluster 해시 슬롯](/diagrams/redis-cluster-slots.svg)
+
+### 예시로 보기: 앱 코드는 어떻게 달라지나
+
+```ts
+// 단일/Sentinel: 키 제약 없음
+await redis.mget("user:1", "user:2");
+// Cluster: 다른 슬롯이면 CROSSSLOT → 해시태그로 묶거나 키별로 나눠 보낸다 (클러스터 클라이언트가 파이프라인을 노드별 분할)
+await cluster.mget("{u1}:profile", "{u1}:settings");
+const [a, b] = await Promise.all([cluster.get("user:1"), cluster.get("user:2")]);
+```
+[클라이언트 설계 심화](/redis/notes/17-client-design)에 Sentinel/Cluster 옵션이 정리되어 있다.
 
 ## 어떤 걸 고를까
 

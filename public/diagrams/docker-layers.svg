@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 330" font-family="ui-sans-serif, system-ui, 'Apple SD Gothic Neo', sans-serif" font-size="12.5">
+  <rect width="900" height="330" fill="#0d1117"/>
+  <text x="30" y="32" fill="#e6edf3" font-weight="600" font-size="15">이미지 레이어와 컨테이너 — docker/lab/Dockerfile 이 만드는 것</text>
+  <g font-size="12">
+    <rect x="60" y="250" width="380" height="36" rx="6" fill="#1a222e" stroke="#243040"/><text x="74" y="273" fill="#e6edf3">FROM alpine:3.20</text><text x="330" y="273" fill="#8b98a9" font-size="11">7.8 MB</text>
+    <rect x="60" y="210" width="380" height="36" rx="6" fill="#1a222e" stroke="#243040"/><text x="74" y="233" fill="#e6edf3">RUN apk add curl</text><text x="330" y="233" fill="#8b98a9" font-size="11">+4.2 MB</text>
+    <rect x="60" y="170" width="380" height="36" rx="6" fill="#1a222e" stroke="#243040"/><text x="74" y="193" fill="#e6edf3">COPY payload.txt</text><text x="330" y="193" fill="#8b98a9" font-size="11">+11 B</text>
+    <rect x="60" y="130" width="380" height="36" rx="6" fill="#1a222e" stroke="#243040"/><text x="74" y="153" fill="#e6edf3">RUN dd … &amp;&amp; rm   (같은 RUN 에서 삭제)</text><text x="330" y="153" fill="#3fb950" font-size="11">≈ 0</text>
+    <rect x="60" y="90" width="380" height="36" rx="6" fill="#1a222e" stroke="#243040"/><text x="74" y="113" fill="#e6edf3">RUN dd … 5MB 생성</text><text x="330" y="113" fill="#d29922" font-size="11">+5 MB</text>
+    <rect x="60" y="50" width="380" height="36" rx="6" fill="#1a222e" stroke="#243040"/><text x="74" y="73" fill="#e6edf3">RUN rm /tmp/b   (다음 RUN 에서 삭제)</text><text x="330" y="73" fill="#ff4438" font-size="11">whiteout, 5MB 그대로</text>
+  </g>
+  <text x="60" y="305" fill="#8b98a9" font-size="11.5">↑ 읽기 전용 이미지 레이어 (내용 해시로 식별, 여러 이미지가 공유, 캐시)</text>
+  <rect x="500" y="50" width="370" height="236" rx="10" fill="#121821" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="516" y="76" fill="#58a6ff" font-weight="600">컨테이너 = 이미지 + 쓰기 레이어</text>
+  <rect x="516" y="90" width="338" height="36" rx="6" fill="#243040" stroke="#58a6ff"/><text x="530" y="113" fill="#e6edf3">upper: 컨테이너가 만든/바꾼 파일 (docker diff)</text>
+  <g fill="#8b98a9" font-size="11.5">
+    <text x="516" y="150">읽기: 위에서 아래로 처음 찾은 파일 (overlay2 merged)</text>
+    <text x="516" y="170">쓰기: 하위 파일을 upper 로 copy-up 후 수정</text>
+    <text x="516" y="190">삭제: .wh.파일 로 표시만 (레이어 크기 불변)</text>
+    <text x="516" y="218">docker stop → upper 유지 → start 하면 데이터 그대로</text>
+    <text x="516" y="238">docker rm → upper 삭제 → 데이터 사라짐 (볼륨에 둬야)</text>
+    <text x="516" y="266">캐시: 명령 + 입력이 같으면 CACHED, 한 레이어가 바뀌면 그 아래 전부 재빌드</text>
+  </g>
+</svg>

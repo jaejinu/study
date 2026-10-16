@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 320" font-family="ui-sans-serif, system-ui, 'Apple SD Gothic Neo', sans-serif" font-size="12.5">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#8b98a9"/></marker></defs>
+  <rect width="900" height="320" fill="#0d1117"/>
+  <text x="30" y="32" fill="#e6edf3" font-weight="600" font-size="15">Cluster — 16384 해시 슬롯을 3 마스터가 나눠 갖는다 (pnpm redis:cluster, 7001~7006)</text>
+  <text x="30" y="60" fill="#8b98a9" font-size="12">slot = CRC16(key) mod 16384 · 해시태그 {…} 가 있으면 중괄호 안만 해싱</text>
+  <g>
+    <rect x="30" y="80" width="260" height="80" rx="10" fill="#121821" stroke="#ff4438" stroke-width="1.5"/><text x="46" y="104" fill="#ff4438" font-weight="700">master :7001</text><text x="46" y="124" fill="#e6edf3">슬롯 0 – 5460</text><text x="46" y="144" fill="#8b98a9" font-size="11">replica :7004</text>
+    <rect x="320" y="80" width="260" height="80" rx="10" fill="#121821" stroke="#ff4438" stroke-width="1.5"/><text x="336" y="104" fill="#ff4438" font-weight="700">master :7002</text><text x="336" y="124" fill="#e6edf3">슬롯 5461 – 10922</text><text x="336" y="144" fill="#8b98a9" font-size="11">replica :7005</text>
+    <rect x="610" y="80" width="260" height="80" rx="10" fill="#121821" stroke="#ff4438" stroke-width="1.5"/><text x="626" y="104" fill="#ff4438" font-weight="700">master :7003</text><text x="626" y="124" fill="#e6edf3">슬롯 10923 – 16383</text><text x="626" y="144" fill="#8b98a9" font-size="11">replica :7006</text>
+  </g>
+  <rect x="30" y="190" width="260" height="56" rx="8" fill="#1a222e" stroke="#243040"/><text x="44" y="212" fill="#e6edf3" font-weight="600" font-size="12">단순 클라이언트 → :7001</text><text x="44" y="232" fill="#8b98a9" font-size="11">SET user:1 a  (슬롯 10778)</text>
+  <path d="M290 218 Q 450 218 626 162" fill="none" stroke="#d29922" marker-end="url(#a)"/>
+  <text x="330" y="245" fill="#d29922" font-size="11.5">응답: -MOVED 10778 127.0.0.1:7003 → 클라이언트가 7003 으로 다시 보낸다</text>
+  <rect x="610" y="190" width="260" height="56" rx="8" fill="#1a222e" stroke="#243040"/><text x="624" y="212" fill="#e6edf3" font-weight="600" font-size="12">클러스터 클라이언트 (ioredis Cluster)</text><text x="624" y="232" fill="#8b98a9" font-size="11">슬롯 맵 캐시 → 바로 맞는 노드로</text>
+  <text x="30" y="282" fill="#8b98a9" font-size="12">MGET user:1 user:2 → CROSSSLOT (다른 슬롯).  MGET {u1}:a {u1}:b → OK (같은 슬롯).  MULTI·Lua 도 같은 슬롯 키만.</text>
+  <text x="30" y="302" fill="#8b98a9" font-size="12">마스터 장애 시 그 레플리카가 승격(Sentinel 불필요). 과반 마스터가 살아 있어야 클러스터가 동작한다.</text>
+</svg>

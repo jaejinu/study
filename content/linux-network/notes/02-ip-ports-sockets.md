@@ -46,6 +46,16 @@ lsof -nP -iTCP -sTCP:LISTEN                                   # 듣는 소켓과
 lsof -nP -i :6379
 ```
 
+![TCP 연결의 일생](/diagrams/tcp-handshake.svg)
+
+### 예시로 보기: 왜 keepalive 가 중요한가
+
+```
+연결마다 새로 맺으면:  핸드셰이크 1 RTT + TLS 1~2 RTT + 요청 1 RTT = 서울↔도쿄(35ms) 기준 100~140ms
+keepalive 재사용:      요청 1 RTT = 35ms
+```
+Nginx 업스트림 `keepalive`, ioredis 의 단일 장수 커넥션, HTTP/2 다중화가 모두 같은 이유다. 실험실의 **DNS·HTTP** 실험이 `curl -w` 로 연결·TLS·TTFB 시간을 나눠 보여준다.
+
 ## 신뢰성과 흐름 제어 (TCP)
 
 - 시퀀스 번호·ACK·재전송으로 순서와 무손실 보장.

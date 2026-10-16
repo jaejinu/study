@@ -19,6 +19,22 @@ SELECT xmin, xmax, ctid, * FROM acct;
 결과: **읽기는 쓰기를 막지 않고, 쓰기는 읽기를 막지 않는다.** 같은 행을 쓰려는 둘만 충돌한다.
 대가: 옛 버전(dead tuple)이 쌓인다 → **VACUUM**.
 
+![MVCC 튜플 버전](/diagrams/pg-mvcc.svg)
+
+### 예시로 보기: 잔액 이체에서 격리 수준 고르기
+
+```sql
+-- READ COMMITTED (기본) 로 안전하게: 행 잠금으로 직렬화
+BEGIN;
+SELECT balance FROM acct WHERE id = 1 FOR UPDATE;      -- 다른 이체는 여기서 대기
+UPDATE acct SET balance = balance - 100 WHERE id = 1;
+UPDATE acct SET balance = balance + 100 WHERE id = 2;
+COMMIT;
+-- 또는 조건부 갱신 한 문장으로 (잠금 짧게)
+UPDATE acct SET balance = balance - 100 WHERE id = 1 AND balance >= 100;   -- 영향 행 0 이면 잔액 부족
+```
+"읽고 계산해서 쓰기" 를 `FOR UPDATE` 없이 하면 두 이체가 같은 잔액을 읽어 초과 인출이 난다 — 실험실의 **격리 수준**·**행 잠금** 실험이 두 세션으로 재현한다. 복잡한 불변식(당직 의사 ≥ 1)은 SERIALIZABLE + 재시도.
+
 ## 격리 수준과 이상 현상
 
 | 이상 현상 | READ COMMITTED (기본) | REPEATABLE READ | SERIALIZABLE |

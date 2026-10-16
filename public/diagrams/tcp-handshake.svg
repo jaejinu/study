@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 360" font-family="ui-sans-serif, system-ui, 'Apple SD Gothic Neo', sans-serif" font-size="12.5">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#58a6ff"/></marker><marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#d29922"/></marker></defs>
+  <rect width="900" height="360" fill="#0d1117"/>
+  <text x="30" y="32" fill="#e6edf3" font-weight="600" font-size="15">TCP 연결의 일생 — 핸드셰이크, 데이터, 종료, TIME_WAIT</text>
+  <g stroke="#243040"><line x1="200" y1="60" x2="200" y2="330"/><line x1="700" y1="60" x2="700" y2="330"/></g>
+  <text x="200" y="54" text-anchor="middle" fill="#e6edf3" font-weight="600">클라이언트 (curl)</text><text x="700" y="54" text-anchor="middle" fill="#e6edf3" font-weight="600">서버 :3000 (LISTEN)</text>
+  <g fill="none" stroke="#58a6ff" marker-end="url(#a)"><path d="M200 80 L698 96"/><path d="M200 128 L698 144"/><path d="M200 176 L698 192"/></g>
+  <g fill="none" stroke="#d29922" marker-end="url(#b)"><path d="M700 104 L202 120"/><path d="M700 200 L202 216"/></g>
+  <g fill="#8b98a9" font-size="11">
+    <text x="420" y="80">SYN  seq=x</text><text x="420" y="118">SYN-ACK  seq=y ack=x+1</text><text x="420" y="152">ACK  ack=y+1   → ESTABLISHED (RTT 1회)</text>
+    <text x="420" y="186">GET /api/metrics HTTP/1.1</text><text x="420" y="222">HTTP/1.1 200 OK … (keep-alive 로 재사용)</text>
+  </g>
+  <g fill="#e6edf3" font-size="11" text-anchor="end"><text x="190" y="84">SYN_SENT</text><text x="190" y="156">ESTABLISHED</text></g>
+  <g fill="#e6edf3" font-size="11"><text x="710" y="100">SYN_RECV (backlog)</text><text x="710" y="150">ESTABLISHED (accept)</text></g>
+  <g fill="none" stroke="#58a6ff" marker-end="url(#a)"><path d="M200 250 L698 266"/></g>
+  <g fill="none" stroke="#d29922" marker-end="url(#b)"><path d="M700 274 L202 290"/><path d="M700 290 L202 306"/></g>
+  <g fill="none" stroke="#58a6ff" marker-end="url(#a)"><path d="M200 312 L698 328"/></g>
+  <g fill="#8b98a9" font-size="11"><text x="420" y="250">FIN</text><text x="420" y="286">ACK · FIN</text><text x="420" y="322">ACK</text></g>
+  <g fill="#e6edf3" font-size="11" text-anchor="end"><text x="190" y="254">FIN_WAIT_1</text><text x="190" y="300">FIN_WAIT_2</text><text x="190" y="326">TIME_WAIT (2MSL)</text></g>
+  <g fill="#e6edf3" font-size="11"><text x="710" y="272">CLOSE_WAIT (앱 close 전)</text><text x="710" y="300">LAST_ACK</text><text x="710" y="332">CLOSED</text></g>
+</svg>

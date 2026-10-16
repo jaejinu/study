@@ -30,6 +30,21 @@ Producer ──▶ Topic "orders"
 | **Consumer Group** | 파티션을 나눠 읽는 컨슈머 집합. 그룹마다 독립 오프셋 |
 | **Replication** | 파티션을 여러 브로커에 복제 (leader / follower, ISR) |
 
+![토픽·파티션·그룹](/diagrams/kafka-topology.svg)
+
+### 예시로 보기: 주문 이벤트 설계
+
+```
+토픽 order.events (파티션 12, 보존 7일, 키 = orderId)
+  key=order-1  value={"type":"created","amount":89000}     → p7, offset 0
+  key=order-1  value={"type":"paid"}                       → p7, offset 1   ← 같은 키, 같은 파티션, 순서 보장
+  key=order-2  value={"type":"created"}                    → p3, offset 0
+그룹 inventory (워커 3) : p0-3 / p4-7 / p8-11 로 분배, 재고 예약
+그룹 analytics (워커 1) : 전부 받아 집계 (독립 오프셋)
+그룹 email (워커 2)     : paid 만 골라 영수증 발송 (나머지는 건너뜀)
+```
+워커가 죽어도 커밋 안 된 오프셋부터 다시 받으므로 "재고 예약" 은 orderId 로 멱등해야 한다. 실험실의 세 실험이 이 그림의 파티션 배치·분배·재처리를 각각 보여준다.
+
 ## 큐·Pub/Sub 과의 차이
 
 | | Redis List / RabbitMQ 큐 | Redis Pub/Sub | Kafka |

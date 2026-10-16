@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 340" font-family="ui-sans-serif, system-ui, 'Apple SD Gothic Neo', sans-serif" font-size="12.5">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#8b98a9"/></marker></defs>
+  <rect width="900" height="340" fill="#0d1117"/>
+  <text x="30" y="32" fill="#e6edf3" font-weight="600" font-size="15">복제 + Sentinel — 이 프로젝트의 pnpm redis:ha 구성 (6381 / 6382 / 6383 / 26381~26383)</text>
+  <rect x="330" y="70" width="140" height="56" rx="10" fill="#121821" stroke="#ff4438" stroke-width="2"/><text x="400" y="94" text-anchor="middle" fill="#ff4438" font-weight="700">master :6381</text><text x="400" y="112" text-anchor="middle" fill="#8b98a9" font-size="11">쓰기 수신 · 비동기 전파</text>
+  <rect x="100" y="180" width="140" height="56" rx="10" fill="#121821" stroke="#58a6ff"/><text x="170" y="204" text-anchor="middle" fill="#58a6ff" font-weight="600">replica :6382</text><text x="170" y="222" text-anchor="middle" fill="#8b98a9" font-size="11">읽기 전용 (READONLY)</text>
+  <rect x="560" y="180" width="140" height="56" rx="10" fill="#121821" stroke="#58a6ff"/><text x="630" y="204" text-anchor="middle" fill="#58a6ff" font-weight="600">replica :6383</text><text x="630" y="222" text-anchor="middle" fill="#8b98a9" font-size="11">읽기 전용</text>
+  <g fill="none" stroke="#8b98a9" marker-end="url(#a)"><path d="M350 126 Q 260 150 230 180"/><path d="M450 126 Q 540 150 570 180"/></g>
+  <text x="235" y="150" fill="#8b98a9" font-size="11">복제 스트림 (PSYNC)</text>
+  <g fill="#121821" stroke="#d29922"><rect x="730" y="60" width="150" height="40" rx="8"/><rect x="730" y="110" width="150" height="40" rx="8"/><rect x="730" y="160" width="150" height="40" rx="8"/></g>
+  <g fill="#d29922" font-weight="600" font-size="12"><text x="745" y="85">sentinel :26381</text><text x="745" y="135">sentinel :26382</text><text x="745" y="185">sentinel :26383</text></g>
+  <text x="730" y="222" fill="#8b98a9" font-size="11">quorum 2 · down-after 1s</text>
+  <g fill="none" stroke="#d29922" stroke-dasharray="4 3"><path d="M730 80 Q 600 60 470 90"/><path d="M730 130 Q 600 150 470 110"/></g>
+  <text x="520" y="62" fill="#d29922" font-size="11">PING 감시</text>
+  <rect x="30" y="60" width="140" height="56" rx="10" fill="#1a222e" stroke="#243040"/><text x="100" y="84" text-anchor="middle" fill="#e6edf3" font-weight="600">앱 (ioredis)</text><text x="100" y="102" text-anchor="middle" fill="#8b98a9" font-size="11">sentinels + name</text>
+  <path d="M170 80 Q 250 50 330 85" fill="none" stroke="#8b98a9" marker-end="url(#a)"/>
+  <path d="M100 116 Q 100 150 160 175" fill="none" stroke="#8b98a9" stroke-dasharray="3 3" marker-end="url(#a)"/>
+  <text x="40" y="150" fill="#8b98a9" font-size="11">role:slave 읽기 분산</text>
+  <rect x="30" y="262" width="840" height="60" rx="8" fill="#121821" stroke="#243040"/>
+  <text x="44" y="283" fill="#e6edf3" font-weight="600" font-size="12">failover 순서 (실험에서 약 3초)</text>
+  <text x="44" y="304" fill="#8b98a9" font-size="11.5">master 다운 → 각 sentinel SDOWN → 2개 동의 ODOWN → 리더 선출 → replica 하나 REPLICAOF NO ONE 승격 → 나머지 재지정 → +switch-master → 클라이언트 재연결 → 옛 master 복귀 시 replica 로 강등</text>
+</svg>
