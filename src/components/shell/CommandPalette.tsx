@@ -10,6 +10,7 @@ type Item = { kind: "page" | "subject" | PaletteHit["kind"]; title: string; href
 
 const PAGES: Item[] = [
   { kind: "page", title: "주제 선택 (홈)", href: "/", hint: "모든 트랙과 주제" },
+  { kind: "page", title: "학습 경로", href: "/path", hint: "트랙별 추천 순서·선수 주제" },
   { kind: "page", title: "AI 도우미", href: "/assistant", hint: "노트 검색·실험 제안" },
   { kind: "page", title: "용어집", href: "/glossary" },
   { kind: "page", title: "링크 그래프", href: "/graph" },

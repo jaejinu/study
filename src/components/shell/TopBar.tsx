@@ -9,7 +9,7 @@ import { openPalette } from "./CommandPalette";
 import { ThemeToggle } from "./ThemeToggle";
 
 const SECTION: Record<string, string> = { notes: "학습 노트", quiz: "퀴즈", lab: "실험실", console: "콘솔", keys: "키 브라우저", monitor: "모니터", benchmark: "벤치마크", tests: "테스트" };
-const TOP: Record<string, string> = { assistant: "AI 도우미", glossary: "용어집", graph: "링크 그래프", search: "검색" };
+const TOP: Record<string, string> = { path: "학습 경로", assistant: "AI 도우미", glossary: "용어집", graph: "링크 그래프", search: "검색" };
 
 export function openAsk() {
   window.dispatchEvent(new CustomEvent("ask:open"));

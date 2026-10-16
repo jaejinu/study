@@ -4,7 +4,7 @@ import matter from "gray-matter";
 import { describe, expect, it } from "vitest";
 import { experiments } from "@/experiments";
 import { findExperiment, listLab } from "@/lab/registry";
-import { subjects } from "@/lib/subjects";
+import { learningPaths, subjects } from "@/lib/subjects";
 
 /**
  * 콘텐츠 무결성 검사 (Redis 없이 돈다).
@@ -53,6 +53,29 @@ describe("주제 정의", () => {
   it("주제 id 가 중복되지 않는다", () => {
     expect(subjects.length).toBe(subjectIds.size);
   });
+  it("학습 경로에 모든 주제가 정확히 한 번 나온다", () => {
+    const steps = learningPaths.flatMap((p) => p.steps);
+    expect(steps.length).toBe(new Set(steps).size);
+    expect([...subjectIds].filter((id) => !steps.includes(id as never))).toEqual([]);
+  });
+  it("선수 주제는 실제 주제이고, 학습 경로에서 순환하지 않는다", () => {
+    const bad: string[] = [];
+    const seen = new Set<string>();
+    const visit = (id: string, stack: string[]): void => {
+      if (stack.includes(id)) {
+        bad.push(`순환: ${[...stack, id].join(" → ")}`);
+        return;
+      }
+      if (seen.has(id)) return;
+      seen.add(id);
+      for (const p of subjects.find((s) => s.id === id)?.prereq ?? []) {
+        if (!subjectIds.has(p)) bad.push(`${id}: 선수 '${p}' 없음`);
+        else visit(p, [...stack, id]);
+      }
+    };
+    for (const s of subjects) visit(s.id, []);
+    expect(bad).toEqual([]);
+  });
 });
 
 describe("노트 frontmatter", () => {
@@ -69,6 +92,7 @@ describe("노트 frontmatter", () => {
       if (!LEVELS.has(String(d.level))) bad.push(`${n.file}: level '${String(d.level)}' (기초|중급|심화)`);
       if (d.tags !== undefined && !Array.isArray(d.tags)) bad.push(`${n.file}: tags 가 배열이 아님`);
       if (d.experiments !== undefined && !Array.isArray(d.experiments)) bad.push(`${n.file}: experiments 가 배열이 아님`);
+      for (const p of (d.prereq as string[] | undefined) ?? []) if (!noteKey.has(p)) bad.push(`${n.file}: prereq '${p}' 노트 없음`);
     }
     expect(bad).toEqual([]);
   });

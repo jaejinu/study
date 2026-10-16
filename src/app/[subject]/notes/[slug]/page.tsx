@@ -4,7 +4,7 @@ import { Markdown } from "@/components/Markdown";
 import { LevelBadge } from "@/components/ui";
 import { findExperiment } from "@/lab/registry";
 import { getNote, listNotes } from "@/lib/notes";
-import { getNoteChecks, getProgress, isRead } from "@/lib/progress";
+import { getNoteChecks, getProgress, getReadKeys, isRead } from "@/lib/progress";
 import { ReadToggle } from "@/components/ProgressControls";
 import { Flashcards } from "@/components/Flashcards";
 import { loadQuiz } from "@/lib/quiz";
@@ -46,6 +46,17 @@ export default async function NotePage({ params }: Props) {
   logger.info("note.view", { subject: subject.id, slug, noteLevel: note.level });
   metrics.noteViews.inc({ subject: subject.id, level: note.level });
   const idx = all.findIndex((n) => n.slug === slug);
+  // 먼저 읽을 노트 (frontmatter prereq: ["subject/slug"])
+  const prereqNotes = note.prereq.length
+    ? await Promise.all(
+        note.prereq.map(async (key) => {
+          const [ps, pslug] = key.split("/");
+          const meta = (await listNotes(ps)).find((n) => n.slug === pslug);
+          return meta ? { key, href: `/${ps}/notes/${pslug}`, title: meta.title, subject: getSubject(ps)?.name ?? ps } : null;
+        }),
+      ).then((xs) => xs.filter((x): x is NonNullable<typeof x> => x !== null))
+    : [];
+  const readKeys = prereqNotes.length ? await getReadKeys() : new Set<string>();
   const prev = all[idx - 1];
   const next = all[idx + 1];
   const base = `/${subject.id}/notes`;
@@ -100,6 +111,21 @@ export default async function NotePage({ params }: Props) {
               <Toc headings={note.headings} />
             </div>
           </details>
+        )}
+
+        {prereqNotes.length > 0 && (
+          <div className="mt-5 rounded-lg border border-border bg-surface px-4 py-3 text-[13.5px]">
+            <div className="mb-1 font-medium">먼저 읽기</div>
+            <ul className="space-y-0.5">
+              {prereqNotes.map((p) => (
+                <li key={p.key}>
+                  <span className={readKeys.has(p.key) ? "text-ok" : "text-muted"}>{readKeys.has(p.key) ? "✓ " : "· "}</span>
+                  <Link href={p.href} className="text-info hover:underline">{p.title}</Link>
+                  <span className="ml-1 text-muted">· {p.subject}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         <div className="mt-6">

@@ -11,7 +11,7 @@ import { readLastReport } from "@/lib/report";
 import { getSubject } from "@/lib/subjects";
 import { hasLab, listLab } from "@/lab/registry";
 import { EnvStatusCard } from "@/components/EnvStatusCard";
-import { getProgress } from "@/lib/progress";
+import { getProgress, getReadKeys } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { loadQuiz } from "@/lib/quiz";
 import { cardKey, fmtDuration, getQuizStats, getSubjectStudySeconds, summarizeReview } from "@/lib/study";
@@ -32,6 +32,9 @@ export default async function SubjectHome({ params }: Props) {
   const [notes, report, progress, quiz, stats, studySeconds] = await Promise.all([listNotes(subject.id), subject.id === "redis" ? readLastReport() : null, getProgress(subject.id), loadQuiz(subject.id), getQuizStats(subject.id), getSubjectStudySeconds(subject.id)]);
   const readCount = notes.filter((n) => progress.read.includes(n.slug)).length;
   const review = summarizeReview(quiz.map((c) => cardKey(c.note, c.q)), stats);
+  const prereqIds = subject.prereq ?? [];
+  const [readKeys, prereqNotes] = await Promise.all([prereqIds.length ? getReadKeys() : Promise.resolve(new Set<string>()), Promise.all(prereqIds.map((p) => listNotes(p)))]);
+  const prereqs = prereqIds.map((p, i) => ({ id: p, name: getSubject(p)?.name ?? p, total: prereqNotes[i].length, done: prereqNotes[i].filter((n) => readKeys.has(`${p}/${n.slug}`)).length }));
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -47,6 +50,18 @@ export default async function SubjectHome({ params }: Props) {
                 : "노트로 개념을 익히고 → 로컬 환경에서 직접 실습한다. 각 노트 끝의 체크리스트를 따라 해 보자."
         }
       />
+
+      {prereqs.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2.5 text-[13px]">
+          <span className="text-muted">먼저 보면 좋은 주제</span>
+          {prereqs.map((p) => (
+            <Link key={p.id} href={`/${p.id}`} className={`rounded border px-2 py-0.5 ${p.total && p.done / p.total >= 0.5 ? "border-ok/40 text-ok" : "border-border hover:border-muted"}`}>
+              {p.name} <span className="text-muted">{p.done}/{p.total}</span>
+            </Link>
+          ))}
+          <Link href="/path" className="ml-auto text-info hover:underline">학습 경로 →</Link>
+        </div>
+      )}
 
       <Suspense fallback={<Card className="p-4 text-sm text-muted">환경 확인 중…</Card>}>
         {subject.id === "redis" ? <RedisStatusCard /> : subject.id === "docker" ? <DockerStatusCard /> : subject.id === "kubernetes" ? <KubeStatusCard /> : <EnvStatusCard subject={subject.id} />}

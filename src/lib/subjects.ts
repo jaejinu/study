@@ -19,6 +19,8 @@ export const tracks: { id: TrackId; name: string; desc: string }[] = [
 
 export interface Subject {
   id: SubjectId;
+  /** 먼저 보면 좋은 주제 (학습 경로·대시보드에 표시) */
+  prereq?: SubjectId[];
   /** 첫 화면·사이드바에서 묶는 트랙 */
   track: TrackId;
   name: string;
@@ -683,6 +685,47 @@ export const subjects: Subject[] = [
       { label: "도구", cmd: "pnpm · OpenTofu" },
     ],
   },
+];
+
+/** 먼저 보면 좋은 주제. 순환이 없도록 학습 경로 순서와 맞춘다 (CI 가 검사) */
+const PREREQ: Partial<Record<SubjectId, SubjectId[]>> = {
+  docker: ["linux-network"],
+  kubernetes: ["docker", "linux-network"],
+  nginx: ["linux-network"],
+  iac: ["docker", "kubernetes"],
+  "network-protocols": ["linux-network"],
+  "service-mesh": ["kubernetes", "security"],
+  messaging: ["kafka", "redis"],
+  "db-internals": ["postgres", "redis"],
+  opensearch: ["postgres"],
+  clickhouse: ["db-internals"],
+  "data-engineering": ["kafka", "postgres"],
+  sre: ["observability"],
+  chaos: ["observability"],
+  performance: ["observability", "os-internals"],
+  ebpf: ["os-internals", "linux-network"],
+  "github-actions": ["docker"],
+  finops: ["kubernetes", "observability"],
+  "platform-engineering": ["iac", "github-actions", "kubernetes"],
+  architecture: ["redis", "kafka", "postgres"],
+  "api-design": ["linux-network"],
+  "distributed-systems": ["architecture"],
+  "event-sourcing": ["architecture", "postgres", "kafka"],
+  "system-design": ["architecture", "distributed-systems"],
+  "ai-agents": ["ai-systems"],
+  mlops: ["ai-systems"],
+  security: ["linux-network", "docker"],
+  observability: ["docker"],
+};
+for (const s of subjects) s.prereq = PREREQ[s.id] ?? [];
+
+/** 트랙별 추천 학습 순서 (/path). 모든 주제가 정확히 한 번 나온다 (CI 가 검사) */
+export const learningPaths: { track: TrackId; steps: SubjectId[] }[] = [
+  { track: "infra", steps: ["linux-network", "os-internals", "docker", "nginx", "kubernetes", "iac", "network-protocols", "service-mesh"] },
+  { track: "data", steps: ["redis", "postgres", "kafka", "messaging", "db-internals", "opensearch", "clickhouse", "data-engineering"] },
+  { track: "ops", steps: ["observability", "github-actions", "testing", "sre", "chaos", "performance", "ebpf", "finops", "platform-engineering"] },
+  { track: "design", steps: ["architecture", "api-design", "distributed-systems", "event-sourcing", "system-design", "ai-systems", "ai-agents", "mlops"] },
+  { track: "security", steps: ["security"] },
 ];
 
 export function subjectsByTrack(): { track: (typeof tracks)[number]; subjects: Subject[] }[] {

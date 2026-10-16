@@ -11,6 +11,8 @@ export interface NoteMeta {
   /** 관련 실험 id 목록 */
   experiments: string[];
   level: "기초" | "중급" | "심화";
+  /** 먼저 읽을 노트 ("subject/slug") — frontmatter prereq */
+  prereq: string[];
 }
 
 export interface Note extends NoteMeta {
@@ -69,6 +71,7 @@ function toMeta(slug: string, data: Record<string, unknown>): NoteMeta {
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
     experiments: Array.isArray(data.experiments) ? data.experiments.map(String) : [],
     level: (data.level as NoteMeta["level"]) ?? "기초",
+    prereq: Array.isArray(data.prereq) ? data.prereq.map(String) : [],
   };
 }
 
