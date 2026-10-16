@@ -70,6 +70,7 @@ export function Sidebar({
           {subject && nav("/subjects", "다른 주제 보기 ↗")}
           {nav("/review", "오늘의 복습")}
           {nav("/path", "학습 경로")}
+          {nav("/mastery", "약점 지도")}
           {nav("/records", "학습 기록·백업")}
           {nav("/assistant", "AI 도우미")}
           {nav("/glossary", "용어집")}

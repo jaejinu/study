@@ -49,6 +49,17 @@ export async function getReadKeys(): Promise<Set<string>> {
   }
 }
 
+/** 통과한 실험 전체("subject/id") */
+export async function getLabDoneKeys(): Promise<Set<string>> {
+  const r = getRedis();
+  try {
+    await ensureConnected(r);
+    return new Set(await r.smembers("progress:lab"));
+  } catch {
+    return new Set();
+  }
+}
+
 export async function getReadCounts(): Promise<Record<string, number>> {
   const r = getRedis();
   try {

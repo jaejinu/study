@@ -12,6 +12,7 @@ const PAGES: Item[] = [
   { kind: "page", title: "주제 선택 (홈)", href: "/", hint: "모든 트랙과 주제" },
   { kind: "page", title: "오늘의 복습", href: "/review", hint: "모든 주제의 기한 카드 + 새 카드 (FSRS)" },
   { kind: "page", title: "학습 경로", href: "/path", hint: "트랙별 추천 순서·선수 주제" },
+  { kind: "page", title: "약점 지도", href: "/mastery", hint: "주제·레벨별 숙련도와 다음에 공부할 것" },
   { kind: "page", title: "학습 기록·백업", href: "/records", hint: "내보내기·가져오기" },
   { kind: "page", title: "AI 도우미", href: "/assistant", hint: "노트 검색·실험 제안" },
   { kind: "page", title: "용어집", href: "/glossary" },
