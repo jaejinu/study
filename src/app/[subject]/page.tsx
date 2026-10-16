@@ -9,6 +9,7 @@ import { categories, experiments } from "@/experiments";
 import { listNotes } from "@/lib/notes";
 import { readLastReport } from "@/lib/report";
 import { getSubject } from "@/lib/subjects";
+import { listShellExperiments } from "@/shell-lab";
 
 export const dynamic = "force-dynamic";
 
@@ -112,6 +113,28 @@ export default async function SubjectHome({ params }: Props) {
                 아직 리포트가 없습니다. <code>pnpm test:report</code> 를 실행하거나 테스트 페이지에서 실행하세요.
               </p>
             )}
+          </Card>
+        </section>
+      )}
+
+      {(subject.id === "docker" || subject.id === "kubernetes") && (
+        <section className="mt-8">
+          <Card className="p-4">
+            <div className="mb-2 flex items-baseline justify-between">
+              <h2 className="font-semibold">실험실</h2>
+              <Link href={`/${subject.id}/lab`} className="text-sm text-info hover:underline">
+                모두 보기 →
+              </Link>
+            </div>
+            <ul className="grid gap-1 text-sm sm:grid-cols-2">
+              {listShellExperiments(subject.id).map((e) => (
+                <li key={e.id}>
+                  <Link href={`/${subject.id}/lab/${e.id}`} className="text-muted hover:text-foreground">
+                    ⚗ {e.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </Card>
         </section>
       )}

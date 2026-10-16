@@ -52,6 +52,7 @@ export const subjects: Subject[] = [
     nav: [
       { href: "/docker", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
       { href: "/docker/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/docker/lab", label: "실험실", icon: "⚗", desc: "실제 docker 명령으로 확인" },
     ],
     setup: [
       { label: "확인", cmd: "docker version" },
@@ -68,6 +69,7 @@ export const subjects: Subject[] = [
     nav: [
       { href: "/kubernetes", label: "대시보드", icon: "◉", desc: "클러스터 점검 · 학습 현황" },
       { href: "/kubernetes/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/kubernetes/lab", label: "실험실", icon: "⚗", desc: "kind 클러스터에서 동작 확인" },
     ],
     setup: [
       { label: "클러스터", cmd: "pnpm k8s:cluster" },

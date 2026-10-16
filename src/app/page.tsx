@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { experiments } from "@/experiments";
 import { listNotes } from "@/lib/notes";
+import { shellExperiments } from "@/shell-lab";
 import { subjects } from "@/lib/subjects";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,7 @@ export default async function Home() {
     subjects.map(async (s) => ({
       id: s.id,
       notes: (await listNotes(s.id)).length,
-      experiments: s.id === "redis" ? experiments.length : 0,
+      experiments: s.id === "redis" ? experiments.length : shellExperiments.filter((e) => e.subject === s.id).length,
     })),
   );
   return (
