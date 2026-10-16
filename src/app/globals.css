@@ -1,26 +1,75 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0b0f14;
+  --surface: #121821;
+  --surface-2: #1a222e;
+  --border: #243040;
+  --foreground: #e6edf3;
+  --muted: #8b98a9;
+  --accent: #ff4438; /* redis red */
+  --accent-soft: rgba(255, 68, 56, 0.15);
+  --ok: #3fb950;
+  --warn: #d29922;
+  --info: #58a6ff;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-info: var(--info);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html { color-scheme: dark; }
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
 }
+code, pre, kbd { font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* ---------- Markdown 노트 ---------- */
+.note { line-height: 1.75; font-size: 15.5px; }
+.note h1 { font-size: 1.9rem; font-weight: 700; margin: 0 0 1rem; letter-spacing: -0.01em; }
+.note h2 { font-size: 1.35rem; font-weight: 700; margin: 2.2rem 0 0.8rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); scroll-margin-top: 5rem; }
+.note h3 { font-size: 1.1rem; font-weight: 600; margin: 1.6rem 0 0.6rem; scroll-margin-top: 5rem; }
+.note p { margin: 0.8rem 0; }
+.note ul, .note ol { margin: 0.8rem 0 0.8rem 1.4rem; }
+.note ul { list-style: disc; }
+.note ol { list-style: decimal; }
+.note li { margin: 0.3rem 0; }
+.note li > ul, .note li > ol { margin-top: 0.3rem; margin-bottom: 0.3rem; }
+.note a { color: var(--info); text-decoration: underline; text-underline-offset: 3px; }
+.note strong { color: #fff; font-weight: 600; }
+.note blockquote { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 0.6rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.note blockquote p { margin: 0.3rem 0; }
+.note code { background: var(--surface-2); border: 1px solid var(--border); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.88em; }
+.note pre { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 0.9rem 1rem; overflow-x: auto; margin: 1rem 0; font-size: 0.86rem; line-height: 1.6; }
+.note pre code { background: none; border: none; padding: 0; font-size: inherit; }
+.note table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.9rem; }
+.note th, .note td { border: 1px solid var(--border); padding: 0.45rem 0.7rem; text-align: left; vertical-align: top; }
+.note th { background: var(--surface-2); font-weight: 600; }
+.note hr { border: 0; border-top: 1px solid var(--border); margin: 2rem 0; }
+.note img { max-width: 100%; border-radius: 8px; }
+
+/* 작은 markdown (실험 설명 등) */
+.note-sm { font-size: 14.5px; }
+.note-sm h2 { font-size: 1.1rem; margin-top: 1.4rem; }
+
+/* highlight.js 색상은 layout 에서 import 한 테마를 사용 */
+.hljs { background: transparent !important; }
+
+/* 스크롤바 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+::-webkit-scrollbar-track { background: transparent; }

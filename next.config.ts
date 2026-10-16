@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // 학습 노트(markdown)와 Redis 상태를 매 요청마다 읽기 위해 Cache Components는 끈다.
+  cacheComponents: false,
   turbopack: {
     rules: {
       "*.css": {
@@ -12,6 +11,7 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  serverExternalPackages: ["ioredis"],
 };
 
 export default nextConfig;
