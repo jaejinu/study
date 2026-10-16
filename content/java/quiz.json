@@ -1,1 +1,482 @@
-[]
+[
+  {
+    "note": "01-java-jvm-ecosystem",
+    "q": "자바를 이루는 네 겹은?",
+    "a": "언어(JLS), 바이트코드(.class, JVMS), JVM(HotSpot 등 실행 엔진), 표준 라이브러리. 그래서 Kotlin·Scala 도 같은 JVM 위에서 돈다."
+  },
+  {
+    "note": "01-java-jvm-ecosystem",
+    "q": "JDK 와 JRE 의 차이, 운영 컨테이너에 무엇을 두는 것이 좋은가?",
+    "a": "JRE 는 JVM+표준 라이브러리, JDK 는 거기에 javac·jcmd·jfr 같은 도구가 더해진 것. JRE 만 두면 장애 때 진단 도구가 없어 곤란하므로 JDK 기반 이미지나 jlink 최소 런타임을 쓴다."
+  },
+  {
+    "note": "01-java-jvm-ecosystem",
+    "q": "UnsupportedClassVersionError 가 나는 이유와 확인 방법은?",
+    "a": "빌드한 JDK 보다 낮은 버전의 JVM 으로 실행했기 때문. javap -v X.class 의 major 버전(21 = 65)으로 확인한다."
+  },
+  {
+    "note": "01-java-jvm-ecosystem",
+    "q": "컨테이너에서 힙 크기를 정할 때 -Xmx 대신 무엇을 쓰나?",
+    "a": "-XX:MaxRAMPercentage — 컨테이너(cgroup) 메모리 한도의 비율로 최대 힙을 정한다. JVM 은 10 이후 cgroup 의 CPU·메모리 한도를 읽는다."
+  },
+  {
+    "note": "02-types-objects-immutability",
+    "q": "Integer a=128, b=128 일 때 a==b 가 false 인 이유는?",
+    "a": "Integer.valueOf 는 −128~127 만 캐시하고 그 밖은 매번 새 객체를 만든다. == 는 참조 비교이므로 다른 객체다. 박싱 값은 equals 로 비교한다."
+  },
+  {
+    "note": "02-types-objects-immutability",
+    "q": "equals 만 재정의하고 hashCode 를 안 하면 HashSet 에서 무슨 일이?",
+    "a": "같다고 판단해야 할 두 객체가 다른 해시로 다른 버킷을 보므로 contains·get 이 못 찾고 중복 제거도 실패한다."
+  },
+  {
+    "note": "02-types-objects-immutability",
+    "q": "record 가 자동으로 만들어 주지 않는 것은?",
+    "a": "깊은 불변성. 구성 요소가 가변 List 면 바깥에서 바뀔 수 있으므로 간결한 생성자에서 List.copyOf 같은 방어적 복사를 해야 한다."
+  },
+  {
+    "note": "02-types-objects-immutability",
+    "q": "불변 객체를 스레드 간에 동기화 없이 공유해도 안전한 이유는?",
+    "a": "final 필드는 생성자가 끝나면(this 가 새지 않았다면) 어떤 스레드에서 봐도 초기화된 값이라는 것이 JMM 의 final 필드 의미론으로 보장되기 때문."
+  },
+  {
+    "note": "03-generics-type-erasure",
+    "q": "List<String> 과 List<Integer> 의 getClass() 가 같은 이유는?",
+    "a": "타입 소거 — 제네릭 타입 인자는 컴파일 시점 검사에만 쓰이고 바이트코드에서 지워진다. 런타임에는 둘 다 ArrayList 다."
+  },
+  {
+    "note": "03-generics-type-erasure",
+    "q": "힙 오염이 생기면 예외는 어디서 나나?",
+    "a": "넣을 때가 아니라 꺼내 쓰는 곳에서 컴파일러가 끼운 캐스트가 실패하며 ClassCastException 이 난다. 그래서 원인을 찾기 어렵다."
+  },
+  {
+    "note": "03-generics-type-erasure",
+    "q": "PECS 규칙은?",
+    "a": "Producer Extends, Consumer Super — 매개변수가 값을 꺼내 주면 ? extends T, 받아 넣으면 ? super T. 반환 타입에는 와일드카드를 쓰지 않는다."
+  },
+  {
+    "note": "03-generics-type-erasure",
+    "q": "런타임에 List<Order> 같은 제네릭 타입 정보가 필요하면?",
+    "a": "슈퍼 타입 토큰 — new TypeReference<List<Order>>() {} 처럼 익명 하위 클래스를 만들면 상위 타입 선언의 제네릭 정보가 클래스 파일에 남아 꺼낼 수 있다."
+  },
+  {
+    "note": "04-lambdas-streams",
+    "q": "Stream.of(1..5).peek(...).filter(짝수).findFirst() 에서 peek 이 몇 번 실행되나, 이유는?",
+    "a": "2번. 스트림은 지연 평가로 원소를 하나씩 파이프라인 전체에 통과시키고, findFirst 가 2 를 찾자마자 멈춘다(단락)."
+  },
+  {
+    "note": "04-lambdas-streams",
+    "q": "Collectors.toMap 을 쓸 때 꼭 챙길 것은?",
+    "a": "병합 함수 — 키가 겹치면 IllegalStateException(Duplicate key)이 난다. toMap(k, v, (a, b) -> b) 처럼 명시한다."
+  },
+  {
+    "note": "04-lambdas-streams",
+    "q": "parallel().forEach(list::add) 가 위험한 이유는?",
+    "a": "여러 스레드가 동기화 없는 ArrayList 에 동시에 쓰므로 원소가 사라지거나 예외가 난다(실측 10만 중 8만 1천만 남음). 부수 효과 대신 수집기(toList)로 결과를 만든다."
+  },
+  {
+    "note": "04-lambdas-streams",
+    "q": "병렬 스트림·기본 CompletableFuture 안에 블로킹 I/O 를 넣으면 안 되는 이유는?",
+    "a": "JVM 전체가 공유하는 공용 ForkJoinPool(병렬도 CPU−1)에서 돌기 때문에, 블로킹하면 공용 풀이 막혀 다른 병렬 작업까지 멈춘다."
+  },
+  {
+    "note": "05-sealed-pattern-matching",
+    "q": "sealed 인터페이스가 패턴 매칭 switch 에 주는 이점은?",
+    "a": "하위 타입 집합이 닫혀 있어 컴파일러가 모든 경우를 다뤘는지 검사할 수 있다. 그래서 default 없이 컴파일되고, 새 하위 타입이 추가되면 모든 switch 가 컴파일 오류로 알려 준다."
+  },
+  {
+    "note": "05-sealed-pattern-matching",
+    "q": "sealed 계층의 switch 에 default 를 일부러 쓰지 않는 이유는?",
+    "a": "default 가 있으면 새 하위 타입이 추가돼도 조용히 default 로 빠져 완전성 검사라는 안전망이 꺼지기 때문."
+  },
+  {
+    "note": "05-sealed-pattern-matching",
+    "q": "case Rect(double w, double h) when w == h 는 무엇인가?",
+    "a": "레코드 패턴(구성 요소 분해)에 가드(when)를 더한 것. 가드 있는 case 는 같은 타입의 가드 없는 case 보다 앞에 와야 한다."
+  },
+  {
+    "note": "05-sealed-pattern-matching",
+    "q": "예외 대신 Result 같은 합 타입을 쓰면 좋은 경우는?",
+    "a": "재고 부족·검증 실패처럼 예상되는 업무 실패. 반환 타입에 드러나 무시하기 어렵고 스택 추적 비용이 없다. 프로그래밍 오류는 예외로."
+  },
+  {
+    "note": "06-exceptions-resources",
+    "q": "try-with-resources 에서 자원은 어떤 순서로 닫히고 close 예외는 어떻게 되나?",
+    "a": "선언의 역순으로 닫힌다. 본문 예외가 우선 전파되고 close 에서 난 예외는 버려지지 않고 getSuppressed() 에 붙는다."
+  },
+  {
+    "note": "06-exceptions-resources",
+    "q": "예외 생성 비용의 대부분은 무엇이며 실측 차이는?",
+    "a": "스택 추적 채우기(fillInStackTrace). 실측에서 일반 예외 1214 ns/회, writableStackTrace=false 예외 34 ns/회였다."
+  },
+  {
+    "note": "06-exceptions-resources",
+    "q": "예외를 감쌀 때 가장 흔한 실수는?",
+    "a": "원인(cause)을 넘기지 않고 메시지만 새 예외에 넣는 것. Caused by 가 사라져 운영 로그에서 진짜 원인을 잃는다."
+  },
+  {
+    "note": "06-exceptions-resources",
+    "q": "Spring @Transactional 은 checked 예외에 롤백하나?",
+    "a": "기본은 unchecked(RuntimeException·Error)만 롤백한다. checked 예외는 커밋되므로 필요하면 rollbackFor 를 지정한다."
+  },
+  {
+    "note": "07-list-internals",
+    "q": "ArrayList 는 용량이 차면 어떻게 늘어나나?",
+    "a": "약 1.5배(old + old>>1) 새 배열을 만들고 System.arraycopy 로 복사한다. 그래서 끝 추가는 분할 상환 O(1) 이다."
+  },
+  {
+    "note": "07-list-internals",
+    "q": "LinkedList 가 이론과 달리 거의 항상 ArrayList 보다 느린 이유는?",
+    "a": "get(i) 가 노드를 따라가는 O(n)이고, 원소마다 노드 객체가 있어 메모리가 크며, 노드가 흩어져 캐시 미스가 많다. 중간 삽입 O(1) 도 위치를 찾는 데 O(n) 이 든다."
+  },
+  {
+    "note": "07-list-internals",
+    "q": "양쪽 끝 삽입·삭제가 필요하면 무엇을 쓰나?",
+    "a": "ArrayDeque — 배열을 원형 버퍼로 써 앞·뒤 모두 O(1)이고 노드 객체가 없다. 스택으로도 Stack 클래스 대신 쓴다. null 은 넣을 수 없다."
+  },
+  {
+    "note": "07-list-internals",
+    "q": "for-each 중 remove 하면 왜 ConcurrentModificationException 이 나고 어떻게 고치나?",
+    "a": "반복자가 만들 때의 modCount 와 현재 값이 달라 fail-fast 로 실패한다. removeIf 나 Iterator.remove() 를 쓴다."
+  },
+  {
+    "note": "08-hashmap-internals",
+    "q": "HashMap 이 키의 버킷 인덱스를 구하는 세 단계는?",
+    "a": "hashCode() → 교란 h ^ (h >>> 16) → hash & (n − 1). 테이블 길이가 2의 거듭제곱이라 나머지 대신 비트 AND 를 쓴다."
+  },
+  {
+    "note": "08-hashmap-internals",
+    "q": "리사이즈는 언제 일어나며 그 put 의 비용은?",
+    "a": "원소 수가 용량 × 0.75 를 넘을 때 테이블을 2배로 늘리고 모든 노드를 옮긴다. 실측에서 8192→16384 리사이즈 put 은 평소 31 ns 의 580배인 18 μs 였다."
+  },
+  {
+    "note": "08-hashmap-internals",
+    "q": "트리화가 일어나는 조건과, 키가 Comparable 이어야 하는 이유는?",
+    "a": "한 버킷이 8개를 넘고 테이블이 64 이상이면 레드-블랙 트리로 바뀐다. 해시가 모두 같으면 compareTo 로만 방향을 정할 수 있어서, Comparable 이 아니면 양쪽을 다 뒤져 O(n)이 된다(실측 9839 ns vs 71 ns)."
+  },
+  {
+    "note": "08-hashmap-internals",
+    "q": "new HashMap<>(100) 에 100개를 넣으면 리사이즈가 나는 이유와 대안은?",
+    "a": "인자는 원소 수가 아니라 용량이라 실제 테이블 128 의 0.75 인 96개를 넘으면 리사이즈된다. 원소 수로 크기를 정하려면 HashMap.newHashMap(100)(19+)."
+  },
+  {
+    "note": "09-sorting-treemap-pq",
+    "q": "Comparison method violates its general contract! 는 왜 나나?",
+    "a": "TimSort 가 병합 중 비교자의 계약(대칭·추이·일관성) 위반 증거를 발견했기 때문. 예: 0 을 돌려주지 않는 (x,y) -> x < y ? -1 : 1. 검출은 보장되지 않아 예외 없이 틀린 결과가 날 수도 있다."
+  },
+  {
+    "note": "09-sorting-treemap-pq",
+    "q": "(x, y) -> x - y 비교자가 위험한 이유는?",
+    "a": "정수 오버플로 — 5 − Integer.MIN_VALUE 가 음수가 되어 순서가 뒤집힌다. Integer.compare 나 Comparator.comparingInt 를 쓴다."
+  },
+  {
+    "note": "09-sorting-treemap-pq",
+    "q": "객체 정렬과 원시 배열 정렬의 알고리즘·안정성 차이는?",
+    "a": "객체는 TimSort 로 안정 정렬(같은 키의 입력 순서 유지 → 다단계 정렬 가능), int[] 같은 원시 배열은 Dual-Pivot Quicksort 로 불안정하지만 더 빠르다."
+  },
+  {
+    "note": "09-sorting-treemap-pq",
+    "q": "PriorityQueue 의 toString 이 정렬돼 보이지 않는 이유는?",
+    "a": "내부 힙 배열 순서를 그대로 출력하기 때문. 힙은 부모 ≤ 자식만 보장한다. 정렬된 순서는 poll() 로 꺼낼 때 얻는다."
+  },
+  {
+    "note": "10-threads-jmm",
+    "q": "volatile 아닌 플래그로 도는 while(!stop) 루프가 끝나지 않는 실제 원인은?",
+    "a": "JIT(C2)가 루프 안에서 안 바뀌는 것처럼 보이는 필드 읽기를 루프 밖으로 끌어낸다(호이스팅). 실험에서 -Xint(JIT 끔)에선 끝나는 것이 증거다."
+  },
+  {
+    "note": "10-threads-jmm",
+    "q": "happens-before 규칙 중 세 가지를 들면?",
+    "a": "같은 락의 unlock → 이후 lock, 같은 volatile 변수의 쓰기 → 이후 읽기, t.start() 이전 → t 안의 동작 (그 밖에 프로그램 순서, t 종료 → join 반환, 추이성)."
+  },
+  {
+    "note": "10-threads-jmm",
+    "q": "volatile 이 보장하지 않는 것은?",
+    "a": "복합 연산의 원자성. volatile int 의 count++ 는 읽기·더하기·쓰기 세 단계라 여러 스레드에서 값이 사라진다. 카운터는 AtomicLong·LongAdder."
+  },
+  {
+    "note": "10-threads-jmm",
+    "q": "volatile 없는 이중 검사 잠금(DCL)이 깨지는 이유는?",
+    "a": "참조 대입이 필드 초기화보다 먼저 보이도록 재배치될 수 있어, 락 없이 읽은 스레드가 덜 만든 객체를 쓸 수 있다. instance 를 volatile 로 하거나 초기화 지연 홀더 관용구를 쓴다."
+  },
+  {
+    "note": "11-locks-juc",
+    "q": "8 스레드가 동기화 없이 count++ 를 각 200만 번 하면?",
+    "a": "lost update 로 값이 크게 사라진다. 실측에서 1600만 중 약 324만만 남았다."
+  },
+  {
+    "note": "11-locks-juc",
+    "q": "ReentrantLock 이 synchronized 보다 나은 점 세 가지는?",
+    "a": "tryLock(타임아웃)으로 교착 회피, lockInterruptibly, 공정성 옵션, 여러 Condition, 그리고 JDK 21 가상 스레드에서 피닝이 없다."
+  },
+  {
+    "note": "11-locks-juc",
+    "q": "LongAdder 가 경합 시 AtomicLong 보다 빠른 이유와 단점은?",
+    "a": "스레드마다 다른 셀(패딩된 카운터)에 더하고 sum() 때 합쳐 같은 캐시 라인을 두고 다투지 않는다. 대신 sum() 은 진행 중 증가와 겹치면 근사값이라 메트릭에 적합하고 ID 생성엔 AtomicLong."
+  },
+  {
+    "note": "11-locks-juc",
+    "q": "ConcurrentHashMap 에서 put(k, get(k)+1) 이 안전하지 않은 이유와 대안은?",
+    "a": "원자성은 메서드 하나 단위라 get 과 put 사이에 다른 스레드가 끼어들 수 있다. merge(k, 1, Integer::sum) 나 compute 를 쓴다."
+  },
+  {
+    "note": "12-executors-completablefuture",
+    "q": "ThreadPoolExecutor 가 작업을 받는 순서는?",
+    "a": "코어 스레드 수 미만이면 새 스레드 → 아니면 큐 → 큐가 가득 차면 최대 스레드까지 → 그래도 안 되면 거부 정책. 그래서 무한 큐면 maximumPoolSize 가 쓰이지 않는다."
+  },
+  {
+    "note": "12-executors-completablefuture",
+    "q": "newFixedThreadPool 의 위험은?",
+    "a": "무한 LinkedBlockingQueue 라 하류가 느려지면 작업이 끝없이 쌓여 지연과 메모리가 폭발하고 장애가 숨는다. 유한 큐와 거부 정책을 명시한 ThreadPoolExecutor 를 쓴다."
+  },
+  {
+    "note": "12-executors-completablefuture",
+    "q": "CallerRunsPolicy 가 백프레셔가 되는 이유는?",
+    "a": "큐가 가득 차면 제출한 스레드가 직접 작업을 실행하므로 그동안 새 작업을 제출하지 못해 유입 속도가 자연스럽게 줄어든다."
+  },
+  {
+    "note": "12-executors-completablefuture",
+    "q": "CompletableFuture.orTimeout 의 주의점은?",
+    "a": "결과 Future 만 TimeoutException 으로 실패시킬 뿐 원래 작업을 멈추지 않는다. 하류 호출 자체의 타임아웃(HTTP·드라이버)도 함께 건다."
+  },
+  {
+    "note": "13-virtual-threads-structured",
+    "q": "가상 스레드가 블로킹 호출을 만나면 무슨 일이 일어나나?",
+    "a": "스택을 힙의 연속체로 떼어 내 캐리어(플랫폼 스레드)에서 내려오고(언마운트), 캐리어는 다른 가상 스레드를 실행한다. I/O 가 준비되면 아무 캐리어에나 다시 마운트된다."
+  },
+  {
+    "note": "13-virtual-threads-structured",
+    "q": "100ms 블로킹 작업 1만 개를 스레드 풀 200 과 가상 스레드로 돌린 실측 차이는?",
+    "a": "스레드 풀 200 은 약 5.1초(50번에 나눠 처리)·플랫폼 스레드 226개, 가상 스레드는 약 0.13초·플랫폼 스레드 26개."
+  },
+  {
+    "note": "13-virtual-threads-structured",
+    "q": "JDK 21 의 피닝이란, 그리고 대처는?",
+    "a": "synchronized 안에서 블로킹하면 가상 스레드가 캐리어를 붙잡아 동시 진행 수가 캐리어 수로 떨어지는 것(실측 400개: 2321ms vs ReentrantLock 101ms). ReentrantLock 으로 바꾸거나 JDK 24+ 를 쓰고, -Djdk.tracePinnedThreads 로 위치를 찾는다."
+  },
+  {
+    "note": "13-virtual-threads-structured",
+    "q": "가상 스레드를 쓸 때 하류(DB·외부 API)를 지키려면?",
+    "a": "가상 스레드는 풀링하지 않으므로 풀이 하던 동시성 제한이 사라진다. Semaphore 로 하류별 동시 호출 수를 제한하고 커넥션 풀 크기를 확인한다."
+  },
+  {
+    "note": "14-classloading-bytecode",
+    "q": "클래스 로딩의 세 단계(로딩·링킹·초기화)에서 static 블록은 언제 실행되나?",
+    "a": "초기화 단계에서 <clinit> 으로 실행된다. 클래스가 처음 실제로 쓰일 때 한 번, 스레드 안전하게 실행된다."
+  },
+  {
+    "note": "14-classloading-bytecode",
+    "q": "ClassNotFoundException 과 NoClassDefFoundError 의 차이는?",
+    "a": "전자는 Class.forName 같은 명시적 로딩이 클래스를 못 찾을 때, 후자는 컴파일 땐 있었는데 링크 시점에 없거나 static 초기화가 한 번 실패한 클래스를 다시 참조할 때 난다."
+  },
+  {
+    "note": "14-classloading-bytecode",
+    "q": "부모 위임 모델에서 내가 java.lang.String 을 만들어 클래스패스에 넣으면 어떻게 되나?",
+    "a": "로더가 먼저 부모(부트스트랩)에게 묻기 때문에 JDK 의 진짜 String 이 로딩된다. 핵심 클래스를 바꿔치기할 수 없다."
+  },
+  {
+    "note": "14-classloading-bytecode",
+    "q": "람다가 익명 클래스와 바이트코드 수준에서 다른 점은?",
+    "a": "람다 본문은 private static 메서드가 되고 invokedynamic 이 첫 실행 때 LambdaMetafactory 로 구현 클래스를 런타임에 만든다. .class 파일이 늘지 않는다."
+  },
+  {
+    "note": "15-jit-compilation",
+    "q": "PrintCompilation 출력의 'made not entrant' 는 무슨 뜻인가?",
+    "a": "그 컴파일된 코드에 새 호출이 들어오지 못하게 막고 버린다는 뜻이다. 상위 단계(C2) 코드로 교체되거나 가정이 깨져 탈최적화될 때 나온다."
+  },
+  {
+    "note": "15-jit-compilation",
+    "q": "실험에서 인터프리터(-Xint), C1 만, 계층 컴파일의 안정 상태 속도는 어땠나?",
+    "a": "호출당 168ns, 19ns, 15ns 였다. 계층 컴파일이 인터프리터보다 약 11배 빨랐고, 첫 묶음은 109ns 로 워밍업이 보였다."
+  },
+  {
+    "note": "15-jit-compilation",
+    "q": "C2 최적화 중 인라이닝이 가장 중요한 이유는?",
+    "a": "호출 비용 제거 자체보다, 펼친 뒤에야 탈출 분석·상수 전파·범위 검사 제거가 메서드 경계를 넘어 가능해지기 때문이다."
+  },
+  {
+    "note": "15-jit-compilation",
+    "q": "System.nanoTime 으로 직접 잰 마이크로벤치마크가 틀리기 쉬운 이유와 대안은?",
+    "a": "워밍업 전 측정, 결과를 안 쓰는 코드의 제거, 상수 접기, OSR 때문이다. JMH 로 워밍업·포크·Blackhole 을 써서 잰다."
+  },
+  {
+    "note": "16-memory-layout",
+    "q": "-Xmx512m 인 프로세스의 RSS 가 800MB 인 이유는?",
+    "a": "힙 밖 메모리(메타스페이스·코드 캐시·스레드 스택·GC 자료구조·다이렉트 버퍼·malloc)가 더해지기 때문이다. 힙은 프로세스 메모리의 일부일 뿐이다."
+  },
+  {
+    "note": "16-memory-layout",
+    "q": "NMT 출력의 reserved 와 committed 의 차이는?",
+    "a": "reserved 는 주소 공간만 잡은 것이고 committed 는 OS 에 실제로 요청한 메모리다. 실측에서 reserved 1.5GB, committed 63MB 였다."
+  },
+  {
+    "note": "16-memory-layout",
+    "q": "TLAB 이 있으면 객체 할당이 왜 싸지나?",
+    "a": "스레드마다 Eden 일부를 떼어 주므로 그 안에서는 포인터 하나를 더하는 것만으로 할당한다. 동기화는 TLAB 을 새로 받을 때만 필요하다."
+  },
+  {
+    "note": "16-memory-layout",
+    "q": "힙을 31GB 에서 33GB 로 늘리면 오히려 손해일 수 있는 이유는?",
+    "a": "32GB 를 넘으면 압축 OOP 가 꺼져 참조가 4바이트에서 8바이트가 된다. 같은 객체를 담는 데 메모리가 더 들어 실제 담을 수 있는 양이 줄 수 있다."
+  },
+  {
+    "note": "17-gc-basics-g1",
+    "q": "GC 는 어떤 객체를 '살아 있다' 고 판단하나?",
+    "a": "GC 루트(스레드 스택 변수·static 필드·JNI 참조 등)에서 참조를 따라 닿을 수 있는 객체만 살아 있다. 순환 참조여도 닿지 않으면 회수된다."
+  },
+  {
+    "note": "17-gc-basics-g1",
+    "q": "Young GC 비용이 쓰레기 양이 아니라 생존 객체 양에 비례하는 이유는?",
+    "a": "Young GC 는 살아 있는 객체만 다른 공간으로 복사하고 나머지는 통째로 비우기 때문이다. 쓰레기가 많을수록 오히려 싸다."
+  },
+  {
+    "note": "17-gc-basics-g1",
+    "q": "G1 이 'Garbage-First' 라고 불리는 이유는?",
+    "a": "쓰레기가 가장 많은(살아 있는 객체가 적은) Old 리전부터 혼합 GC 대상으로 골라, 같은 멈춤 시간에 가장 많이 회수하기 때문이다."
+  },
+  {
+    "note": "17-gc-basics-g1",
+    "q": "G1 로그의 'to-space exhausted' 뒤에 무엇이 오기 쉽고 대처는?",
+    "a": "생존 객체를 옮길 빈 리전이 부족하다는 뜻이고 곧 Full GC 가 온다. 힙을 늘리거나 G1ReservePercent 를 키우거나 할당·생존 객체를 줄인다."
+  },
+  {
+    "note": "18-zgc-shenandoah-tuning",
+    "q": "ZGC 는 객체를 앱과 동시에 옮기면서 어떻게 옛 주소 읽기를 막나?",
+    "a": "참조의 상위 비트(컬러드 포인터)에 상태를 기록하고, 참조를 읽을 때마다 로드 장벽이 확인해 이동 중이면 새 주소로 고쳐서 돌려준다."
+  },
+  {
+    "note": "18-zgc-shenandoah-tuning",
+    "q": "실험에서 ZGC 의 최대 멈춤과 전체 실행 시간은 G1 과 비교해 어땠나?",
+    "a": "최대 멈춤은 1.35ms 로 G1(6.49ms)보다 짧았지만 전체 실행은 572ms 로 G1(335ms)보다 길었다. 동시 수집과 로드 장벽의 비용이다."
+  },
+  {
+    "note": "18-zgc-shenandoah-tuning",
+    "q": "GC 튜닝에서 플래그보다 먼저 할 일 세 가지는?",
+    "a": "GC 로그·JFR 로 측정하기, SLO 에서 목표 정하기, 힙 크기를 살아 있는 데이터의 3~4배로 맞추기다. 그다음 할당을 줄이는 코드 개선이다."
+  },
+  {
+    "note": "18-zgc-shenandoah-tuning",
+    "q": "야간 배치에는 어떤 수집기가 맞고 왜인가?",
+    "a": "ParallelGC 가 맞다. 멈춤이 길어도 기다리는 사용자가 없고, 전체 처리 시간(처리량)이 가장 짧기 때문이다."
+  },
+  {
+    "note": "19-diagnostic-tools",
+    "q": "응답은 느린데 CPU 가 낮을 때 먼저 볼 것은?",
+    "a": "5초 간격 스레드 덤프 3번과 JFR 의 모니터·소켓 이벤트다. 같은 곳에 BLOCKED·WAITING 으로 몰린 스레드(락 경합, 커넥션 풀 대기)를 찾는다."
+  },
+  {
+    "note": "19-diagnostic-tools",
+    "q": "JFR 을 운영에서 상시 켜 둘 수 있는 이유와 쓰는 방법은?",
+    "a": "기본 설정 오버헤드가 1% 안팎이기 때문이다. maxage·maxsize 로 최근 기록만 유지하다가 장애 때 jcmd JFR.dump 로 지난 몇 분을 꺼낸다."
+  },
+  {
+    "note": "19-diagnostic-tools",
+    "q": "jstat 으로 메모리 누수를 판별하는 법은?",
+    "a": "Full GC 직후의 Old 사용률을 시간에 따라 본다. 바닥이 계속 올라가면 누수, 톱니처럼 같은 바닥으로 돌아오면 정상이다."
+  },
+  {
+    "note": "19-diagnostic-tools",
+    "q": "힙 덤프 분석에서 얕은 크기가 아니라 유지 크기를 보는 이유는?",
+    "a": "유지 크기는 그 객체가 사라지면 함께 회수될 양이라, 누가 실제로 메모리를 붙잡고 있는지 보여 준다. 지배자 트리가 유지 크기 순이다."
+  },
+  {
+    "note": "20-jvm-in-containers",
+    "q": "1GB 컨테이너에서 JVM 의 기본 최대 힙과 GC 는? (실측)",
+    "a": "힙 256MB(25%)와 SerialGC 였다. JVM 은 메모리 1792MB 이상이어야 서버급으로 보고 G1 을 고른다."
+  },
+  {
+    "note": "20-jvm-in-containers",
+    "q": "자바 OutOfMemoryError 와 컨테이너 OOMKilled 는 어떻게 다른가?",
+    "a": "전자는 힙이 먼저 차서 JVM 이 예외를 던지고 종료 코드 1, 덤프 가능하다. 후자는 프로세스 전체가 cgroup 한도를 넘어 커널이 SIGKILL 하고 137, 흔적이 없다."
+  },
+  {
+    "note": "20-jvm-in-containers",
+    "q": "k8s 에서 CPU limit 없이 자바를 띄우면 생기는 문제는?",
+    "a": "JVM 이 노드 전체 코어를 보고 GC·JIT 스레드와 공용 풀을 그만큼 만든다. 실제 쓸 수 있는 CPU 보다 많아 경쟁하므로 ActiveProcessorCount 로 고정한다."
+  },
+  {
+    "note": "20-jvm-in-containers",
+    "q": "컨테이너 자바 서비스의 첫 메모리 설정으로 권하는 것은?",
+    "a": "-Xmx 대신 MaxRAMPercentage 를 50~75 로 두고, 힙 밖 몫을 남기며, ExitOnOutOfMemoryError 와 G1 을 명시하는 것이다."
+  },
+  {
+    "note": "21-build-dependencies",
+    "q": "같은 라이브러리의 두 버전이 다른 깊이로 들어올 때 Maven 과 Gradle 은 각각 무엇을 고르나?",
+    "a": "Maven 은 가장 가까운(깊이가 얕은) 선언, Gradle 은 가장 높은 버전을 고른다. Maven 에서 낮은 버전이 이기면 런타임 NoSuchMethodError 가 날 수 있다."
+  },
+  {
+    "note": "21-build-dependencies",
+    "q": "BOM 을 쓰는 이유는?",
+    "a": "여러 모듈로 된 라이브러리(Jackson·Spring 등)의 버전을 한 곳에서 맞추기 위해서다. 개별 의존성에서 버전을 생략하면 BOM 이 정한다."
+  },
+  {
+    "note": "21-build-dependencies",
+    "q": "Gradle 의 api 와 implementation 의 차이는?",
+    "a": "api 는 소비자의 컴파일 클래스패스로 전이되고 implementation 은 전이되지 않는다. implementation 을 기본으로 쓰면 재컴파일 범위와 클래스패스가 작아진다."
+  },
+  {
+    "note": "21-build-dependencies",
+    "q": "재현 가능한 빌드를 위해 자바 프로젝트가 할 일 세 가지는?",
+    "a": "버전 범위를 쓰지 않고, 잠금 파일(gradle.lockfile)을 커밋하고, 툴체인·래퍼로 JDK·빌드 도구 버전을 고정하는 것이다."
+  },
+  {
+    "note": "22-spring-core",
+    "q": "생성자 주입을 기본으로 권하는 이유는?",
+    "a": "final 로 불변이 되고 필수 의존성이 드러나며 순환 의존을 시작 시점에 발견하고, Spring 없이 new 로 테스트할 수 있기 때문이다."
+  },
+  {
+    "note": "22-spring-core",
+    "q": "같은 클래스 안에서 @Transactional 메서드를 호출하면 트랜잭션이 안 걸리는 이유는?",
+    "a": "트랜잭션은 빈을 감싼 프록시가 처리하는데, this 로 부르면 프록시를 거치지 않기 때문이다(자기 호출). @Async·@Cacheable 도 같다."
+  },
+  {
+    "note": "22-spring-core",
+    "q": "Spring Boot 자동 설정에서 사용자가 만든 빈이 항상 이기는 이유는?",
+    "a": "자동 설정 빈에 @ConditionalOnMissingBean 이 붙어 있어 같은 타입 빈이 이미 있으면 만들지 않기 때문이다."
+  },
+  {
+    "note": "22-spring-core",
+    "q": "테스트 스위트가 느린 흔한 원인 하나는?",
+    "a": "테스트마다 @MockBean 조합이 달라 Spring 의 테스트 컨텍스트 캐시가 깨지고 매번 컨텍스트를 새로 띄우는 것이다."
+  },
+  {
+    "note": "23-spring-web-data-tx",
+    "q": "N+1 문제는 무엇이고 해결법 두 가지는?",
+    "a": "목록 1번 조회 뒤 각 항목의 연관을 지연 로딩하며 N번 더 조회하는 것이다. 페치 조인·@EntityGraph 나 배치 페치(IN 절)로 쿼리 수를 줄인다."
+  },
+  {
+    "note": "23-spring-web-data-tx",
+    "q": "트랜잭션 안에서 외부 결제 API 를 호출하면 무엇이 문제인가?",
+    "a": "호출 동안 DB 커넥션을 붙잡아 풀이 마른다. 커밋 전에 부작용이 나가 롤백 시 불일치도 생긴다. 외부 호출은 트랜잭션 밖이나 커밋 후 이벤트로 옮긴다."
+  },
+  {
+    "note": "23-spring-web-data-tx",
+    "q": "@Transactional 이 체크 예외에서 기본 동작은?",
+    "a": "런타임 예외와 Error 만 롤백하고 체크 예외는 커밋한다. 체크 예외도 롤백하려면 rollbackFor 를 지정한다."
+  },
+  {
+    "note": "23-spring-web-data-tx",
+    "q": "가상 스레드를 켜도 응답이 빨라지지 않는 경우는?",
+    "a": "병목이 DB 커넥션 풀일 때다. 스레드를 아무리 늘려도 동시에 쓸 수 있는 커넥션 수가 상한이라 풀 대기만 늘어난다."
+  },
+  {
+    "note": "24-operations-observability",
+    "q": "liveness 프로브에 DB 헬스를 넣으면 안 되는 이유는?",
+    "a": "DB 가 잠깐 장애일 때 모든 Pod 이 동시에 재시작되는 폭풍이 생긴다. 외부 의존성은 readiness 에만 넣는다."
+  },
+  {
+    "note": "24-operations-observability",
+    "q": "그레이스풀 셧다운에서 preStop sleep 이 필요한 이유는?",
+    "a": "엔드포인트 제거가 퍼지는 동안에도 요청이 들어오기 때문이다. 바로 종료하면 그 요청이 실패하므로 잠시 기다린 뒤 진행 중 요청을 마치고 끈다."
+  },
+  {
+    "note": "24-operations-observability",
+    "q": "OpenTelemetry 자바 에이전트는 어떻게 코드 수정 없이 span 을 만드나?",
+    "a": "클래스 로딩 시점에 바이트코드를 변형해 Spring MVC·JDBC·Kafka·Redis 클라이언트 등의 호출에 계측 코드를 끼워 넣는다."
+  },
+  {
+    "note": "24-operations-observability",
+    "q": "CRaC 과 GraalVM 네이티브 이미지의 시작 시간 단축 방식 차이는?",
+    "a": "CRaC 은 워밍업된 프로세스를 체크포인트로 저장했다가 JIT 된 상태 그대로 복원한다. 네이티브 이미지는 빌드 때 전체를 AOT 컴파일해 JVM 없이 바로 시작한다."
+  }
+]

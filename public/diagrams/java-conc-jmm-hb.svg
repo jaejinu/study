@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="400" fill="#0d1117"/>
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker>
+    <marker id="g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#22c55e"/></marker>
+  </defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">happens-before — 이 화살표가 있어야만 쓰기가 보인다</text>
+  <text x="200" y="66" text-anchor="middle" fill="#60a5fa" font-weight="600">스레드 A (쓰는 쪽)</text>
+  <text x="700" y="66" text-anchor="middle" fill="#c084fc" font-weight="600">스레드 B (읽는 쪽)</text>
+  <line x1="200" y1="76" x2="200" y2="360" stroke="#30363d"/>
+  <line x1="700" y1="76" x2="700" y2="360" stroke="#30363d"/>
+  <rect x="95" y="90" width="210" height="34" rx="6" fill="#161b22" stroke="#3b82f6"/><text x="200" y="112" text-anchor="middle" fill="#e6edf3">config = new Config(...)</text>
+  <rect x="95" y="140" width="210" height="34" rx="6" fill="#161b22" stroke="#3b82f6"/><text x="200" y="162" text-anchor="middle" fill="#e6edf3">ready = true  (volatile 쓰기)</text>
+  <text x="80" y="128" text-anchor="end" fill="#8b949e" font-size="11">프로그램 순서 ↓</text>
+  <rect x="595" y="190" width="210" height="34" rx="6" fill="#161b22" stroke="#c084fc"/><text x="700" y="212" text-anchor="middle" fill="#e6edf3">if (ready)  (volatile 읽기)</text>
+  <rect x="595" y="240" width="210" height="34" rx="6" fill="#0f2a1a" stroke="#22c55e"/><text x="700" y="262" text-anchor="middle" fill="#4ade80">config 사용 → 초기화된 값이 보장됨</text>
+  <line x1="305" y1="157" x2="593" y2="205" stroke="#22c55e" stroke-width="2" marker-end="url(#g)"/>
+  <text x="450" y="170" text-anchor="middle" fill="#4ade80" font-size="12">같은 volatile 변수: 쓰기 → 이후 읽기</text>
+  <text x="450" y="300" text-anchor="middle" fill="#e6edf3" font-size="12">추이성: config 쓰기 → ready 쓰기 → ready 읽기 → config 읽기</text>
+  <rect x="40" y="318" width="880" height="62" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="60" y="340" fill="#e6edf3" font-size="12">다른 규칙: 같은 락의 unlock → lock · t.start() 이전 → t 안 · t 안 → t.join() 반환 · BlockingQueue put → take · Future 완료 → get()</text>
+  <text x="60" y="362" fill="#f87171" font-size="12">ready 가 volatile 이 아니면 화살표가 없다 → B 는 ready 를 영원히 못 볼 수도(JIT 호이스팅), 보더라도 덜 만든 config 를 볼 수도 있다</text>
+</svg>

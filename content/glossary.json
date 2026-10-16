@@ -3502,5 +3502,485 @@
     "subject": "network-protocols",
     "def": "QUIC 구현이 남기는 표준 이벤트 로그(JSON). 패킷 송수신·손실 감지·혼잡 윈도 변화를 담아, 암호화로 tcpdump 가 무력한 QUIC 을 qvis 등으로 분석하게 한다.",
     "link": "/network-protocols/notes/07-observing-debugging"
+  },
+  {
+    "term": "바이트코드 (Java)",
+    "subject": "java",
+    "def": "javac 가 만드는 CPU 독립 스택 기계 명령(.class). JVM 이 인터프리트하다가 뜨거운 코드는 JIT 가 기계어로 컴파일한다. javap -c 로 볼 수 있다.",
+    "link": "/java/notes/01-java-jvm-ecosystem"
+  },
+  {
+    "term": "LTS (Java)",
+    "subject": "java",
+    "def": "6개월마다 나오는 자바 기능 릴리스 중 장기 지원 버전(17·21·25). 신규 서비스는 최신 LTS 를 쓰고, 미리보기 기능은 --enable-preview 없이는 컴파일되지 않는다.",
+    "link": "/java/notes/01-java-jvm-ecosystem"
+  },
+  {
+    "term": "오토박싱 / Integer 캐시",
+    "subject": "java",
+    "def": "원시 ↔ 래퍼 자동 변환. Integer.valueOf 는 −128~127 만 캐시하므로 그 밖의 값은 == 비교가 false 다. 루프 안 박싱은 객체 생성으로 수 배~수십 배 느리다(실측 Long 213ms vs long 15ms).",
+    "link": "/java/notes/02-types-objects-immutability"
+  },
+  {
+    "term": "equals/hashCode 계약",
+    "subject": "java",
+    "def": "equals 로 같은 두 객체는 hashCode 도 같아야 한다. 어기면 HashSet·HashMap 이 다른 버킷을 봐 원소를 못 찾는다. 해시에 쓰는 필드는 불변이어야 한다.",
+    "link": "/java/notes/02-types-objects-immutability"
+  },
+  {
+    "term": "record",
+    "subject": "java",
+    "def": "private final 필드·정식 생성자·접근자·equals/hashCode/toString 을 자동 생성하는 값 클래스(16+). 깊은 불변성은 간결한 생성자에서 방어적 복사(List.copyOf)로 직접 만든다.",
+    "link": "/java/notes/02-types-objects-immutability"
+  },
+  {
+    "term": "타입 소거",
+    "subject": "java",
+    "def": "제네릭 타입 인자를 컴파일 후 바이트코드에서 지우는 것. List<String> 과 List<Integer> 는 런타임에 같은 클래스이며, new T()·instanceof List<String> 이 불가능하다. 선언 시그니처의 제네릭은 남는다.",
+    "link": "/java/notes/03-generics-type-erasure"
+  },
+  {
+    "term": "PECS",
+    "subject": "java",
+    "def": "Producer Extends, Consumer Super. 값을 꺼내 주는 매개변수는 ? extends T, 받아 넣는 매개변수는 ? super T 로 선언하는 와일드카드 규칙. 반환 타입에는 와일드카드를 쓰지 않는다.",
+    "link": "/java/notes/03-generics-type-erasure"
+  },
+  {
+    "term": "힙 오염 (heap pollution)",
+    "subject": "java",
+    "def": "로 타입·unchecked 캐스트로 제네릭 컬렉션에 다른 타입이 들어간 상태. 넣을 때는 조용하고 꺼내 쓰는 곳에서 ClassCastException 이 난다.",
+    "link": "/java/notes/03-generics-type-erasure"
+  },
+  {
+    "term": "브리지 메서드",
+    "subject": "java",
+    "def": "타입 소거 후에도 다형성이 동작하도록 컴파일러가 몰래 만드는 메서드(예: String get() 옆의 Object get()). Method.isBridge() 로 구별한다.",
+    "link": "/java/notes/03-generics-type-erasure"
+  },
+  {
+    "term": "지연 평가 (스트림)",
+    "subject": "java",
+    "def": "스트림의 중간 연산은 최종 연산이 호출될 때 실행되며, 원소 하나씩 파이프라인 전체를 통과한다. findFirst·anyMatch 같은 단락 연산은 답이 나오면 즉시 멈춘다.",
+    "link": "/java/notes/04-lambdas-streams"
+  },
+  {
+    "term": "공용 ForkJoinPool",
+    "subject": "java",
+    "def": "JVM 이 공유하는 ForkJoinPool.commonPool()(병렬도 CPU−1). 병렬 스트림과 실행기 없는 CompletableFuture 가 쓰므로 여기서 블로킹 I/O 를 하면 다른 작업까지 멈춘다.",
+    "link": "/java/notes/04-lambdas-streams"
+  },
+  {
+    "term": "sealed 클래스·인터페이스",
+    "subject": "java",
+    "def": "permits 로 지정한 하위 타입만 허용해 계층을 닫는 기능(17+). 패턴 매칭 switch 가 default 없이 모든 경우를 다뤘는지 컴파일러가 검사할 수 있게 한다.",
+    "link": "/java/notes/05-sealed-pattern-matching"
+  },
+  {
+    "term": "레코드 패턴",
+    "subject": "java",
+    "def": "switch·instanceof 에서 record 를 구성 요소로 분해해 바로 바인딩하는 패턴(21). case Rect(double w, double h) when w == h -> ... 처럼 가드와 함께 쓴다.",
+    "link": "/java/notes/05-sealed-pattern-matching"
+  },
+  {
+    "term": "try-with-resources",
+    "subject": "java",
+    "def": "AutoCloseable 자원을 블록을 어떻게 나가든 역순으로 닫는 구문. 본문 예외가 우선 전파되고 close 에서 난 예외는 getSuppressed() 에 붙는다.",
+    "link": "/java/notes/06-exceptions-resources"
+  },
+  {
+    "term": "suppressed 예외",
+    "subject": "java",
+    "def": "try-with-resources 에서 본문 예외가 이미 있을 때 close() 가 던진 예외. 버려지지 않고 주 예외의 getSuppressed() 로 남는다.",
+    "link": "/java/notes/06-exceptions-resources"
+  },
+  {
+    "term": "checked / unchecked 예외",
+    "subject": "java",
+    "def": "checked 는 throws 선언·처리를 컴파일러가 강제하는 Exception 하위 타입, unchecked 는 RuntimeException 하위 타입. 현대 생태계는 unchecked 가 기본이고 Spring @Transactional 은 기본적으로 unchecked 에만 롤백한다.",
+    "link": "/java/notes/06-exceptions-resources"
+  },
+  {
+    "term": "fail-fast 반복자",
+    "subject": "java",
+    "def": "순회 중 컬렉션 구조가 바뀌면(modCount 불일치) 즉시 ConcurrentModificationException 을 던지는 반복자. 같은 스레드에서도 나며 동시성 검출 장치가 아니다. removeIf·Iterator.remove() 로 피한다.",
+    "link": "/java/notes/07-list-internals"
+  },
+  {
+    "term": "ArrayDeque",
+    "subject": "java",
+    "def": "배열을 원형 버퍼로 쓰는 덱. 앞·뒤 삽입·삭제가 O(1)이고 노드 객체가 없어 LinkedList 보다 빠르다. 스택·큐 모두에 Stack 클래스 대신 쓴다. null 불가.",
+    "link": "/java/notes/07-list-internals"
+  },
+  {
+    "term": "해시 교란 (hash spreading)",
+    "subject": "java",
+    "def": "HashMap 이 hashCode 의 상위 16비트를 하위에 XOR(h ^ h>>>16)해 섞는 것. 인덱스가 하위 비트만 쓰므로 상위 비트만 다른 해시들이 한 버킷에 몰리는 것을 막는다.",
+    "link": "/java/notes/08-hashmap-internals"
+  },
+  {
+    "term": "트리화 (treeify)",
+    "subject": "java",
+    "def": "HashMap 의 한 버킷 원소가 8개를 넘고 테이블이 64 이상이면 연결 리스트를 레드-블랙 트리로 바꾸는 것. 키가 Comparable 이어야 O(log n) 이 되고, 6개 이하로 줄면 리스트로 돌아간다.",
+    "link": "/java/notes/08-hashmap-internals"
+  },
+  {
+    "term": "적재율 (load factor)",
+    "subject": "java",
+    "def": "HashMap 이 리사이즈하는 기준 비율(기본 0.75). 원소 수가 용량 × 0.75 를 넘으면 테이블을 2배로 늘리고 모든 노드를 옮긴다 — 그 put 만 테이블 크기에 비례해 느리다.",
+    "link": "/java/notes/08-hashmap-internals"
+  },
+  {
+    "term": "TimSort",
+    "subject": "java",
+    "def": "자바의 객체 정렬 알고리즘. 이미 정렬된 구간(run)을 찾아 병합하는 안정 정렬로 부분 정렬된 실데이터에서 빠르다. 비교자 계약 위반을 발견하면 'Comparison method violates its general contract!' 를 던진다.",
+    "link": "/java/notes/09-sorting-treemap-pq"
+  },
+  {
+    "term": "NavigableMap",
+    "subject": "java",
+    "def": "정렬된 맵의 근접·범위 조회 인터페이스(TreeMap, ConcurrentSkipListMap). floorKey·ceilingKey·headMap·tailMap·subMap 으로 구간표·일관 해싱 링·시계열 조회를 구현한다.",
+    "link": "/java/notes/09-sorting-treemap-pq"
+  },
+  {
+    "term": "자바 메모리 모델 (JMM)",
+    "subject": "java",
+    "def": "한 스레드의 쓰기가 다른 스레드에 언제 보이는지를 happens-before 관계로 정의한 규칙. 데이터 경합이 없는 프로그램은 순차 일관성처럼 동작한다(DRF-SC).",
+    "link": "/java/notes/10-threads-jmm"
+  },
+  {
+    "term": "happens-before (JMM)",
+    "subject": "java",
+    "def": "A 의 모든 쓰기가 B 에 보인다는 JMM 의 관계. 프로그램 순서, 같은 락 unlock→lock, 같은 volatile 쓰기→읽기, start()→스레드, 스레드→join(), 추이성으로 성립한다.",
+    "link": "/java/notes/10-threads-jmm"
+  },
+  {
+    "term": "volatile (Java)",
+    "subject": "java",
+    "def": "가시성(쓰기→이후 읽기 happens-before)과 재배치 금지를 보장하는 필드 수식어. 복합 연산(count++)의 원자성은 보장하지 않는다. 플래그·불변 객체 참조 교체에 쓴다.",
+    "link": "/java/notes/10-threads-jmm"
+  },
+  {
+    "term": "안전한 공개 (safe publication)",
+    "subject": "java",
+    "def": "다른 스레드가 덜 초기화된 객체를 보지 않도록 객체를 넘기는 방법: 정적 초기화, volatile 필드, 락으로 보호, 스레드 안전 컬렉션, final 필드.",
+    "link": "/java/notes/10-threads-jmm"
+  },
+  {
+    "term": "이중 검사 잠금 (DCL)",
+    "subject": "java",
+    "def": "락 없이 한 번, 락 안에서 한 번 검사하는 지연 초기화. 필드가 volatile 이 아니면 재배치로 덜 만든 객체가 보일 수 있다. 초기화 지연 홀더 관용구가 더 간단하다.",
+    "link": "/java/notes/10-threads-jmm"
+  },
+  {
+    "term": "CAS (Compare-And-Swap)",
+    "subject": "java",
+    "def": "메모리 값이 기대값과 같을 때만 새 값으로 바꾸는 원자적 CPU 명령. AtomicLong 등이 반복 CAS 로 락 없이 갱신하지만, 경합이 심하면 재시도가 늘어난다.",
+    "link": "/java/notes/11-locks-juc"
+  },
+  {
+    "term": "LongAdder",
+    "subject": "java",
+    "def": "경합 시 스레드마다 다른 셀에 더하고 sum() 때 합치는 카운터. 같은 캐시 라인을 두고 다투지 않아 AtomicLong 보다 빠르다(실측 13ms vs 203ms). 메트릭 카운터용.",
+    "link": "/java/notes/11-locks-juc"
+  },
+  {
+    "term": "ConcurrentHashMap",
+    "subject": "java",
+    "def": "읽기는 락 없이, 쓰기는 버킷 단위로 잠그는 스레드 안전 맵. 원자성은 메서드 하나 단위라 put(k, get(k)+1) 대신 merge·compute 를 쓴다. null 키·값 불가.",
+    "link": "/java/notes/11-locks-juc"
+  },
+  {
+    "term": "ReentrantLock",
+    "subject": "java",
+    "def": "synchronized 와 같은 재진입 상호 배제 락에 tryLock(타임아웃)·인터럽트 가능 대기·공정성·여러 Condition 을 더한 것. JDK 21 가상 스레드에서 피닝을 일으키지 않는다.",
+    "link": "/java/notes/11-locks-juc"
+  },
+  {
+    "term": "ThreadPoolExecutor",
+    "subject": "java",
+    "def": "코어 스레드 → 큐 → 최대 스레드 → 거부 정책 순서로 작업을 받는 스레드 풀. 무한 큐면 최대 스레드가 쓰이지 않고 장애가 숨으므로 유한 큐와 거부 정책을 명시한다.",
+    "link": "/java/notes/12-executors-completablefuture"
+  },
+  {
+    "term": "CallerRunsPolicy",
+    "subject": "java",
+    "def": "큐가 가득 차면 작업을 제출한 스레드가 직접 실행하게 하는 거부 정책. 제출 속도가 저절로 느려지는 자연스러운 백프레셔다.",
+    "link": "/java/notes/12-executors-completablefuture"
+  },
+  {
+    "term": "CompletableFuture",
+    "subject": "java",
+    "def": "비동기 결과를 thenApply·thenCompose·thenCombine·allOf 로 조합하는 Future. 예외는 CompletionException 으로 감싸이고, orTimeout 은 원래 작업을 멈추지 않는다. I/O 에는 전용 실행기를 넘긴다.",
+    "link": "/java/notes/12-executors-completablefuture"
+  },
+  {
+    "term": "가상 스레드",
+    "subject": "java",
+    "def": "JVM 이 관리하는 가벼운 스레드(21). 블로킹 호출에서 스택을 힙으로 떼어 내 캐리어(플랫폼 스레드)를 놓아주므로 동기 코드 그대로 수만 개가 동시에 기다릴 수 있다. 풀링하지 않는다.",
+    "link": "/java/notes/13-virtual-threads-structured"
+  },
+  {
+    "term": "캐리어 스레드",
+    "subject": "java",
+    "def": "가상 스레드를 실제로 실행하는 플랫폼 스레드(기본적으로 CPU 코어 수만큼의 ForkJoinPool). 가상 스레드는 블로킹 때 내려오고 준비되면 아무 캐리어에나 다시 마운트된다.",
+    "link": "/java/notes/13-virtual-threads-structured"
+  },
+  {
+    "term": "피닝 (pinning)",
+    "subject": "java",
+    "def": "가상 스레드가 블로킹해도 캐리어에서 내려오지 못하는 상태. JDK 21 에선 synchronized 안의 블로킹이 원인이며 동시 진행 수가 캐리어 수로 떨어진다(실측 23배 느림). ReentrantLock·JDK 24+ 로 해결.",
+    "link": "/java/notes/13-virtual-threads-structured"
+  },
+  {
+    "term": "구조적 동시성",
+    "subject": "java",
+    "def": "자식 작업의 수명을 그것을 띄운 코드 블록 안으로 한정하는 원칙. StructuredTaskScope 의 ShutdownOnFailure(하나 실패 시 나머지 취소)·ShutdownOnSuccess(헤징)로 표현한다(21 미리보기).",
+    "link": "/java/notes/13-virtual-threads-structured"
+  },
+  {
+    "term": "바이트코드 (bytecode)",
+    "subject": "java",
+    "def": "javac 가 만드는 JVM 의 스택 기반 명령어 집합. 처음엔 인터프리터가 해석하고 뜨거운 부분을 JIT 이 기계어로 바꾼다. javap -c 로 읽는다.",
+    "link": "/java/notes/14-classloading-bytecode"
+  },
+  {
+    "term": "클래스 로더 부모 위임",
+    "subject": "java",
+    "def": "클래스 로더가 먼저 부모(부트스트랩·플랫폼)에게 로딩을 맡기고 못 찾을 때만 직접 찾는 규칙. 핵심 클래스를 바꿔치기할 수 없고, 클래스 정체성은 (로더, 이름) 쌍이 된다.",
+    "link": "/java/notes/14-classloading-bytecode"
+  },
+  {
+    "term": "invokedynamic",
+    "subject": "java",
+    "def": "호출 대상을 처음 실행할 때 부트스트랩 메서드가 정하는 바이트코드 명령. 람다(LambdaMetafactory)와 문자열 연결(StringConcatFactory)이 이것으로 컴파일된다.",
+    "link": "/java/notes/14-classloading-bytecode"
+  },
+  {
+    "term": "CDS / AppCDS",
+    "subject": "java",
+    "def": "클래스 파싱·로딩 결과를 아카이브로 만들어 다음 실행 때 메모리 매핑하는 기능(Class Data Sharing). 시작 시간을 30~50% 줄이며, AppCDS 는 앱 클래스까지 포함한다.",
+    "link": "/java/notes/14-classloading-bytecode"
+  },
+  {
+    "term": "계층 컴파일 (C1·C2)",
+    "subject": "java",
+    "def": "인터프리터로 시작해 C1(빠른 컴파일·프로파일 수집)을 거쳐 C2(프로파일 기반 공격적 최적화)로 올리는 JVM 의 JIT 방식. 실측에서 인터프리터 대비 약 11배 빨라졌다.",
+    "link": "/java/notes/15-jit-compilation"
+  },
+  {
+    "term": "OSR (On-Stack Replacement)",
+    "subject": "java",
+    "def": "한 번 호출돼 오래 도는 루프를 실행 도중에 컴파일된 코드로 갈아타는 것. 백엣지 카운터가 기준이며 PrintCompilation 에 % 로 표시된다.",
+    "link": "/java/notes/15-jit-compilation"
+  },
+  {
+    "term": "탈최적화 (deoptimization)",
+    "subject": "java",
+    "def": "C2 가 프로파일을 근거로 한 추측(단형 호출·안 타는 분기)이 깨지면 컴파일된 코드를 버리고 인터프리터로 돌아가는 것. 트래픽 패턴 변화 직후의 일시적 지연 원인.",
+    "link": "/java/notes/15-jit-compilation"
+  },
+  {
+    "term": "탈출 분석 (escape analysis)",
+    "subject": "java",
+    "def": "객체가 메서드 밖으로 나가지 않으면 힙 할당 대신 필드를 레지스터에 두는(스칼라 치환) C2 최적화. 할당과 GC 부담을 없앤다.",
+    "link": "/java/notes/15-jit-compilation"
+  },
+  {
+    "term": "코드 캐시",
+    "subject": "java",
+    "def": "JIT 이 만든 기계어를 저장하는 힙 밖 영역(기본 240MB 예약). 가득 차면 컴파일이 멈춰 새 핫 메서드가 인터프리터로만 돈다.",
+    "link": "/java/notes/16-memory-layout"
+  },
+  {
+    "term": "메타스페이스",
+    "subject": "java",
+    "def": "클래스 메타데이터를 담는 힙 밖 네이티브 메모리. 클래스는 로딩한 클래스 로더가 수거될 때만 내려가며, 로더 누수 시 OutOfMemoryError: Metaspace.",
+    "link": "/java/notes/16-memory-layout"
+  },
+  {
+    "term": "TLAB (Thread-Local Allocation Buffer)",
+    "subject": "java",
+    "def": "스레드마다 Eden 일부를 떼어 주어 포인터 증가만으로 객체를 할당하게 하는 구조. 자바의 짧게 사는 객체 할당이 싼 이유다.",
+    "link": "/java/notes/16-memory-layout"
+  },
+  {
+    "term": "압축 OOP (Compressed OOPs)",
+    "subject": "java",
+    "def": "힙이 32GB 미만일 때 객체 참조를 4바이트로 저장하는 최적화. 32GB 를 넘기면 꺼져 참조가 8바이트가 되므로 힙을 조금 늘리면 오히려 손해일 수 있다.",
+    "link": "/java/notes/16-memory-layout"
+  },
+  {
+    "term": "NMT (Native Memory Tracking)",
+    "subject": "java",
+    "def": "JVM 의 힙 밖 메모리를 영역별(Class·Thread·Code·GC·Metaspace 등) reserved/committed 로 보여 주는 기능. -XX:NativeMemoryTracking=summary 로 켜고 jcmd VM.native_memory 로 본다.",
+    "link": "/java/notes/16-memory-layout"
+  },
+  {
+    "term": "약한 세대 가설",
+    "subject": "java",
+    "def": "대부분의 객체는 일찍 죽고 오래 산 객체는 계속 산다는 관찰. 그래서 힙을 Young·Old 로 나누고 Young 을 자주·싸게(생존 객체만 복사) 치운다.",
+    "link": "/java/notes/17-gc-basics-g1"
+  },
+  {
+    "term": "세이프포인트 (safepoint)",
+    "subject": "java",
+    "def": "GC·탈최적화 등을 위해 모든 앱 스레드를 멈춰 세우는 안전한 지점. 멈춤 = 도달 시간 + 작업 시간이며 -Xlog:safepoint 로 수집기와 무관하게 비교할 수 있다.",
+    "link": "/java/notes/17-gc-basics-g1"
+  },
+  {
+    "term": "G1 GC",
+    "subject": "java",
+    "def": "힙을 같은 크기 리전으로 나누고 Young GC·동시 표시·혼합 GC 로 쓰레기가 많은 리전부터 치우는 서버 기본 수집기. 일시정지 목표(기본 200ms)에 맞춰 일한다.",
+    "link": "/java/notes/17-gc-basics-g1"
+  },
+  {
+    "term": "쓰기 장벽 / 카드 테이블",
+    "subject": "java",
+    "def": "참조 필드에 쓸 때 JIT 이 넣는 짧은 코드가 Old→Young 참조를 카드(512B) 단위로 표시해, Young GC 가 Old 전체를 훑지 않게 하는 장치.",
+    "link": "/java/notes/17-gc-basics-g1"
+  },
+  {
+    "term": "ZGC",
+    "subject": "java",
+    "def": "컬러드 포인터와 로드 장벽으로 객체 이동까지 앱과 동시에 하는 저지연 수집기. 실측 최대 멈춤 1.35ms, 대신 CPU·전체 시간이 늘었다. JDK 21 세대형, 23 부터 기본 모드.",
+    "link": "/java/notes/18-zgc-shenandoah-tuning"
+  },
+  {
+    "term": "로드 장벽 (load barrier)",
+    "subject": "java",
+    "def": "참조를 읽을 때마다 실행되는 짧은 검사로, 동시 이동 중인 객체의 새 주소로 참조를 고쳐 준다. 저지연 GC 의 처리량 비용의 원천이다.",
+    "link": "/java/notes/18-zgc-shenandoah-tuning"
+  },
+  {
+    "term": "JFR (Java Flight Recorder)",
+    "subject": "java",
+    "def": "JVM 내장 저오버헤드(약 1%) 이벤트 기록기. GC·할당·락·I/O·CPU 샘플을 상시 기록하다가 장애 때 jcmd JFR.dump 로 지난 몇 분을 꺼낸다.",
+    "link": "/java/notes/19-diagnostic-tools"
+  },
+  {
+    "term": "jcmd",
+    "subject": "java",
+    "def": "실행 중인 JVM 에 진단 명령(VM.flags·GC.heap_info·Thread.print·GC.heap_dump·JFR·VM.native_memory)을 보내는 표준 도구.",
+    "link": "/java/notes/19-diagnostic-tools"
+  },
+  {
+    "term": "지배자 트리 (dominator tree)",
+    "subject": "java",
+    "def": "힙 덤프에서 객체를 유지 크기 순으로 보여 주는 트리. 그 객체가 사라지면 함께 회수될 양을 기준으로 누수의 주범을 찾는다(Eclipse MAT).",
+    "link": "/java/notes/19-diagnostic-tools"
+  },
+  {
+    "term": "async-profiler",
+    "subject": "java",
+    "def": "perf_events 와 AsyncGetCallTrace 로 세이프포인트 편향 없이 CPU·할당·락·벽시계 플레임 그래프를 만드는 자바 프로파일러.",
+    "link": "/java/notes/19-diagnostic-tools"
+  },
+  {
+    "term": "JVM 인체공학 (ergonomics)",
+    "subject": "java",
+    "def": "JVM 이 CPU 수·메모리(컨테이너면 cgroup 한도)를 보고 힙 크기·GC·스레드 수를 자동으로 정하는 것. 2GB 미만 컨테이너는 SerialGC·힙 25% 가 기본이다.",
+    "link": "/java/notes/20-jvm-in-containers"
+  },
+  {
+    "term": "MaxRAMPercentage",
+    "subject": "java",
+    "def": "컨테이너(또는 머신) 메모리 대비 최대 힙 비율(기본 25). 컨테이너 자바 서비스는 50~75 로 올리되 힙 밖 몫을 남긴다.",
+    "link": "/java/notes/20-jvm-in-containers"
+  },
+  {
+    "term": "ActiveProcessorCount",
+    "subject": "java",
+    "def": "JVM 이 인식할 CPU 수를 고정하는 플래그. CPU limit 이 없는 Pod 에서 노드 전체 코어만큼 GC·JIT 스레드가 생기는 것을 막는다.",
+    "link": "/java/notes/20-jvm-in-containers"
+  },
+  {
+    "term": "BOM (Bill of Materials)",
+    "subject": "java",
+    "def": "여러 모듈 라이브러리의 호환 버전 목록을 담은 POM. Maven dependencyManagement import·Gradle platform 으로 가져오면 개별 버전을 생략할 수 있다.",
+    "link": "/java/notes/21-build-dependencies"
+  },
+  {
+    "term": "전이 의존성 충돌 해석",
+    "subject": "java",
+    "def": "같은 라이브러리의 여러 버전이 들어올 때 하나를 고르는 규칙. Maven 은 가장 가까운 선언, Gradle 은 가장 높은 버전이며 런타임 NoSuchMethodError 의 흔한 원인이다.",
+    "link": "/java/notes/21-build-dependencies"
+  },
+  {
+    "term": "의존성 잠금 (dependency locking)",
+    "subject": "java",
+    "def": "해석된 전이 의존성 버전을 잠금 파일(gradle.lockfile)로 커밋해 같은 소스가 늘 같은 클래스패스로 빌드되게 하는 것.",
+    "link": "/java/notes/21-build-dependencies"
+  },
+  {
+    "term": "IoC / DI",
+    "subject": "java",
+    "def": "객체 생성과 연결을 코드 대신 컨테이너가 맡는 제어의 역전과, 필요한 의존성을 생성자 등으로 받는 의존성 주입. Spring 은 생성자 주입을 기본으로 권한다.",
+    "link": "/java/notes/22-spring-core"
+  },
+  {
+    "term": "BeanPostProcessor",
+    "subject": "java",
+    "def": "Spring 빈 초기화 앞뒤에 끼어드는 확장점. 초기화 후 단계에서 빈을 프록시로 감싸 @Transactional·@Async·@Cacheable 을 구현한다.",
+    "link": "/java/notes/22-spring-core"
+  },
+  {
+    "term": "자기 호출 (self-invocation)",
+    "subject": "java",
+    "def": "같은 클래스 안에서 this 로 메서드를 불러 프록시를 거치지 않는 것. @Transactional·@Async·@Cacheable 이 조용히 무시되는 가장 흔한 원인이다.",
+    "link": "/java/notes/22-spring-core"
+  },
+  {
+    "term": "자동 설정 (auto-configuration)",
+    "subject": "java",
+    "def": "클래스패스에 있는 라이브러리와 설정값을 조건(@ConditionalOnClass·@ConditionalOnMissingBean 등)으로 평가해 빈을 자동 등록하는 Spring Boot 기능. 사용자 빈이 항상 이긴다.",
+    "link": "/java/notes/22-spring-core"
+  },
+  {
+    "term": "영속성 컨텍스트",
+    "subject": "java",
+    "def": "JPA 가 트랜잭션마다 두는 엔티티 1차 캐시이자 변경 추적기. 같은 id 는 같은 객체를 주고, 커밋 시 바뀐 필드만 UPDATE 한다(변경 감지).",
+    "link": "/java/notes/23-spring-web-data-tx"
+  },
+  {
+    "term": "OSIV (Open Session In View)",
+    "subject": "java",
+    "def": "요청 끝까지 영속성 컨텍스트를 열어 지연 로딩 예외를 숨기는 Spring Boot 기본 설정. 요청 내내 DB 커넥션을 붙잡으므로 API 서버에선 끈다.",
+    "link": "/java/notes/23-spring-web-data-tx"
+  },
+  {
+    "term": "트랜잭션 전파 (propagation)",
+    "subject": "java",
+    "def": "이미 트랜잭션이 있을 때 새 메서드가 참여할지(REQUIRED) 새로 열지(REQUIRES_NEW) 등을 정하는 규칙. REQUIRES_NEW 는 커넥션을 하나 더 잡아 풀 고갈 위험이 있다.",
+    "link": "/java/notes/23-spring-web-data-tx"
+  },
+  {
+    "term": "HikariCP",
+    "subject": "java",
+    "def": "Spring Boot 기본 JDBC 커넥션 풀. 풀 크기는 작게, connectionTimeout 은 짧게 두고 hikaricp_connections_pending 으로 고갈을 감시한다.",
+    "link": "/java/notes/23-spring-web-data-tx"
+  },
+  {
+    "term": "Actuator",
+    "subject": "java",
+    "def": "Spring Boot 의 운영 엔드포인트(헬스·liveness/readiness·prometheus·info). 관리 포트를 분리하고 env·heapdump 같은 민감 엔드포인트는 노출하지 않는다.",
+    "link": "/java/notes/24-operations-observability"
+  },
+  {
+    "term": "Micrometer",
+    "subject": "java",
+    "def": "자바 메트릭 계측 파사드. 코드는 Micrometer API 로 쓰고 Prometheus·OTLP 등 백엔드는 레지스트리로 고른다. JVM·HTTP·풀 메트릭을 자동으로 낸다.",
+    "link": "/java/notes/24-operations-observability"
+  },
+  {
+    "term": "CRaC",
+    "subject": "java",
+    "def": "Coordinated Restore at Checkpoint. 워밍업된 JVM 프로세스를 체크포인트로 저장했다가 JIT 된 상태 그대로 수십~수백 ms 에 복원해 시작 시간을 없앤다.",
+    "link": "/java/notes/24-operations-observability"
+  },
+  {
+    "term": "GraalVM 네이티브 이미지",
+    "subject": "java",
+    "def": "빌드 시 프로그램 전체를 AOT 컴파일해 JVM 없이 바로 실행되는 바이너리를 만드는 기술. 시작 0.1초 수준·메모리 감소, 대신 빌드가 무겁고 리플렉션 설정이 필요하다.",
+    "link": "/java/notes/24-operations-observability"
   }
 ]

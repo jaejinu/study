@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="540" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">Spring — 빈이 만들어지는 길과 요청이 지나가는 길</text>
+
+  <rect x="30" y="50" width="420" height="470" rx="12" fill="#161b22" stroke="#30363d"/>
+  <text x="50" y="76" fill="#a371f7" font-weight="600">빈 생명주기 (시작할 때 한 번)</text>
+  <g font-size="12">
+    <rect x="60" y="92" width="360" height="34" rx="6" fill="#0d1117" stroke="#30363d"/><text x="240" y="114" text-anchor="middle" fill="#e6edf3">① 컴포넌트 스캔 · @Configuration · 자동 설정 → BeanDefinition</text>
+    <rect x="60" y="136" width="360" height="34" rx="6" fill="#0d1117" stroke="#30363d"/><text x="240" y="158" text-anchor="middle" fill="#e6edf3">② BeanFactoryPostProcessor (정의 수정, @Value 해석 준비)</text>
+    <rect x="60" y="180" width="360" height="34" rx="6" fill="#0d1117" stroke="#30363d"/><text x="240" y="202" text-anchor="middle" fill="#e6edf3">③ 인스턴스화 (생성자 주입 — 의존 빈 먼저 생성)</text>
+    <rect x="60" y="224" width="360" height="34" rx="6" fill="#0d1117" stroke="#30363d"/><text x="240" y="246" text-anchor="middle" fill="#e6edf3">④ 필드·세터 주입, Aware 콜백</text>
+    <rect x="60" y="268" width="360" height="34" rx="6" fill="#0d1117" stroke="#30363d"/><text x="240" y="290" text-anchor="middle" fill="#e6edf3">⑤ BeanPostProcessor.before → @PostConstruct</text>
+    <rect x="60" y="312" width="360" height="48" rx="6" fill="#0d1117" stroke="#d29922"/><text x="240" y="332" text-anchor="middle" fill="#d29922">⑥ BeanPostProcessor.after → 프록시로 감싸기</text><text x="240" y="350" text-anchor="middle" fill="#8b949e">@Transactional · @Async · @Cacheable · AOP</text>
+    <rect x="60" y="370" width="360" height="34" rx="6" fill="#0d1117" stroke="#3fb950"/><text x="240" y="392" text-anchor="middle" fill="#3fb950">⑦ 컨테이너에 등록 — 다른 빈은 '프록시' 를 주입받는다</text>
+    <rect x="60" y="414" width="360" height="34" rx="6" fill="#0d1117" stroke="#30363d"/><text x="240" y="436" text-anchor="middle" fill="#e6edf3">⑧ 종료: @PreDestroy · 그레이스풀 셧다운</text>
+  </g>
+  <text x="50" y="476" fill="#f85149" font-size="12">함정: 같은 클래스 안에서 this.save() 를 부르면 프록시를 거치지 않아</text>
+  <text x="50" y="496" fill="#f85149" font-size="12">@Transactional·@Async 가 조용히 무시된다 (self-invocation)</text>
+
+  <rect x="470" y="50" width="460" height="470" rx="12" fill="#161b22" stroke="#30363d"/>
+  <text x="490" y="76" fill="#58a6ff" font-weight="600">요청 처리 (Spring MVC, 서블릿 스레드 1개가 끝까지)</text>
+  <g font-size="12">
+    <rect x="500" y="92" width="400" height="32" rx="6" fill="#0d1117" stroke="#30363d"/><text x="700" y="113" text-anchor="middle" fill="#e6edf3">Tomcat 커넥터 → 워커 스레드 (기본 200, 가상 스레드 옵션)</text>
+    <line x1="700" y1="124" x2="700" y2="136" stroke="#8b949e" marker-end="url(#a)"/>
+    <rect x="500" y="138" width="400" height="32" rx="6" fill="#0d1117" stroke="#30363d"/><text x="700" y="159" text-anchor="middle" fill="#e6edf3">Filter 체인 (Security · 관측 · CORS)</text>
+    <line x1="700" y1="170" x2="700" y2="182" stroke="#8b949e" marker-end="url(#a)"/>
+    <rect x="500" y="184" width="400" height="32" rx="6" fill="#0d1117" stroke="#58a6ff"/><text x="700" y="205" text-anchor="middle" fill="#58a6ff">DispatcherServlet → HandlerMapping → Interceptor</text>
+    <line x1="700" y1="216" x2="700" y2="228" stroke="#8b949e" marker-end="url(#a)"/>
+    <rect x="500" y="230" width="400" height="32" rx="6" fill="#0d1117" stroke="#30363d"/><text x="700" y="251" text-anchor="middle" fill="#e6edf3">인자 바인딩 · @Valid → @Controller</text>
+    <line x1="700" y1="262" x2="700" y2="274" stroke="#8b949e" marker-end="url(#a)"/>
+    <rect x="500" y="276" width="400" height="46" rx="6" fill="#0d1117" stroke="#d29922"/><text x="700" y="296" text-anchor="middle" fill="#d29922">@Service (트랜잭션 프록시: 커넥션 획득·begin)</text><text x="700" y="314" text-anchor="middle" fill="#8b949e">→ Repository → JPA 영속성 컨텍스트 → JDBC 풀(Hikari)</text>
+    <line x1="700" y1="322" x2="700" y2="334" stroke="#8b949e" marker-end="url(#a)"/>
+    <rect x="500" y="336" width="400" height="32" rx="6" fill="#0d1117" stroke="#30363d"/><text x="700" y="357" text-anchor="middle" fill="#e6edf3">commit/rollback → HttpMessageConverter(JSON)</text>
+    <line x1="700" y1="368" x2="700" y2="380" stroke="#8b949e" marker-end="url(#a)"/>
+    <rect x="500" y="382" width="400" height="32" rx="6" fill="#0d1117" stroke="#3fb950"/><text x="700" y="403" text-anchor="middle" fill="#3fb950">응답 · Micrometer http.server.requests · trace span</text>
+  </g>
+  <text x="490" y="446" fill="#e6edf3" font-size="12">병목은 대개 스레드가 아니라 커넥션 풀이다:</text>
+  <text x="490" y="466" fill="#8b949e" font-size="12">200 스레드 × 트랜잭션 → Hikari 10개 앞에서 대기(hikaricp_connections_pending)</text>
+  <text x="490" y="486" fill="#8b949e" font-size="12">WebFlux 는 이벤트 루프(코어 수 스레드) + 논블로킹 — 블로킹 호출 하나가 전체를 멈춘다</text>
+  <text x="490" y="506" fill="#8b949e" font-size="12">(Node 의 이벤트 루프와 같은 원리, Redis 노트의 단일 스레드 이야기와도 같다)</text>
+</svg>

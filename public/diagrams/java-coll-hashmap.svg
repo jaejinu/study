@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="420" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">HashMap — 해시 → 교란 → 버킷 → (충돌 많으면) 트리화</text>
+  <!-- pipeline -->
+  <rect x="30" y="60" width="150" height="44" rx="6" fill="#161b22" stroke="#3b82f6"/>
+  <text x="105" y="80" text-anchor="middle" fill="#e6edf3">key.hashCode()</text>
+  <text x="105" y="96" text-anchor="middle" fill="#8b949e" font-size="11">32비트 정수</text>
+  <line x1="180" y1="82" x2="218" y2="82" stroke="#8b949e" marker-end="url(#a)"/>
+  <rect x="220" y="60" width="170" height="44" rx="6" fill="#161b22" stroke="#3b82f6"/>
+  <text x="305" y="80" text-anchor="middle" fill="#e6edf3">h ^ (h &gt;&gt;&gt; 16)</text>
+  <text x="305" y="96" text-anchor="middle" fill="#8b949e" font-size="11">상위 비트를 하위에 섞기</text>
+  <line x1="390" y1="82" x2="428" y2="82" stroke="#8b949e" marker-end="url(#a)"/>
+  <rect x="430" y="60" width="180" height="44" rx="6" fill="#161b22" stroke="#3b82f6"/>
+  <text x="520" y="80" text-anchor="middle" fill="#e6edf3">hash &amp; (n − 1)</text>
+  <text x="520" y="96" text-anchor="middle" fill="#8b949e" font-size="11">n = 2의 거듭제곱 → 비트 AND</text>
+  <line x1="610" y1="82" x2="648" y2="82" stroke="#8b949e" marker-end="url(#a)"/>
+  <rect x="650" y="60" width="280" height="44" rx="6" fill="#161b22" stroke="#3b82f6"/>
+  <text x="790" y="80" text-anchor="middle" fill="#e6edf3">버킷 안에서 hash 비교 → equals</text>
+  <text x="790" y="96" text-anchor="middle" fill="#8b949e" font-size="11">equals 는 해시가 같을 때만</text>
+  <!-- table -->
+  <text x="60" y="140" fill="#8b949e" font-size="12">table (길이 16)</text>
+  <g font-size="12">
+    <rect x="40" y="150" width="70" height="30" fill="#161b22" stroke="#30363d"/><text x="75" y="170" text-anchor="middle" fill="#8b949e">[0]</text>
+    <rect x="40" y="180" width="70" height="30" fill="#161b22" stroke="#30363d"/><text x="75" y="200" text-anchor="middle" fill="#8b949e">[1]</text>
+    <rect x="40" y="210" width="70" height="30" fill="#161b22" stroke="#30363d"/><text x="75" y="230" text-anchor="middle" fill="#8b949e">[2]</text>
+    <rect x="40" y="240" width="70" height="30" fill="#161b22" stroke="#30363d"/><text x="75" y="260" text-anchor="middle" fill="#8b949e">[3]</text>
+    <rect x="40" y="270" width="70" height="30" fill="#161b22" stroke="#30363d"/><text x="75" y="290" text-anchor="middle" fill="#8b949e">…</text>
+    <rect x="40" y="300" width="70" height="30" fill="#161b22" stroke="#30363d"/><text x="75" y="320" text-anchor="middle" fill="#8b949e">[15]</text>
+  </g>
+  <!-- bucket 1: chain -->
+  <line x1="110" y1="195" x2="148" y2="195" stroke="#8b949e" marker-end="url(#a)"/>
+  <rect x="150" y="180" width="90" height="30" rx="5" fill="#0f2a1a" stroke="#22c55e"/><text x="195" y="200" text-anchor="middle" fill="#4ade80" font-size="12">Node k1</text>
+  <line x1="240" y1="195" x2="268" y2="195" stroke="#8b949e" marker-end="url(#a)"/>
+  <rect x="270" y="180" width="90" height="30" rx="5" fill="#0f2a1a" stroke="#22c55e"/><text x="315" y="200" text-anchor="middle" fill="#4ade80" font-size="12">Node k9</text>
+  <text x="380" y="200" fill="#8b949e" font-size="11">충돌 ≤ 8: 연결 리스트 (조회 O(체인))</text>
+  <!-- bucket 3: tree -->
+  <line x1="110" y1="255" x2="168" y2="270" stroke="#8b949e" marker-end="url(#a)"/>
+  <circle cx="200" cy="275" r="18" fill="#2a1a0f" stroke="#f59e0b"/><text x="200" y="280" text-anchor="middle" fill="#fbbf24" font-size="11">k20</text>
+  <line x1="188" y1="290" x2="160" y2="318" stroke="#f59e0b"/><line x1="212" y1="290" x2="240" y2="318" stroke="#f59e0b"/>
+  <circle cx="155" cy="332" r="16" fill="#2a1a0f" stroke="#f59e0b"/><text x="155" y="336" text-anchor="middle" fill="#fbbf24" font-size="10">k7</text>
+  <circle cx="245" cy="332" r="16" fill="#2a1a0f" stroke="#f59e0b"/><text x="245" y="336" text-anchor="middle" fill="#fbbf24" font-size="10">k41</text>
+  <line x1="145" y1="345" x2="128" y2="368" stroke="#f59e0b"/><line x1="165" y1="345" x2="180" y2="368" stroke="#f59e0b"/>
+  <circle cx="124" cy="380" r="13" fill="#2a1a0f" stroke="#f59e0b"/><circle cx="184" cy="380" r="13" fill="#2a1a0f" stroke="#f59e0b"/>
+  <text x="280" y="270" fill="#fbbf24" font-size="12" font-weight="600">트리화 (TREEIFY_THRESHOLD = 8, 테이블 ≥ 64)</text>
+  <text x="280" y="290" fill="#e6edf3" font-size="12">레드-블랙 트리 — 방향: 해시값 → compareTo(Comparable 이면) → 최후 수단</text>
+  <text x="280" y="310" fill="#e6edf3" font-size="12">모든 해시가 같고 Comparable 이 아니면 양쪽을 다 뒤짐 → 사실상 O(n)</text>
+  <text x="280" y="330" fill="#8b949e" font-size="12">실측(상수 hashCode 키 8천 개): Comparable 아님 9,839 ns / Comparable 71 ns</text>
+  <text x="280" y="350" fill="#8b949e" font-size="12">6개 이하로 줄면 다시 리스트 (UNTREEIFY_THRESHOLD = 6)</text>
+  <!-- resize -->
+  <rect x="640" y="140" width="290" height="104" rx="8" fill="#161b22" stroke="#c084fc"/>
+  <text x="785" y="162" text-anchor="middle" fill="#c084fc" font-weight="600">리사이즈 — 원소 수 &gt; 용량 × 0.75</text>
+  <text x="655" y="184" fill="#e6edf3" font-size="12">테이블을 2배로, 모든 노드를 이동</text>
+  <text x="655" y="202" fill="#e6edf3" font-size="12">각 노드는 i 또는 i + 옛 길이 로만 간다</text>
+  <text x="655" y="220" fill="#8b949e" font-size="12">그 put 한 번: 8192→16384 에서 18,015 ns</text>
+  <text x="655" y="236" fill="#8b949e" font-size="12">(평소 put ≈ 31 ns, 580배)</text>
+  <rect x="640" y="260" width="290" height="70" rx="8" fill="#161b22" stroke="#ef4444"/>
+  <text x="785" y="282" text-anchor="middle" fill="#f87171" font-weight="600">계약 위반 사고</text>
+  <text x="655" y="302" fill="#e6edf3" font-size="12">equals 만 재정의 → 다른 버킷 → 못 찾음</text>
+  <text x="655" y="320" fill="#e6edf3" font-size="12">키의 해시 필드 변경 → 옛 버킷에 갇힘</text>
+</svg>

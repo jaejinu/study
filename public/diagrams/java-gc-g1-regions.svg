@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="500" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">G1 — 힙을 같은 크기 리전으로 나누고, 쓰레기가 많은 리전부터 치운다</text>
+  <g font-size="11" text-anchor="middle">
+    <!-- 8x4 grid of regions -->
+    <rect x="60" y="60" width="70" height="46" rx="4" fill="#238636" fill-opacity="0.35" stroke="#3fb950"/><text x="95" y="88" fill="#3fb950">E</text>
+    <rect x="140" y="60" width="70" height="46" rx="4" fill="#238636" fill-opacity="0.35" stroke="#3fb950"/><text x="175" y="88" fill="#3fb950">E</text>
+    <rect x="220" y="60" width="70" height="46" rx="4" fill="#8957e5" fill-opacity="0.3" stroke="#a371f7"/><text x="255" y="88" fill="#a371f7">O 90%</text>
+    <rect x="300" y="60" width="70" height="46" rx="4" fill="#30363d" stroke="#30363d"/><text x="335" y="88" fill="#8b949e">빈</text>
+    <rect x="380" y="60" width="70" height="46" rx="4" fill="#1f6feb" fill-opacity="0.3" stroke="#58a6ff"/><text x="415" y="88" fill="#58a6ff">S</text>
+    <rect x="460" y="60" width="70" height="46" rx="4" fill="#8957e5" fill-opacity="0.3" stroke="#f85149" stroke-width="2"/><text x="495" y="88" fill="#f85149">O 15%</text>
+    <rect x="540" y="60" width="150" height="46" rx="4" fill="#9e6a03" fill-opacity="0.35" stroke="#d29922"/><text x="615" y="88" fill="#d29922">H (거대 객체 ≥ 리전 ½)</text>
+    <rect x="700" y="60" width="70" height="46" rx="4" fill="#238636" fill-opacity="0.35" stroke="#3fb950"/><text x="735" y="88" fill="#3fb950">E</text>
+    <rect x="780" y="60" width="70" height="46" rx="4" fill="#30363d" stroke="#30363d"/><text x="815" y="88" fill="#8b949e">빈</text>
+    <rect x="60" y="114" width="70" height="46" rx="4" fill="#8957e5" fill-opacity="0.3" stroke="#a371f7"/><text x="95" y="142" fill="#a371f7">O 70%</text>
+    <rect x="140" y="114" width="70" height="46" rx="4" fill="#8957e5" fill-opacity="0.3" stroke="#f85149" stroke-width="2"/><text x="175" y="142" fill="#f85149">O 10%</text>
+    <rect x="220" y="114" width="70" height="46" rx="4" fill="#238636" fill-opacity="0.35" stroke="#3fb950"/><text x="255" y="142" fill="#3fb950">E</text>
+    <rect x="300" y="114" width="70" height="46" rx="4" fill="#30363d" stroke="#30363d"/><text x="335" y="142" fill="#8b949e">빈</text>
+    <rect x="380" y="114" width="70" height="46" rx="4" fill="#8957e5" fill-opacity="0.3" stroke="#a371f7"/><text x="415" y="142" fill="#a371f7">O 85%</text>
+    <rect x="460" y="114" width="70" height="46" rx="4" fill="#238636" fill-opacity="0.35" stroke="#3fb950"/><text x="495" y="142" fill="#3fb950">E</text>
+    <rect x="540" y="114" width="70" height="46" rx="4" fill="#8957e5" fill-opacity="0.3" stroke="#f85149" stroke-width="2"/><text x="575" y="142" fill="#f85149">O 20%</text>
+    <rect x="620" y="114" width="70" height="46" rx="4" fill="#30363d" stroke="#30363d"/><text x="655" y="142" fill="#8b949e">빈</text>
+    <rect x="700" y="114" width="70" height="46" rx="4" fill="#1f6feb" fill-opacity="0.3" stroke="#58a6ff"/><text x="735" y="142" fill="#58a6ff">S</text>
+    <rect x="780" y="114" width="70" height="46" rx="4" fill="#8957e5" fill-opacity="0.3" stroke="#a371f7"/><text x="815" y="142" fill="#a371f7">O 95%</text>
+  </g>
+  <text x="870" y="90" fill="#8b949e" font-size="11">E Eden</text><text x="870" y="106" fill="#8b949e" font-size="11">S Survivor</text><text x="870" y="122" fill="#8b949e" font-size="11">O Old (살아 있는 비율)</text><text x="870" y="138" fill="#8b949e" font-size="11">H Humongous</text>
+  <text x="60" y="186" fill="#f85149" font-size="12">빨간 테두리 = 살아 있는 객체가 적은 Old 리전 → 혼합 GC 의 Collection Set 후보 (Garbage-First 라는 이름의 유래)</text>
+
+  <rect x="40" y="210" width="880" height="270" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="60" y="236" fill="#e6edf3" font-weight="600">한 사이클</text>
+  <g font-size="12">
+    <rect x="60" y="252" width="190" height="96" rx="8" fill="#0d1117" stroke="#3fb950"/>
+    <text x="155" y="274" text-anchor="middle" fill="#3fb950" font-weight="600">① Young GC (STW)</text>
+    <text x="155" y="296" text-anchor="middle" fill="#8b949e">모든 E·S 리전의 생존 객체를</text>
+    <text x="155" y="314" text-anchor="middle" fill="#8b949e">빈 리전으로 복사(evacuation)</text>
+    <text x="155" y="334" text-anchor="middle" fill="#e6edf3">실측 0.5~1ms</text>
+    <rect x="270" y="252" width="200" height="96" rx="8" fill="#0d1117" stroke="#58a6ff"/>
+    <text x="370" y="274" text-anchor="middle" fill="#58a6ff" font-weight="600">② 동시 표시 (concurrent)</text>
+    <text x="370" y="296" text-anchor="middle" fill="#8b949e">힙 점유가 IHOP(45%)를 넘으면</text>
+    <text x="370" y="314" text-anchor="middle" fill="#8b949e">앱과 함께 Old 의 생존 객체 표시</text>
+    <text x="370" y="334" text-anchor="middle" fill="#e6edf3">Remark·Cleanup 은 짧은 STW</text>
+    <rect x="490" y="252" width="200" height="96" rx="8" fill="#0d1117" stroke="#f85149"/>
+    <text x="590" y="274" text-anchor="middle" fill="#f85149" font-weight="600">③ 혼합 GC (STW)</text>
+    <text x="590" y="296" text-anchor="middle" fill="#8b949e">Young + 쓰레기 많은 Old 일부를</text>
+    <text x="590" y="314" text-anchor="middle" fill="#8b949e">일시정지 목표 안에서 나눠 치움</text>
+    <text x="590" y="334" text-anchor="middle" fill="#e6edf3">MaxGCPauseMillis=200 (기본)</text>
+    <rect x="710" y="252" width="190" height="96" rx="8" fill="#0d1117" stroke="#d29922"/>
+    <text x="805" y="274" text-anchor="middle" fill="#d29922" font-weight="600">④ 실패하면 Full GC</text>
+    <text x="805" y="296" text-anchor="middle" fill="#8b949e">복사할 빈 리전이 없거나</text>
+    <text x="805" y="314" text-anchor="middle" fill="#8b949e">할당 속도를 못 따라가면</text>
+    <text x="805" y="334" text-anchor="middle" fill="#e6edf3">전체 압축, 수백 ms~초</text>
+  </g>
+  <text x="60" y="380" fill="#e6edf3" font-weight="600">실측 (java-gc-compare · 256MB 힙 · CPU 2 · 같은 할당 부하)</text>
+  <text x="60" y="404" fill="#e6edf3">Serial  80회 · 최대 31.95ms · 합계 216.9ms · 실행 356ms</text>
+  <text x="60" y="426" fill="#e6edf3">G1     104회 · 최대  6.49ms · 합계 176.2ms · 실행 335ms</text>
+  <text x="60" y="448" fill="#e6edf3">ZGC   222회 · 최대  1.35ms · 합계  33.5ms · 실행 572ms  ← 멈춤은 짧지만 동시 수집 비용으로 전체 시간은 늘었다</text>
+  <text x="60" y="470" fill="#8b949e" font-size="12">리전 크기 1~32MB(힙/2048 기준 자동). 거대 객체가 많으면 -XX:G1HeapRegionSize 를 키운다.</text>
+</svg>

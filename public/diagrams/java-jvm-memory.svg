@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="520" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">JVM 프로세스의 메모리 — 힙은 일부일 뿐이다 (RSS = 힙 + 힙 밖)</text>
+  <rect x="30" y="50" width="900" height="440" rx="12" fill="#161b22" stroke="#30363d"/>
+  <text x="50" y="74" fill="#8b949e">java 프로세스 (컨테이너 memory.max 와 비교해야 하는 것은 이 전체다)</text>
+
+  <rect x="50" y="90" width="520" height="230" rx="10" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="70" y="114" fill="#58a6ff" font-weight="600">Java 힙 (-Xmx · MaxRAMPercentage)</text>
+  <rect x="70" y="128" width="230" height="170" rx="8" fill="#1f6feb" fill-opacity="0.18" stroke="#58a6ff"/>
+  <text x="185" y="150" text-anchor="middle" fill="#e6edf3" font-weight="600">Young</text>
+  <rect x="85" y="162" width="110" height="64" rx="5" fill="#0d1117" stroke="#3fb950"/>
+  <text x="140" y="190" text-anchor="middle" fill="#3fb950">Eden</text>
+  <text x="140" y="208" text-anchor="middle" fill="#8b949e" font-size="11">TLAB 들 (스레드별)</text>
+  <rect x="205" y="162" width="80" height="30" rx="5" fill="#0d1117" stroke="#30363d"/>
+  <text x="245" y="182" text-anchor="middle" fill="#8b949e" font-size="12">Survivor 0</text>
+  <rect x="205" y="198" width="80" height="28" rx="5" fill="#0d1117" stroke="#30363d"/>
+  <text x="245" y="217" text-anchor="middle" fill="#8b949e" font-size="12">Survivor 1</text>
+  <text x="185" y="252" text-anchor="middle" fill="#8b949e" font-size="11">대부분의 객체는 여기서 죽는다</text>
+  <text x="185" y="270" text-anchor="middle" fill="#8b949e" font-size="11">(약한 세대 가설)</text>
+  <rect x="320" y="128" width="230" height="170" rx="8" fill="#8957e5" fill-opacity="0.15" stroke="#a371f7"/>
+  <text x="435" y="150" text-anchor="middle" fill="#e6edf3" font-weight="600">Old (Tenured)</text>
+  <text x="435" y="190" text-anchor="middle" fill="#a371f7" font-size="12">여러 번 살아남은 객체</text>
+  <text x="435" y="210" text-anchor="middle" fill="#a371f7" font-size="12">캐시·세션·커넥션 풀</text>
+  <text x="435" y="250" text-anchor="middle" fill="#8b949e" font-size="11">G1·ZGC 에선 연속 공간이 아니라</text>
+  <text x="435" y="268" text-anchor="middle" fill="#8b949e" font-size="11">리전(region) 들의 집합</text>
+
+  <rect x="590" y="90" width="320" height="230" rx="10" fill="#0d1117" stroke="#d29922"/>
+  <text x="610" y="114" fill="#d29922" font-weight="600">힙 밖 (네이티브 메모리)</text>
+  <text x="610" y="142" fill="#e6edf3">Metaspace</text><text x="890" y="142" text-anchor="end" fill="#8b949e" font-size="12">클래스 메타데이터</text>
+  <text x="610" y="168" fill="#e6edf3">Code Cache</text><text x="890" y="168" text-anchor="end" fill="#8b949e" font-size="12">JIT 이 만든 기계어</text>
+  <text x="610" y="194" fill="#e6edf3">Thread 스택</text><text x="890" y="194" text-anchor="end" fill="#8b949e" font-size="12">스레드 × -Xss(1MB 예약)</text>
+  <text x="610" y="220" fill="#e6edf3">GC 자료구조</text><text x="890" y="220" text-anchor="end" fill="#8b949e" font-size="12">카드 테이블·리멤버드 셋</text>
+  <text x="610" y="246" fill="#e6edf3">Direct ByteBuffer</text><text x="890" y="246" text-anchor="end" fill="#8b949e" font-size="12">Netty·NIO (MaxDirectMemorySize)</text>
+  <text x="610" y="272" fill="#e6edf3">Symbol · Arena · malloc</text><text x="890" y="272" text-anchor="end" fill="#8b949e" font-size="12">JNI·zlib·glibc 아레나</text>
+  <text x="750" y="304" text-anchor="middle" fill="#d29922" font-size="12">-XX:NativeMemoryTracking=summary 로 본다</text>
+
+  <rect x="50" y="340" width="860" height="132" rx="10" fill="#0d1117" stroke="#f85149"/>
+  <text x="70" y="364" fill="#f85149" font-weight="600">두 종류의 '메모리 부족' (실험 java-container-memory, 256MB 컨테이너)</text>
+  <text x="70" y="392" fill="#e6edf3">• 힙이 먼저 찬다 → java.lang.OutOfMemoryError: Java heap space · 종료 코드 1 · 스택 트레이스·힙 덤프 가능</text>
+  <text x="70" y="416" fill="#e6edf3">• 프로세스 전체(힙+힙 밖)가 cgroup memory.max 를 넘는다 → 커널 OOM 킬러 SIGKILL · 137 · OOMKilled=true · 흔적 없음</text>
+  <text x="70" y="440" fill="#8b949e">규칙: -Xmx ≈ 컨테이너 한도의 50~75%. 나머지는 힙 밖 몫이다. 스레드가 많거나 Netty 를 쓰면 더 남긴다.</text>
+  <text x="70" y="460" fill="#8b949e">실측 NMT(128MB 힙): reserved 1.5GB 중 Class 1GB(압축 클래스 공간 예약)·Code 253MB 예약 — 예약(reserved) ≠ 실제 사용(committed 63MB)</text>
+</svg>
