@@ -47,3 +47,6 @@ reports/
 # 복제/클러스터 실습 런타임 파일
 redis/ha/run/
 redis/cluster/run/
+
+# 앱 로그 (Alloy 가 수집)
+logs/

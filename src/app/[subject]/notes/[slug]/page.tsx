@@ -8,6 +8,7 @@ import { getNoteChecks, isRead } from "@/lib/progress";
 import { ReadToggle } from "@/components/ProgressControls";
 import { Flashcards } from "@/components/Flashcards";
 import { loadQuiz } from "@/lib/quiz";
+import { logger } from "@/lib/log";
 import { getSubject } from "@/lib/subjects";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,7 @@ export default async function NotePage({ params }: Props) {
   const [note, all, read, checked, quiz] = await Promise.all([getNote(subject.id, slug), listNotes(subject.id), isRead(subject.id, slug), getNoteChecks(subject.id, slug), loadQuiz(subject.id)]);
   const cards = quiz.filter((c) => c.note === slug);
   if (!note) notFound();
+  logger.info("note.view", { subject: subject.id, slug, noteLevel: note.level });
   const idx = all.findIndex((n) => n.slug === slug);
   const prev = all[idx - 1];
   const next = all[idx + 1];

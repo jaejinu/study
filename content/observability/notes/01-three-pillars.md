@@ -49,7 +49,18 @@ open http://localhost:13000/d/study-redis
 pnpm obs:down
 ```
 
-로그·트레이스는 이 프로젝트에 스택을 두지 않았다 (Loki/Tempo 는 노트에서 다룬다). 사용자의 다른 프로젝트(ticketing)에 LGTM 스택이 이미 떠 있다면 그 Grafana 에 이 Prometheus 를 데이터소스로 추가해 볼 수 있다.
+```
+Redis ──▶ redis_exporter ──┐
+                           ├──▶ Prometheus (메트릭) ─┐
+Study 앱 /api/metrics ─────┘                        │
+Study 앱 logs/app.jsonl ──▶ Alloy ──▶ Loki (로그) ───┼──▶ Grafana (:13000)
+컨테이너 stdout ──────────▶ Alloy ──┘                │
+Study 앱 OTel SDK ──OTLP──▶ Tempo (트레이스) ────────┘
+```
+
+![LGTM 파이프라인](/diagrams/observability-pipeline.svg)
+
+세 신호 모두 로컬에서 돈다. 앱 트레이스는 `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:14318 pnpm dev` 로 켠다. [로그 노트](/observability/notes/05-logging-loki), [트레이싱 노트](/observability/notes/06-tracing-otel) 참고.
 
 ## 설계 원칙
 

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 330" font-family="ui-sans-serif, system-ui, 'Apple SD Gothic Neo', sans-serif" font-size="13">
+  <rect width="900" height="330" fill="#0d1117"/>
+  <text x="30" y="34" fill="#e6edf3" font-weight="600" font-size="15">트레이스 한 개의 해부 — 노트 페이지 요청 (trace_id = ac85…edaed)</text>
+  <text x="30" y="54" fill="#8b98a9" font-size="12">가로 = 시간. 각 막대가 span. 부모 span 안에 자식 span 이 중첩된다. 같은 trace_id 가 로그 줄에도 찍힌다.</text>
+  <!-- time axis -->
+  <g stroke="#243040"><line x1="230" y1="80" x2="870" y2="80"/><line x1="230" y1="80" x2="230" y2="300"/></g>
+  <g fill="#8b98a9" font-size="11"><text x="230" y="74">0ms</text><text x="390" y="74">40ms</text><text x="550" y="74">80ms</text><text x="710" y="74">120ms</text><text x="840" y="74">160ms</text></g>
+  <!-- spans -->
+  <g font-size="12">
+    <rect x="232" y="92" width="620" height="22" rx="4" fill="#326ce5"/><text x="30" y="107" fill="#e6edf3">GET /[subject]/notes/[slug]</text><text x="240" y="107" fill="#fff">server span (study-app) 155ms</text>
+    <rect x="240" y="124" width="60" height="20" rx="4" fill="#58a6ff" opacity=".8"/><text x="48" y="138" fill="#8b98a9">  resolve page components</text>
+    <rect x="306" y="124" width="120" height="20" rx="4" fill="#58a6ff" opacity=".8"/><text x="310" y="138" fill="#fff">render (RSC)</text>
+    <rect x="320" y="154" width="26" height="18" rx="4" fill="#ff4438" opacity=".9"/><text x="48" y="168" fill="#8b98a9">    ioredis SISMEMBER</text>
+    <rect x="350" y="154" width="22" height="18" rx="4" fill="#ff4438" opacity=".9"/><text x="48" y="186" fill="#8b98a9">    ioredis HGETALL</text>
+    <rect x="376" y="154" width="40" height="18" rx="4" fill="#d29922" opacity=".9"/><text x="48" y="204" fill="#8b98a9">    fs.readFile (노트 md)</text>
+    <rect x="430" y="124" width="300" height="20" rx="4" fill="#58a6ff" opacity=".8"/><text x="436" y="138" fill="#fff">markdown → HTML (rehype-highlight)</text>
+    <rect x="736" y="124" width="110" height="20" rx="4" fill="#58a6ff" opacity=".8"/><text x="742" y="138" fill="#fff">stream response</text>
+  </g>
+  <!-- log line -->
+  <rect x="30" y="232" width="840" height="56" rx="8" fill="#121821" stroke="#243040"/>
+  <text x="44" y="254" fill="#3fb950" font-weight="600" font-size="12">로그 (Loki)</text>
+  <text x="44" y="276" fill="#e6edf3" font-family="ui-monospace, Menlo, monospace" font-size="11">{"ts":"…","level":"info","msg":"note.view","service":"study-app","trace_id":"ac85e4e3…edaed","span_id":"ebcf53cd…","subject":"redis","slug":"06-pipelining"}</text>
+  <path d="M 330 232 Q 330 215 300 215 Q 260 215 240 118" fill="none" stroke="#3fb950" stroke-dasharray="4 3"/>
+  <text x="590" y="312" fill="#8b98a9" font-size="11.5">Grafana: 로그의 trace_id 클릭 → 이 트레이스 / 트레이스에서 "Logs for this span" → 같은 시간대 로그</text>
+</svg>

@@ -66,7 +66,11 @@ Grafana Alerting(통합) 또는 Prometheus rules + Alertmanager. 라우팅: seve
 (sum(rate(http_requests_total{status=~"5.."}[1h])) / sum(rate(http_requests_total[1h]))) > 14.4 * 0.001
 ```
 
-## 로그·트레이스 백엔드 (참고)
+## 로그·트레이스 백엔드
+
+이 프로젝트는 Loki + Alloy(로그), Tempo + OpenTelemetry(트레이스) 까지 `pnpm obs:up` 에 포함했다. 자세한 내용은 [로그 노트](/observability/notes/05-logging-loki) 와 [트레이싱 노트](/observability/notes/06-tracing-otel).
+
+### 참고 비교
 
 | 신호 | 경량 선택 | 특징 |
 |---|---|---|

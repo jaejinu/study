@@ -88,6 +88,10 @@ services:
     image: prom/prometheus:v3.2.1
     container_name: study-prometheus
     profiles: ["observability"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-remote-write-receiver     # Tempo metrics-generator 가 span 메트릭을 밀어 넣는다
+      - --enable-feature=exemplar-storage
     ports:
       - "127.0.0.1:19090:9090"
     volumes:
@@ -103,6 +107,42 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+  # 로그: Loki (저장) + Alloy (수집: 컨테이너 stdout, 앱 logs/app.jsonl)
+  loki:
+    image: grafana/loki:3.4.2
+    container_name: study-loki
+    profiles: ["observability"]
+    command: ["-config.file=/etc/loki/config.yaml"]
+    ports:
+      - "127.0.0.1:13100:3100"
+    volumes:
+      - ./observability/loki.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+  alloy:
+    image: grafana/alloy:v1.7.5
+    container_name: study-alloy
+    profiles: ["observability"]
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
+    ports:
+      - "127.0.0.1:12346:12345"
+    volumes:
+      - ./observability/config.alloy:/etc/alloy/config.alloy:ro
+      - ./logs:/app-logs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on: [loki]
+  # 트레이스: Tempo (OTLP 수신). 앱은 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:14318 로 보낸다
+  tempo:
+    image: grafana/tempo:2.7.2
+    container_name: study-tempo
+    profiles: ["observability"]
+    command: ["-config.file=/etc/tempo.yaml"]
+    ports:
+      - "127.0.0.1:13200:3200"
+      - "127.0.0.1:14317:4317"
+      - "127.0.0.1:14318:4318"
+    volumes:
+      - ./observability/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
   grafana:
     image: grafana/grafana:11.6.0
     container_name: study-grafana
@@ -132,3 +172,5 @@ services:
 volumes:
   redis-data:
   pg-data:
+  loki-data:
+  tempo-data:

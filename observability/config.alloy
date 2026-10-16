@@ -1,0 +1,70 @@
+// Grafana Alloy: 로그 수집기. 두 소스를 Loki 로 보낸다. 관측성 노트 05.
+//  1) 이 compose 의 컨테이너 stdout (docker 소켓)
+//  2) 호스트에서 pnpm dev 로 실행 중인 앱이 쓰는 logs/app.jsonl
+
+logging { level = "warn" }
+
+// ---- 1) Docker 컨테이너 로그 ----
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+  // 이 compose 프로젝트(study)의 컨테이너만 수집 — 같은 Docker 의 다른 프로젝트는 제외
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex         = "study"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "project"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  labels     = { source = "docker" }
+  forward_to = [loki.write.default.receiver]
+}
+
+// ---- 2) 앱 JSON 로그 파일 ----
+local.file_match "app" {
+  path_targets = [{ __path__ = "/app-logs/*.jsonl", service = "study-app", source = "file" }]
+}
+
+loki.source.file "app" {
+  targets    = local.file_match.app.targets
+  forward_to = [loki.process.app.receiver]
+}
+
+// JSON 에서 level 과 trace_id 를 뽑아 구조화 메타데이터/라벨로
+loki.process "app" {
+  stage.json {
+    expressions = { level = "level", trace_id = "trace_id", msg = "msg" }
+  }
+  stage.labels {
+    values = { level = "" }          // level 은 값이 적으니 라벨로 OK (info/warn/error)
+  }
+  stage.structured_metadata {
+    values = { trace_id = "" }       // trace_id 는 고카디널리티 → 라벨이 아니라 구조화 메타데이터
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

@@ -58,11 +58,14 @@ export async function checkPostgres(): Promise<EnvStatus> {
 }
 
 export async function checkObservability(): Promise<EnvStatus> {
-  const [prom, graf, targets, metrics] = await Promise.all([
+  const [prom, graf, targets, metrics, loki, tempo, alloy] = await Promise.all([
     fetchText("http://127.0.0.1:19090/-/ready"),
     fetchText("http://127.0.0.1:13000/api/health"),
     fetchText("http://127.0.0.1:19090/api/v1/targets"),
     fetchText("http://127.0.0.1:3000/api/metrics"),
+    fetchText("http://127.0.0.1:13100/ready"),
+    fetchText("http://127.0.0.1:13200/ready"),
+    fetchText("http://127.0.0.1:12346/-/ready"),
   ]);
   const lines: string[] = [];
   let up = 0;
@@ -81,9 +84,19 @@ export async function checkObservability(): Promise<EnvStatus> {
   return {
     ok,
     title: ok ? "Prometheus · Grafana 실행 중" : "관측성 스택이 꺼져 있습니다",
-    lines: ok ? [`스크레이프 타깃 ${up}/${total} up`, ...lines, `이 앱의 /api/metrics: ${metrics.ok ? "응답 OK" : "dev 서버 없음"}`] : [`Prometheus ${prom.ok ? "OK" : "없음"} · Grafana ${graf.ok ? "OK" : "없음"}`],
+    lines: ok
+      ? [`스크레이프 타깃 ${up}/${total} up`, ...lines, `이 앱의 /api/metrics: ${metrics.ok ? "응답 OK" : "dev 서버 없음"}`, `로그: Loki ${loki.ok ? "ready" : "없음"} · Alloy ${alloy.ok ? "ready" : "없음"}`, `트레이스: Tempo ${tempo.ok ? "ready" : "없음"} · 앱 내보내기 ${process.env.OTEL_EXPORTER_OTLP_ENDPOINT ? "ON (" + process.env.OTEL_EXPORTER_OTLP_ENDPOINT + ")" : "OFF — OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:14318 pnpm dev"}`]
+      : [`Prometheus ${prom.ok ? "OK" : "없음"} · Grafana ${graf.ok ? "OK" : "없음"} · Loki ${loki.ok ? "OK" : "없음"} · Tempo ${tempo.ok ? "OK" : "없음"}`],
     hint: ok ? undefined : "pnpm obs:up",
-    links: ok ? [{ label: "Prometheus", href: "http://localhost:19090/targets" }, { label: "Grafana 대시보드", href: "http://localhost:13000/d/study-redis" }, { label: "/api/metrics", href: "http://localhost:3000/api/metrics" }] : undefined,
+    links: ok
+      ? [
+          { label: "Prometheus", href: "http://localhost:19090/targets" },
+          { label: "Grafana 대시보드", href: "http://localhost:13000/d/study-redis" },
+          { label: "Grafana Explore (로그)", href: "http://localhost:13000/explore?schemaVersion=1&panes=%7B%22a%22:%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22expr%22:%22%7Bservice%3D%5C%22study-app%5C%22%7D%22%7D%5D%7D%7D" },
+          { label: "Grafana Explore (트레이스)", href: "http://localhost:13000/explore?schemaVersion=1&panes=%7B%22a%22:%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22queryType%22:%22traceqlSearch%22%7D%5D%7D%7D" },
+          { label: "/api/metrics", href: "http://localhost:3000/api/metrics" },
+        ]
+      : undefined,
   };
 }
 
