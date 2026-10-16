@@ -2,7 +2,7 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import { searchAll, type SearchHit } from "@/lib/search";
+import { searchSmart, type SearchHit } from "@/lib/search";
 
 export interface PaletteHit {
   kind: "note" | "lab" | "term";
@@ -12,12 +12,12 @@ export interface PaletteHit {
   snippet: string;
 }
 
-/** 커맨드 팔레트용 즉시 검색: 노트·실험(searchAll) + 용어집 */
+/** 커맨드 팔레트용 즉시 검색: 노트·실험(searchSmart — 모든 단어 일치가 없으면 OR 폴백, 조사 제거) + 용어집 */
 export async function paletteSearchAction(q: string): Promise<PaletteHit[]> {
   const query = q.trim().slice(0, 80);
   if (query.length < 1) return [];
   const [hits, glossary] = await Promise.all([
-    searchAll(query, 10),
+    searchSmart(query, 10),
     fs
       .readFile(path.join(process.cwd(), "content", "glossary.json"), "utf8")
       .then((raw) => JSON.parse(raw) as { term: string; subject: string; def: string; link?: string }[])
