@@ -100,15 +100,15 @@ export function RunSummary({ result, previous }: { result: RunLike; previous: Sa
   const delta = previous ? result.durationMs - previous.durationMs : null;
   const pct = previous && previous.durationMs > 0 && delta !== null ? Math.round((delta / previous.durationMs) * 100) : null;
   return (
-    <div className={`flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border px-4 py-3 ${result.ok ? "border-ok/40 bg-ok/5" : "border-accent/40 bg-accent-soft"}`}>
-      <span className={`text-base font-semibold ${result.ok ? "text-ok" : "text-accent"}`}>{result.ok ? "✓ 성공" : "✗ 실패"}</span>
+    <div className={`flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border px-4 py-3 ${result.ok ? "border-ok/40 bg-ok/5" : "border-danger/40 bg-danger/10"}`}>
+      <span className={`text-base font-semibold ${result.ok ? "text-ok" : "text-danger"}`}>{result.ok ? "✓ 성공" : "✗ 실패"}</span>
       {c.total > 0 && (
         <span className="text-sm">
           검증 <span className="font-mono text-ok">{c.pass}</span>
           {c.fail > 0 && (
             <>
               {" "}
-              / <span className="font-mono text-accent">✗ {c.fail}</span>
+              / <span className="font-mono text-danger">✗ {c.fail}</span>
             </>
           )}{" "}
           <span className="text-muted">/ {c.total}</span>
@@ -121,7 +121,7 @@ export function RunSummary({ result, previous }: { result: RunLike; previous: Sa
         <span className="text-xs text-muted" title={`지난 실행: ${new Date(previous.ranAt).toLocaleString("ko-KR")}`}>
           지난번 {previous.ok ? "성공" : "실패"} · {fmt(previous.durationMs)}
           {pct !== null && Math.abs(pct) >= 5 && <span className={delta! < 0 ? "text-ok" : "text-warn"}> ({pct > 0 ? "+" : ""}{pct}%)</span>}
-          {previous.ok !== result.ok && <span className={result.ok ? "text-ok" : "text-accent"}> · 결과가 바뀜</span>}
+          {previous.ok !== result.ok && <span className={result.ok ? "text-ok" : "text-danger"}> · 결과가 바뀜</span>}
         </span>
       )}
       <span className="ml-auto text-xs text-muted">{new Date(result.ranAt).toLocaleTimeString("ko-KR")}</span>

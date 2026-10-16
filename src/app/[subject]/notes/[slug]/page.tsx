@@ -13,7 +13,7 @@ import { cardKey, getNoteTime, getQuizStats } from "@/lib/study";
 import { StudyTimer } from "@/components/StudyTimer";
 import { Toc, TocPanel } from "@/components/Toc";
 import { RecentTracker } from "@/components/shell/recent";
-import { ReadingProgress } from "@/components/note/NoteParts";
+import { NoteReader } from "@/components/NoteReader";
 import { logger } from "@/lib/log";
 import { metrics } from "@/lib/metrics";
 import { getSubject } from "@/lib/subjects";
@@ -66,8 +66,7 @@ export default async function NotePage({ params }: Props) {
   const checklistTotal = (note.content.match(/^\s*- \[[ xX]\]/gm) ?? []).length;
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[minmax(0,1fr)_230px]">
-      <ReadingProgress />
+    <NoteReader location={{href:`${base}/${slug}`, title:note.title, subject:subject.name, chapter:idx+1}}><div className="reader-layout">
       <article className="min-w-0">
         <RecentTracker kind="note" subject={subject.id} href={`${base}/${slug}`} title={note.title} />
         <div className="mb-4 flex items-center gap-2 text-xs text-muted">
@@ -103,7 +102,7 @@ export default async function NotePage({ params }: Props) {
         </div>
 
         {note.headings.length > 2 && (
-          <details className="mt-5 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm lg:hidden">
+          <details className="reader-mobile-toc mt-5 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm lg:hidden">
             <summary className="cursor-pointer select-none font-medium">목차 ({note.headings.filter((h) => h.depth === 2).length}개 섹션)</summary>
             <div className="mt-2">
               <Toc headings={note.headings} />
@@ -190,8 +189,8 @@ export default async function NotePage({ params }: Props) {
         </nav>
       </article>
 
-      <aside className="hidden lg:block">
-        <div className="sticky top-16">
+      <aside className="reader-aside">
+        <div>
           <TocPanel headings={note.headings} />
           {note.tags.length > 0 && (
             <div className="mt-5 flex flex-wrap gap-1.5">
@@ -204,6 +203,6 @@ export default async function NotePage({ params }: Props) {
           )}
         </div>
       </aside>
-    </div>
+    </div></NoteReader>
   );
 }

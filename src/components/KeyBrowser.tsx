@@ -130,7 +130,7 @@ export function KeyBrowser() {
                 DEL
               </Button>
             </div>
-            <pre className="max-h-[480px] overflow-auto rounded-md code-surface p-3 text-xs">
+            <pre className="max-h-[480px] overflow-auto rounded-md bg-code p-3 text-xs">
               {typeof selected.value === "string" ? selected.value : JSON.stringify(selected.value, null, 2)}
             </pre>
             {selected.truncated && <p className="text-xs text-muted">일부만 표시됨 (최대 200개)</p>}

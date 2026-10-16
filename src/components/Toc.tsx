@@ -53,7 +53,7 @@ export function Toc({ headings }: { headings: Heading[] }) {
     <ul className="toc space-y-0.5 text-[13px]">
       {headings.map((h) => (
         <li key={h.id} className={h.depth === 3 ? "pl-4 text-[12px]" : ""}>
-          <a href={`#${h.id}`} className={`block border-l-2 py-1 pl-3 leading-snug transition-colors ${active === h.id ? "border-accent text-foreground" : "border-border text-muted hover:border-muted hover:text-foreground"}`}>
+          <a href={`#${h.id}`} className={`block border-l-2 rounded-r-md py-2 pl-3 leading-snug transition-colors ${active === h.id ? "border-accent bg-accent-soft text-accent" : "border-border text-muted hover:border-muted hover:text-foreground"}`}>
             {h.text}
           </a>
         </li>

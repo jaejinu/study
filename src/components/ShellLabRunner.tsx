@@ -100,7 +100,7 @@ export function ShellLabRunner({ subject, id }: { subject: string; id: string })
       </div>
       {pending && <RunningIndicator previousMs={previous?.durationMs} />}
       {result && !pending && <RunSummary result={result} previous={previous} />}
-      {result?.error && <pre className="whitespace-pre-wrap rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-xs text-accent">{result.error}</pre>}
+      {result?.error && <pre className="whitespace-pre-wrap rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">{result.error}</pre>}
       {result && result.steps.length > 0 && (
         <div className="rounded-lg border border-border">
           {result.steps.map((s, i) => (

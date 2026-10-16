@@ -128,7 +128,7 @@ export function AskPanel() {
         <button
           onClick={() => setOpen(true)}
           title="AI 에게 묻기 (⌘/)"
-          className="fixed bottom-[calc(4.25rem+env(safe-area-inset-bottom))] right-4 z-40 flex md:bottom-5 md:right-5 items-center gap-2 rounded-full border border-accent/40 bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-black/40 transition-all hover:bg-accent/90"
+          className="ask-launcher fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-accent/40 bg-accent px-4 py-2.5 text-sm font-medium text-accent-contrast shadow-lg shadow-black/40 transition-all hover:bg-accent/90"
         >
           <span>✦</span>
           <span className="hidden sm:inline">AI 에게 묻기</span>
@@ -196,7 +196,7 @@ OPENAI_API_KEY=ollama OPENAI_BASE_URL=http://localhost:11434/v1 OPENAI_MODEL=qwe
                       <div key={j} className="mt-2 rounded-lg border border-accent/30 bg-accent-soft/40 p-2.5 text-[12.5px]">
                         <div className="font-medium text-accent">⚗ 실험 제안: {t.proposal!.title}</div>
                         <div className="mt-0.5 text-muted">{t.proposal!.reason}</div>
-                        <Link href={t.proposal!.href} className="mt-1.5 inline-block rounded bg-accent px-2 py-1 text-[12px] text-white hover:bg-accent/90">
+                        <Link href={t.proposal!.href} className="mt-1.5 inline-block rounded bg-accent px-2 py-1 text-[12px] text-accent-contrast hover:bg-accent/90">
                           실험실에서 열기 →
                         </Link>
                       </div>
@@ -250,7 +250,7 @@ OPENAI_API_KEY=ollama OPENAI_BASE_URL=http://localhost:11434/v1 OPENAI_MODEL=qwe
                   중단
                 </button>
               ) : (
-                <button type="submit" disabled={!input.trim() || !cfg?.configured} className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50">
+                <button type="submit" disabled={!input.trim() || !cfg?.configured} className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-contrast hover:bg-accent/90 disabled:opacity-50">
                   보내기
                 </button>
               )}

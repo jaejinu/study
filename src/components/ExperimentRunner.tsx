@@ -17,7 +17,7 @@ export function ExperimentRunner({ id }: { id: string }) {
       </div>
       {pending && <RunningIndicator previousMs={previous?.durationMs} />}
       {result && !pending && <RunSummary result={result} previous={previous} />}
-      {result?.error && <div className="rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-sm text-accent">{result.error}</div>}
+      {result?.error && <div className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{result.error}</div>}
       {result && <StepsTable steps={result.steps} />}
     </div>
   );

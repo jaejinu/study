@@ -4,7 +4,8 @@ import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import rehypeHighlight from "rehype-highlight";
 import { TaskCheckbox } from "./ProgressControls";
-import { CodeBlock, TableWrap, ZoomImage } from "./note/NoteParts";
+import { CodeBlock } from "./CodeBlock";
+import { TableWrap, ZoomImage } from "./note/NoteParts";
 
 interface HastNode {
   type: string;

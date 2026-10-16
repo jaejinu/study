@@ -42,7 +42,7 @@ export default async function TestsPage() {
                         <span className="font-mono text-xs text-muted">{t.duration}ms</span>
                       </div>
                       {t.failureMessages.length > 0 && (
-                        <pre className="mt-2 overflow-x-auto rounded code-surface p-3 text-xs text-accent">{t.failureMessages.join("\n")}</pre>
+                        <pre className="mt-2 overflow-x-auto rounded bg-code p-3 text-xs text-accent">{t.failureMessages.join("\n")}</pre>
                       )}
                     </li>
                   ))}

@@ -1,33 +1,29 @@
 import Link from "next/link";
-import { experiments } from "@/experiments";
-import { listNotes, type NoteMeta } from "@/lib/notes";
-import { listLab } from "@/lab/registry";
-import { getProgress, getReadCounts } from "@/lib/progress";
-import { subjects, subjectsByTrack } from "@/lib/subjects";
+import { listNotes } from "@/lib/notes";
+import { getReadCounts } from "@/lib/progress";
+import { subjects } from "@/lib/subjects";
 import { loadQuiz } from "@/lib/quiz";
-import { cardKey, getQuizStats, getWeeklyStudy, summarizeReview } from "@/lib/study";
+import {
+  cardKey,
+  getQuizStats,
+  getWeeklyStudy,
+  summarizeReview,
+} from "@/lib/study";
 import { WeeklyStudyCard } from "@/components/WeeklyStudy";
-import { ContinueLearning, type NextUp } from "@/components/home/ContinueLearning";
-import { DensityToggle, TrackSection, type TrackData } from "@/components/home/TrackGrid";
-
+import { ContinueLearning } from "@/components/ContinueLearning";
 export const dynamic = "force-dynamic";
-
-/** 처음 온 사람에게 권하는 시작점 */
-const STARTERS: { subject: string; slug: string }[] = [
-  { subject: "redis", slug: "01-redis-overview" },
-  { subject: "docker", slug: "01-docker-overview" },
-  { subject: "observability", slug: "01-three-pillars" },
-];
-
 export default async function Home() {
-  const [rows, weekly, readCounts] = await Promise.all([
+  const [all, weekly, reads] = await Promise.all([
     Promise.all(
       subjects.map(async (s) => {
-        const [notes, quiz, stats] = await Promise.all([listNotes(s.id), loadQuiz(s.id), getQuizStats(s.id)]);
+        const [notes, quiz, stats] = await Promise.all([
+          listNotes(s.id),
+          loadQuiz(s.id),
+          getQuizStats(s.id),
+        ]);
         return {
-          id: s.id,
+          ...s,
           notes,
-          experiments: s.id === "redis" ? experiments.length : listLab(s.id).length,
           due: summarizeReview(
             quiz.map((c) => cardKey(c.note, c.q)),
             stats,
@@ -38,76 +34,87 @@ export default async function Home() {
     getWeeklyStudy(),
     getReadCounts(),
   ]);
-  const notesOf = (id: string): NoteMeta[] => rows.find((r) => r.id === id)?.notes ?? [];
-
-  // 다음에 읽을 노트: 읽기 시작한 주제 중 많이 읽은 순으로 3개, 각 주제의 첫 안 읽은 노트
-  const started = Object.entries(readCounts)
-    .filter(([id, n]) => n > 0 && n < notesOf(id).length)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3);
-  const nextUp: NextUp[] = (
-    await Promise.all(
-      started.map(async ([id, n]): Promise<NextUp | null> => {
-        const read = (await getProgress(id)).read;
-        const next = notesOf(id).find((m) => !read.includes(m.slug));
-        return next ? { subject: id, slug: next.slug, title: next.title, level: next.level, read: n, total: notesOf(id).length } : null;
-      }),
-    )
-  ).filter((x): x is NextUp => x !== null);
-  const starters: NextUp[] = STARTERS.map(({ subject, slug }): NextUp | null => {
-    const list = notesOf(subject);
-    const m = list.find((x) => x.slug === slug) ?? list[0];
-    return m ? { subject, slug: m.slug, title: m.title, level: m.level, read: 0, total: list.length } : null;
-  }).filter((x): x is NextUp => x !== null);
-
-  const tracks: TrackData[] = subjectsByTrack().map(({ track, subjects: list }) => ({
-    id: track.id,
-    name: track.name,
-    desc: track.desc,
-    cards: list.map((s) => {
-      const r = rows.find((x) => x.id === s.id)!;
-      return { id: s.id, name: s.name, tagline: s.tagline, description: s.description, mark: s.mark, color: s.color, notes: r.notes.length, read: readCounts[s.id] ?? 0, experiments: r.experiments, due: r.due };
-    }),
-  }));
-  const totalNotes = rows.reduce((a, r) => a + r.notes.length, 0);
-  const totalLabs = rows.reduce((a, r) => a + r.experiments, 0);
-  const dueBySubject = Object.fromEntries(rows.map((r) => [r.id, r.due]));
-
+  const first = all.find((s) => s.notes.length > 0)!;
+  const due = all.reduce((sum, s) => sum + s.due, 0),
+    review = all.find((s) => s.due > 0) ?? first;
+  const active = [...all]
+    .filter((s) => s.notes.length)
+    .sort((a, b) => (reads[b.id] ?? 0) - (reads[a.id] ?? 0))
+    .slice(0, 4);
   return (
-    <div className="mx-auto max-w-5xl pt-2 md:pt-6">
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight md:text-[2.1rem]">무엇을 공부할까요?</h1>
-          <p className="mt-2 text-[15px] text-muted">
-            {subjects.length}개 주제 · 노트 {totalNotes}편 · 실험 {totalLabs}개. 주제를 고르면 목차 순서의 학습 노트와 실험실이 열립니다.
+    <div className="study-home">
+      <p className="eyebrow">YOUR LEARNING SPACE</p>
+      <h1 className="home-title">오늘도, 하나의 개념을 깊이.</h1>
+      <p className="home-intro">
+        읽고, 직접 실험하고, 나의 지식으로 남기는 시간.
+      </p>
+      {first && (
+        <ContinueLearning
+          first={{
+            href: `/${first.id}/notes/${first.notes[0].slug}`,
+            title: first.notes[0].title,
+            subject: first.name,
+            chapter: 1,
+            progress: 0,
+          }}
+        />
+      )}
+      <div className="home-actions">
+        <Link id="review" className="home-action" href={`/${review.id}/quiz`}>
+          <h2>
+            기억을 단단하게 <span className="float-right text-accent">↗</span>
+          </h2>
+          <p>
+            {due > 0
+              ? `오늘 복습할 카드 ${due}장이 기다리고 있어요.`
+              : "퀴즈로 방금 배운 내용을 확인해 보세요."}
           </p>
+        </Link>
+        <Link className="home-action" href="/redis/lab">
+          <h2>
+            직접 해보면 더 선명하게{" "}
+            <span className="float-right text-accent">↗</span>
+          </h2>
+          <p>코드를 실행하고, 결과를 살펴보며 이해해 보세요.</p>
+        </Link>
+      </div>
+      <section className="mb-10">
+        <div className="section-heading">
+          <h2>학습 중인 주제</h2>
+          <Link href="/subjects">전체 {subjects.length}개 주제 보기 →</Link>
         </div>
-        <DensityToggle />
-      </div>
-
-      <ContinueLearning nextUp={nextUp} starters={starters} />
-
-      {tracks.map((t) => (
-        <TrackSection key={t.id} track={t} />
-      ))}
-
-      <div className="mt-8">
-        <WeeklyStudyCard weekly={weekly} dueBySubject={dueBySubject} />
-      </div>
-      <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
-        <Link href="/assistant" className="rounded-md border border-accent/40 bg-accent-soft px-3 py-1.5 hover:border-accent">
-          🤖 AI 도우미
-        </Link>
-        <Link href="/search" className="rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">
-          🔍 검색
-        </Link>
-        <Link href="/glossary" className="rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">
-          📖 용어집
-        </Link>
-        <Link href="/graph" className="rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">
-          🕸 링크 그래프
-        </Link>
-      </div>
+        {active.map((s) => {
+          const read = Math.min(reads[s.id] ?? 0, s.notes.length),
+            pct = (read / s.notes.length) * 100;
+          return (
+            <Link className="subject-row" href={`/${s.id}`} key={s.id}>
+              <span className="grid h-10 w-10 place-items-center rounded-lg bg-accent-soft text-sm font-semibold text-accent">
+                {s.mark}
+              </span>
+              <div className="subject-title">
+                <h3>{s.name}</h3>
+                <p>{s.tagline}</p>
+              </div>
+              <span className="text-xs text-muted">
+                {read} / {s.notes.length}
+              </span>
+              <div
+                className="subject-meter"
+                aria-label={`${s.name} ${Math.round(pct)}% 완료`}
+              >
+                <span style={{ width: `${pct}%` }} />
+              </div>
+              <span className="text-muted">→</span>
+            </Link>
+          );
+        })}
+      </section>
+      <section id="activity">
+        <WeeklyStudyCard
+          weekly={weekly}
+          dueBySubject={Object.fromEntries(all.map((s) => [s.id, s.due]))}
+        />
+      </section>
     </div>
   );
 }
