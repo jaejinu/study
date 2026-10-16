@@ -136,6 +136,8 @@ pnpm search:up && pnpm search:index   # 증분 색인
 pnpm search:eval                      # recall@k · MRR 평가 (reports/search-eval.json)
 ```
 
+사이트 자체 SLO(가용성 99.5%, 페이지 p95 1초, 서버 액션 성공 99%)는 `pnpm obs:up` 후 Grafana 의 "Study 사이트 SLO" 대시보드에서 본다. Prometheus 는 3000 포트의 앱을 수집한다.
+
 학습 기록 백업: `pnpm backup` (내보내기), `pnpm backup:restore <파일>` (가져오기). 메모리가 부족하면 `pnpm stack:status` 로 떠 있는 것을 보고 `pnpm stack:lite` 로 무거운 스택을 한 번에 멈춘다.
 
 ### 실험 환경
@@ -180,7 +182,10 @@ Redis 를 멈추거나 설정을 바꾸는 실험은 주입 직전에 `src/lib/d
   - **콘텐츠 무결성**(`tests/content.test.ts`): frontmatter YAML·필수 필드·level·order 중복, 노트·실험·다이어그램 링크, experiments id, 퀴즈 note, 용어집 중복·링크, 주제 id 와 전역 라우트 충돌
   - 외부 컨테이너 없이 도는 코드 실험(`tests/code-lab.test.ts`), 데드맨 스위치, FSRS 스케줄러, 숙련도 계산, 훈련 정의, AI 학습 모드 채점, 검색 RRF
 - 보안 점검: actionlint(워크플로), Trivy 취약점·시크릿 스캔(실패 시 CI 실패), Trivy 설정 오류 스캔(보고만)
+- promtool: Prometheus 설정·알림 규칙 검사와 SLO 번레이트 알림 단위 테스트(로컬은 `pnpm obs:check`)
 - Docker 이미지 빌드
+
+`.github/workflows/e2e.yml` 은 앱을 빌드해 띄운 뒤 Playwright + axe 로 주요 화면 10개를 데스크톱·iPhone 13 크기에서 검사한다(열림, 가로 넘침, WCAG 2.1 AA 위반, 모바일 메뉴, 터치 영역). 로컬은 떠 있는 서버를 대상으로 `pnpm e2e`.
 
 Dependabot 이 npm·GitHub Actions·Docker 이미지를 매주 확인한다. 콘텐츠 무결성 검사는 학습 경로(모든 주제가 정확히 한 번)·주제 선수 관계(존재·순환 없음)·노트 `prereq`·`chapter` 와 iCloud 충돌 사본(`이름 2.md`)도 잡는다.
 
