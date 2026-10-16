@@ -34,6 +34,31 @@ export async function getQuizStats(subject: string): Promise<Record<string, Quiz
   }
 }
 
+/** 여러 주제의 퀴즈 기록을 Redis 파이프라인 한 번으로 (첫 화면용) */
+export async function getQuizStatsMany(subjects: string[]): Promise<Record<string, Record<string, QuizStat>>> {
+  const r = getRedis();
+  const out: Record<string, Record<string, QuizStat>> = Object.fromEntries(subjects.map((s) => [s, {}]));
+  try {
+    await ensureConnected(r);
+    const p = r.pipeline();
+    for (const s of subjects) p.hgetall(`quiz:stats:${s}`);
+    const res = (await p.exec()) ?? [];
+    res.forEach(([err, raw], i) => {
+      if (err || !raw) return;
+      for (const [k, v] of Object.entries(raw as Record<string, string>)) {
+        try {
+          out[subjects[i]][k] = JSON.parse(v) as QuizStat;
+        } catch {
+          /* skip */
+        }
+      }
+    });
+  } catch {
+    /* Redis 없음 — 빈 기록 */
+  }
+  return out;
+}
+
 export async function recordQuiz(subject: string, key: string, right: boolean): Promise<QuizStat> {
   const r = getRedis();
   await ensureConnected(r);

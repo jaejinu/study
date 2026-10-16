@@ -3,24 +3,17 @@ import { listNotes } from "@/lib/notes";
 import { getReadCounts } from "@/lib/progress";
 import { subjects } from "@/lib/subjects";
 import { loadQuiz } from "@/lib/quiz";
-import {
-  cardKey,
-  getQuizStats,
-  getWeeklyStudy,
-  summarizeReview,
-} from "@/lib/study";
+import { cardKey, getQuizStatsMany, getWeeklyStudy, summarizeReview } from "@/lib/study";
 import { WeeklyStudyCard } from "@/components/WeeklyStudy";
 import { ContinueLearning } from "@/components/ContinueLearning";
 export const dynamic = "force-dynamic";
 export default async function Home() {
+  const allStats = await getQuizStatsMany(subjects.map((s) => s.id));
   const [all, weekly, reads] = await Promise.all([
     Promise.all(
       subjects.map(async (s) => {
-        const [notes, quiz, stats] = await Promise.all([
-          listNotes(s.id),
-          loadQuiz(s.id),
-          getQuizStats(s.id),
-        ]);
+        const [notes, quiz] = await Promise.all([listNotes(s.id), loadQuiz(s.id)]);
+        const stats = allStats[s.id] ?? {};
         return {
           ...s,
           notes,

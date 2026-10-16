@@ -72,6 +72,13 @@ function toMeta(slug: string, data: Record<string, unknown>): NoteMeta {
   };
 }
 
+/**
+ * 파일 수정 시각(mtime) 기준 메모리 캐시. 첫 화면이 29개 주제 × 노트 수백 편의 frontmatter 를 매 요청 다시 읽지 않도록.
+ * 파일이 바뀌면 mtime 이 달라져 자동으로 다시 읽는다 (개발 중 편집도 즉시 반영).
+ */
+const metaCache = new Map<string, { mtime: number; meta: NoteMeta }>();
+const noteCache = new Map<string, { mtime: number; note: Note }>();
+
 export async function listNotes(subject: string): Promise<NoteMeta[]> {
   const dir = notesDir(subject);
   let files: string[];
@@ -82,9 +89,14 @@ export async function listNotes(subject: string): Promise<NoteMeta[]> {
   }
   const metas = await Promise.all(
     files.map(async (f) => {
-      const raw = await fs.readFile(path.join(dir, f), "utf8");
-      const { data } = matter(raw);
-      return toMeta(f.replace(/\.md$/, ""), data);
+      const file = path.join(dir, f);
+      const { mtimeMs } = await fs.stat(file);
+      const hit = metaCache.get(file);
+      if (hit && hit.mtime === mtimeMs) return hit.meta;
+      const { data } = matter(await fs.readFile(file, "utf8"));
+      const meta = toMeta(f.replace(/\.md$/, ""), data);
+      metaCache.set(file, { mtime: mtimeMs, meta });
+      return meta;
     }),
   );
   return metas.sort((a, b) => a.order - b.order);
@@ -93,9 +105,14 @@ export async function listNotes(subject: string): Promise<NoteMeta[]> {
 export async function getNote(subject: string, slug: string): Promise<Note | null> {
   if (!/^[a-z0-9-]+$/.test(slug) || !/^[a-z0-9-]+$/.test(subject)) return null;
   try {
-    const raw = await fs.readFile(path.join(notesDir(subject), `${slug}.md`), "utf8");
-    const { data, content } = matter(raw);
-    return { ...toMeta(slug, data), content, headings: extractHeadings(content) };
+    const file = path.join(notesDir(subject), `${slug}.md`);
+    const { mtimeMs } = await fs.stat(file);
+    const hit = noteCache.get(file);
+    if (hit && hit.mtime === mtimeMs) return hit.note;
+    const { data, content } = matter(await fs.readFile(file, "utf8"));
+    const note = { ...toMeta(slug, data), content, headings: extractHeadings(content) };
+    noteCache.set(file, { mtime: mtimeMs, note });
+    return note;
   } catch {
     return null;
   }

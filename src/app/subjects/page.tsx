@@ -5,7 +5,7 @@ import { listLab } from "@/lab/registry";
 import { getProgress, getReadCounts } from "@/lib/progress";
 import { subjects, subjectsByTrack } from "@/lib/subjects";
 import { loadQuiz } from "@/lib/quiz";
-import { cardKey, getQuizStats, getWeeklyStudy, summarizeReview } from "@/lib/study";
+import { cardKey, getQuizStatsMany, getWeeklyStudy, summarizeReview } from "@/lib/study";
 import { WeeklyStudyCard } from "@/components/WeeklyStudy";
 import { ContinueLearning, type NextUp } from "@/components/home/ContinueLearning";
 import { DensityToggle, TrackSection, type TrackData } from "@/components/home/TrackGrid";
@@ -20,10 +20,12 @@ const STARTERS: { subject: string; slug: string }[] = [
 ];
 
 export default async function Home() {
+  const allStats = await getQuizStatsMany(subjects.map((s) => s.id));
   const [rows, weekly, readCounts] = await Promise.all([
     Promise.all(
       subjects.map(async (s) => {
-        const [notes, quiz, stats] = await Promise.all([listNotes(s.id), loadQuiz(s.id), getQuizStats(s.id)]);
+        const [notes, quiz] = await Promise.all([listNotes(s.id), loadQuiz(s.id)]);
+        const stats = allStats[s.id] ?? {};
         return {
           id: s.id,
           notes,
