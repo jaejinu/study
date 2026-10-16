@@ -15,11 +15,12 @@ import * as mesh from "./service-mesh";
 import * as netp from "./network-protocols";
 import * as plat from "./platform-engineering";
 import * as java from "./java";
+import * as javaJvm from "./java-jvm";
 import * as aws from "./aws";
 import type { ShellExperiment, ShellSubject } from "./types";
 
 const isExp = (v: unknown): v is ShellExperiment => typeof v === "object" && v !== null && "run" in v && "subject" in v;
-export const shellExperiments: ShellExperiment[] = [docker, k8s, net, obs, security, iac, perf, sre, ebpf, finops, osi, nginx, gha, mesh, netp, plat, java, aws].flatMap((m) => Object.values(m as Record<string, unknown>).filter(isExp));
+export const shellExperiments: ShellExperiment[] = [docker, k8s, net, obs, security, iac, perf, sre, ebpf, finops, osi, nginx, gha, mesh, netp, plat, java, javaJvm, aws].flatMap((m) => Object.values(m as Record<string, unknown>).filter(isExp));
 
 export function listShellExperiments(subject: ShellSubject): ShellExperiment[] {
   return shellExperiments.filter((e) => e.subject === subject);
