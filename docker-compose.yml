@@ -19,5 +19,20 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # 앱까지 함께: docker compose --profile app up -d --build  →  http://localhost:3200
+  web:
+    build: .
+    image: study:dev
+    container_name: study-web
+    profiles: ["app"]
+    environment:
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "127.0.0.1:3200:3000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   redis-data:

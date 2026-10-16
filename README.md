@@ -1,5 +1,7 @@
 # Study
 
+[![CI](https://github.com/jaejinu/study/actions/workflows/ci.yml/badge.svg)](https://github.com/jaejinu/study/actions/workflows/ci.yml)
+
 주제별로 **공부하고 → 정리하고 → 실제로 실험하고 → 웹에서 확인**하는 개인 학습 프로젝트.
 첫 화면(`/`)에서 주제를 고른다. 현재 주제: **Redis**, **Docker**, **Kubernetes**.
 
@@ -10,7 +12,7 @@
 | 주제 선택 | `/` | Redis / Docker / Kubernetes 카드 |
 | 대시보드 | `/redis`, `/docker`, `/kubernetes` | 환경 상태(Redis INFO / Docker 데몬·컨테이너 / 클러스터 노드·Pod), 학습 로드맵 |
 | 학습 노트 | `/<subject>/notes` | `content/<subject>/notes/*.md` 를 목차 순으로 렌더링. 노트별 TOC |
-| 실험실 | `/redis/lab` | 실제 Redis 에 명령을 보내고 실행된 명령·응답·시간·검증(✓/✗)을 표시 |
+| 실험실 | `/redis/lab`, `/docker/lab`, `/kubernetes/lab` | 실제 Redis 명령 / docker / kubectl 을 실행하고 명령·응답·시간·검증(✓/✗)을 표시 |
 | 콘솔 | `/redis/console` | 브라우저 redis-cli. 위험 명령(FLUSHALL, CONFIG SET 등)은 차단 |
 | 키 브라우저 | `/redis/keys` | SCAN 으로 키 순회, 타입·인코딩·TTL·메모리, 값 미리보기, 삭제 |
 | 테스트 | `/redis/tests` | vitest 리포트. 버튼으로 브라우저에서 실행 가능 |
@@ -25,9 +27,19 @@ pnpm test           # 모든 실험을 vitest 로 실행
 pnpm test:report    # JSON 리포트 생성 → /tests 페이지에 표시
 pnpm redis:cli      # redis-cli 접속
 pnpm redis:docker   # Docker 로 Redis 띄우기 (docker-compose.yml)
+pnpm redis:ha       # 복제 + Sentinel 실습 환경 (6381-6383, 26381-26383)
+pnpm redis:cluster  # 6노드 Cluster 실습 환경 (7001-7006)
 pnpm k8s:cluster    # kind 로 로컬 Kubernetes 클러스터 생성
-pnpm k8s:up         # k8s/ 매니페스트로 Redis 배포, pnpm k8s:port 로 포트 포워딩
+pnpm docker:build   # 이 앱의 이미지 빌드 (Dockerfile, 멀티스테이지)
+pnpm k8s:load       # 이미지를 kind 에 로드
+pnpm k8s:up         # k8s/ 매니페스트로 Redis + 앱 배포, pnpm k8s:port / k8s:web:port 로 포트 포워딩
 ```
+
+앱 전체를 Docker Compose 로: `docker compose --profile app up -d --build` → http://localhost:3200
+
+## CI
+
+`.github/workflows/ci.yml` 이 push 마다 lint · 타입 검사 · Redis 서비스 컨테이너로 실험 테스트 · Docker 이미지 빌드를 실행한다.
 
 Redis 가 없다면 `brew install redis`. 다른 주소를 쓰려면 `.env.local` 에 `REDIS_URL` 설정.
 

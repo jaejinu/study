@@ -119,6 +119,17 @@ kubectl -n study get pvc                       # PVC 는 남는다 (명시적으
 kubectl -n study delete pvc data-redis-0
 ```
 
+## 앱도 함께: `k8s/web.yaml`
+
+이 사이트 자체는 무상태이므로 **Deployment** (replicas 2, RollingUpdate maxUnavailable 0) + Service 로 배포한다. 환경 변수 `REDIS_URL=redis://redis:6379` 가 같은 네임스페이스의 Redis Service 를 DNS 이름으로 가리킨다.
+
+```bash
+pnpm docker:build && pnpm k8s:load     # 이미지를 kind 노드에 넣는다 (레지스트리 없이)
+pnpm k8s:up                            # redis StatefulSet + web Deployment
+kubectl -n study get pods -o wide      # web Pod 2개 + redis-0
+pnpm k8s:web:port                      # http://localhost:3200 — 클러스터 안의 Redis 에 연결된 대시보드
+```
+
 ## Redis 를 k8s 에서 제대로 운영하려면
 
 단일 StatefulSet 은 학습용이다. 실제로는:

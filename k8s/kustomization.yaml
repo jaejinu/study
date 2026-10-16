@@ -6,6 +6,7 @@ namespace: study
 resources:
   - namespace.yaml
   - redis.yaml
+  - web.yaml
 configMapGenerator:
   # 프로젝트의 redis.conf 를 그대로 ConfigMap 으로 (내용이 바뀌면 이름에 해시가 붙어 롤링 재시작된다)
   - name: redis-config

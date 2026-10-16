@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
     },
   },
   serverExternalPackages: ["ioredis"],
+  // Docker 이미지용: 필요한 node_modules 만 모은 standalone 서버 생성
+  output: "standalone",
 };
 
 export default nextConfig;

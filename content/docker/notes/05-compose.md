@@ -132,4 +132,4 @@ docker compose -f compose.yml -f compose.prod.yml up -d   # 여러 파일 병합
 - [ ] `pnpm redis:docker` 로 Redis 를 띄우고 Redis 대시보드에 연결되는지 확인
 - [ ] `docker compose ps` 에서 healthy 상태 확인
 - [ ] `docker compose down` 후 `up` 해도 데이터가 남는지, `down -v` 후엔 사라지는지 확인
-- [ ] Redis Study 앱을 `web` 서비스로 추가해 `depends_on` + healthcheck 로 묶어 보기
+- [ ] `docker compose --profile app up -d --build` 로 앱(`web`)까지 띄우고 http://localhost:3200 접속 — `depends_on: condition: service_healthy` 로 Redis 가 healthy 된 뒤 앱이 뜬다

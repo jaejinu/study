@@ -91,9 +91,11 @@ CMD ["node", "server.js"]
 
 ## 실습: 이 프로젝트 이미지 만들기
 
+프로젝트 루트의 `Dockerfile` 이 바로 이 구조다 (`next.config.ts` 에 `output: "standalone"` 설정됨).
+
 ```bash
-# 1. next.config.ts 에 output: "standalone" 추가 후
-cat > Dockerfile <<'DF'
+# 참고: 실제 Dockerfile 요약
+cat <<'DF'
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
@@ -112,16 +114,18 @@ EXPOSE 3000
 CMD ["node", "server.js"]
 DF
 
-# 2. 빌드 (태그 붙이기)
-docker build -t study:dev .
+# 빌드 (태그 붙이기)
+pnpm docker:build                  # = docker build -t study:dev .
 docker build -t study:dev --progress=plain --no-cache .   # 캐시 없이, 로그 전부
 
 # 3. 크기와 레이어 확인
 docker images study
 docker image history study:dev
 
-# 4. 실행 (Redis 컨테이너와 같은 네트워크 필요 → Compose 노트)
-docker run --rm -p 3000:3000 study:dev
+# 실행: 호스트의 Redis 에 붙이기
+pnpm docker:run                    # = docker run -p 3200:3000 -e REDIS_URL=redis://host.docker.internal:6379 study:dev
+# 또는 Redis 와 함께 Compose 로
+docker compose --profile app up -d --build
 ```
 
 ## 태그 전략

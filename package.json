@@ -16,13 +16,17 @@
     "redis:docker:down": "docker compose down",
     "k8s:cluster": "kind create cluster --name study --wait 120s",
     "k8s:cluster:down": "kind delete cluster --name study",
-    "k8s:up": "kubectl kustomize --load-restrictor LoadRestrictionsNone k8s | kubectl apply -f - && kubectl -n study rollout status statefulset/redis --timeout=120s",
+    "k8s:up": "kubectl kustomize --load-restrictor LoadRestrictionsNone k8s | kubectl apply -f - && kubectl -n study rollout status statefulset/redis --timeout=120s && kubectl -n study rollout status deploy/web --timeout=180s",
     "k8s:down": "kubectl kustomize --load-restrictor LoadRestrictionsNone k8s | kubectl delete --ignore-not-found -f -",
     "k8s:port": "kubectl -n study port-forward svc/redis 6379:6379",
     "redis:ha": "redis/ha/start.sh",
     "redis:ha:down": "redis/ha/stop.sh",
     "redis:cluster": "redis/cluster/start.sh",
-    "redis:cluster:down": "redis/cluster/stop.sh"
+    "redis:cluster:down": "redis/cluster/stop.sh",
+    "docker:build": "docker build -t study:dev .",
+    "docker:run": "docker run --rm -p 3200:3000 -e REDIS_URL=redis://host.docker.internal:6379 study:dev",
+    "k8s:load": "kind load docker-image study:dev --name study",
+    "k8s:web:port": "kubectl -n study port-forward svc/web 3200:3000"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",

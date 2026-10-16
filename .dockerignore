@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.github
+reports
+redis/data
+redis/ha/run
+redis/cluster/run
+docker/lab
+*.md
+!content/**/*.md
+.env*

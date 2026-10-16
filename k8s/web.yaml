@@ -1,0 +1,51 @@
+# Study 앱 자체를 배포한다. 이미지는 로컬 빌드 후 kind 에 로드:
+#   pnpm docker:build && pnpm k8s:load && pnpm k8s:up
+#   pnpm k8s:web:port  → http://localhost:3200
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  labels: { app: web }
+spec:
+  selector: { app: web }
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  labels: { app: web }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: web }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  template:
+    metadata:
+      labels: { app: web }
+    spec:
+      containers:
+        - name: web
+          image: study:dev
+          imagePullPolicy: IfNotPresent      # kind 에 load 한 로컬 이미지를 쓴다
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: REDIS_URL
+              value: redis://redis:6379       # 같은 네임스페이스의 Service 이름
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 512Mi }
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 20
