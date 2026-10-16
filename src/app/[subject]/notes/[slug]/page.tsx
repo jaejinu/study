@@ -4,6 +4,8 @@ import { Markdown } from "@/components/Markdown";
 import { LevelBadge } from "@/components/ui";
 import { experiments } from "@/experiments";
 import { getNote, listNotes } from "@/lib/notes";
+import { getNoteChecks, isRead } from "@/lib/progress";
+import { ReadToggle } from "@/components/ProgressControls";
 import { getSubject } from "@/lib/subjects";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +22,7 @@ export default async function NotePage({ params }: Props) {
   const { subject: id, slug } = await params;
   const subject = getSubject(id);
   if (!subject) notFound();
-  const [note, all] = await Promise.all([getNote(subject.id, slug), listNotes(subject.id)]);
+  const [note, all, read, checked] = await Promise.all([getNote(subject.id, slug), listNotes(subject.id), isRead(subject.id, slug), getNoteChecks(subject.id, slug)]);
   if (!note) notFound();
   const idx = all.findIndex((n) => n.slug === slug);
   const prev = all[idx - 1];
@@ -38,11 +40,17 @@ export default async function NotePage({ params }: Props) {
           <span>/</span>
           <span>{String(idx + 1).padStart(2, "0")}</span>
           <LevelBadge level={note.level} />
+          {read && <span className="text-ok">✓ 읽음</span>}
         </div>
         <h1 className="text-3xl font-bold tracking-tight">{note.title}</h1>
         <p className="mt-2 text-muted">{note.summary}</p>
         <div className="mt-6">
-          <Markdown content={note.content} />
+          <Markdown content={note.content} checklist={{ subject: subject.id, slug, checked }} />
+        </div>
+
+        <div className="mt-8 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3">
+          <span className="text-sm text-muted">이 노트를 다 읽었다면</span>
+          <ReadToggle subject={subject.id} slug={slug} initial={read} />
         </div>
 
         {related.length > 0 && (

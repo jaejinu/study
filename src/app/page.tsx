@@ -2,6 +2,7 @@ import Link from "next/link";
 import { experiments } from "@/experiments";
 import { listNotes } from "@/lib/notes";
 import { shellExperiments } from "@/shell-lab";
+import { getProgress } from "@/lib/progress";
 import { subjects } from "@/lib/subjects";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,7 @@ export default async function Home() {
     subjects.map(async (s) => ({
       id: s.id,
       notes: (await listNotes(s.id)).length,
+      read: (await getProgress(s.id)).read.length,
       experiments: s.id === "redis" ? experiments.length : shellExperiments.filter((e) => e.subject === s.id).length,
     })),
   );
@@ -40,6 +42,7 @@ export default async function Home() {
               <div className="mt-5 flex gap-4 border-t border-border pt-4 text-xs text-muted">
                 <span>
                   노트 <span className="font-mono text-foreground">{c.notes}</span>편
+                  {c.read > 0 && <span className="text-ok"> · {c.read}편 읽음</span>}
                 </span>
                 {c.experiments > 0 && (
                   <span>

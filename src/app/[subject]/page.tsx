@@ -10,6 +10,8 @@ import { listNotes } from "@/lib/notes";
 import { readLastReport } from "@/lib/report";
 import { getSubject } from "@/lib/subjects";
 import { listShellExperiments } from "@/shell-lab";
+import { getProgress } from "@/lib/progress";
+import { ProgressBar } from "@/components/ProgressBar";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +26,8 @@ export default async function SubjectHome({ params }: Props) {
   const { subject: id } = await params;
   const subject = getSubject(id);
   if (!subject) notFound();
-  const [notes, report] = await Promise.all([listNotes(subject.id), subject.id === "redis" ? readLastReport() : null]);
+  const [notes, report, progress] = await Promise.all([listNotes(subject.id), subject.id === "redis" ? readLastReport() : null, getProgress(subject.id)]);
+  const readCount = notes.filter((n) => progress.read.includes(n.slug)).length;
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -50,11 +53,16 @@ export default async function SubjectHome({ params }: Props) {
             전체 목차 →
           </Link>
         </div>
+        <div className="mb-3">
+          <ProgressBar done={readCount} total={notes.length} />
+        </div>
         <ol className="grid gap-2 sm:grid-cols-2">
           {notes.map((n, idx) => (
             <li key={n.slug}>
               <Link href={`/${subject.id}/notes/${n.slug}`} className="flex h-full gap-3 rounded-lg border border-border bg-surface p-3 transition-colors hover:border-muted">
-                <span className="w-6 shrink-0 font-mono text-sm text-muted">{String(idx + 1).padStart(2, "0")}</span>
+                <span className={`w-6 shrink-0 font-mono text-sm ${progress.read.includes(n.slug) ? "text-ok" : "text-muted"}`}>
+                  {progress.read.includes(n.slug) ? "✓" : String(idx + 1).padStart(2, "0")}
+                </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className="truncate text-sm font-medium">{n.title}</span>

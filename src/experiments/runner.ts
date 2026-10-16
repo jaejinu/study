@@ -1,6 +1,7 @@
 import type Redis from "ioredis";
 import { createRedis, ensureConnected, getRedis } from "@/lib/redis";
 import { createRecorder } from "@/lib/trace";
+import { markLabDone } from "@/lib/progress";
 import { getExperiment } from "./index";
 import type { ExperimentResult } from "./types";
 
@@ -47,6 +48,7 @@ export async function runExperiment(id: string): Promise<ExperimentResult> {
         return rec.wrap(c, alias);
       },
     });
+    await markLabDone("redis", id);
     return { id, ok: true, steps: rec.steps, durationMs: Math.round(performance.now() - t0), ranAt };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

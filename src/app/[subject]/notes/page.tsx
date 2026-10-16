@@ -4,6 +4,8 @@ import { LevelBadge, PageHeader } from "@/components/ui";
 import { experiments } from "@/experiments";
 import { listNotes } from "@/lib/notes";
 import { getSubject } from "@/lib/subjects";
+import { getProgress } from "@/lib/progress";
+import { ProgressBar } from "@/components/ProgressBar";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +20,7 @@ export default async function NotesPage({ params }: Props) {
   const { subject: id } = await params;
   const subject = getSubject(id);
   if (!subject) notFound();
-  const notes = await listNotes(subject.id);
+  const [notes, progress] = await Promise.all([listNotes(subject.id), getProgress(subject.id)]);
   const groups = [
     { level: "기초", desc: "개념과 기본 사용법" },
     { level: "중급", desc: "실전에서 자주 쓰는 패턴" },
@@ -27,6 +29,9 @@ export default async function NotesPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader title={`${subject.name} 학습 노트 목차`} subtitle="위에서 아래로 순서대로 읽도록 구성했습니다. 각 노트에는 목차와 실습·실험 링크가 있습니다." />
+      <div className="mb-6">
+        <ProgressBar done={notes.filter((n) => progress.read.includes(n.slug)).length} total={notes.length} />
+      </div>
       {notes.length === 0 && <p className="text-muted">아직 노트가 없습니다.</p>}
       {groups.map((g) => {
         const list = notes.filter((n) => n.level === g.level);
@@ -43,7 +48,9 @@ export default async function NotesPage({ params }: Props) {
                 return (
                   <li key={n.slug}>
                     <Link href={`/${subject.id}/notes/${n.slug}`} className="flex gap-4 px-4 py-3 hover:bg-surface-2">
-                      <span className="w-7 shrink-0 font-mono text-sm text-muted">{String(globalIdx).padStart(2, "0")}</span>
+                      <span className={`w-7 shrink-0 font-mono text-sm ${progress.read.includes(n.slug) ? "text-ok" : "text-muted"}`}>
+                        {progress.read.includes(n.slug) ? "✓" : String(globalIdx).padStart(2, "0")}
+                      </span>
                       <span className="min-w-0 flex-1">
                         <span className="block font-medium">{n.title}</span>
                         <span className="mt-0.5 block text-sm text-muted">{n.summary}</span>
