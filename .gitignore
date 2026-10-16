@@ -57,3 +57,4 @@ logs/
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
+/infra/local/10-cluster/*-config
