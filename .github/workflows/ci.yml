@@ -38,6 +38,35 @@ jobs:
           name: vitest-report
           path: reports/vitest.json
 
+  security:
+    name: security · 워크플로 검사 · 취약점 스캔
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      # 워크플로 정적 검사 — 식 타입·needs 그래프·스크립트 인젝션 (GitHub Actions 노트 01·05)
+      - uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2.2.0
+      # 의존성 취약점·비밀 정보 — 수정 가능한 CRITICAL/HIGH 가 있으면 실패 (보안 노트 05)
+      - name: trivy — 취약점·시크릿 (실패 조건)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          skip-dirs: node_modules,.next
+      # 설정(k8s·Dockerfile·Terraform) 권고 — 실습용 매니페스트라 보고만 한다 (보안 노트 06)
+      - name: trivy — 설정 권고 (보고만)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scanners: misconfig
+          severity: CRITICAL,HIGH
+          exit-code: "0"
+          skip-dirs: node_modules,.next
+
   image:
     name: docker build
     runs-on: ubuntu-latest
