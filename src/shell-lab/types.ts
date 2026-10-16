@@ -1,4 +1,4 @@
-export type ShellSubject = "docker" | "kubernetes" | "linux-network" | "observability" | "security" | "iac" | "performance" | "sre" | "ebpf" | "finops" | "os-internals";
+export type ShellSubject = "docker" | "kubernetes" | "linux-network" | "observability" | "security" | "iac" | "performance" | "sre" | "ebpf" | "finops" | "os-internals" | "nginx" | "github-actions";
 
 export interface ShellStep {
   /** 실행한 명령 또는 설명 */

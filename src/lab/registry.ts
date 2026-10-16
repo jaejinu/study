@@ -13,7 +13,7 @@ export interface LabItem {
   notes: string[];
 }
 
-const SHELL = new Set(["docker", "kubernetes", "linux-network", "observability", "security", "iac", "performance", "sre", "ebpf", "finops", "os-internals"]);
+const SHELL = new Set(["docker", "kubernetes", "linux-network", "observability", "security", "iac", "performance", "sre", "ebpf", "finops", "os-internals", "nginx", "github-actions"]);
 const CODE = new Set(["kafka", "postgres", "ai-systems", "chaos", "observability", "opensearch", "db-internals", "api-design", "messaging", "mlops", "testing", "distributed-systems", "ai-agents", "clickhouse", "data-engineering"]);
 
 export function hasLab(subject: string): boolean {

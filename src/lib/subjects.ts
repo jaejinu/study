@@ -165,6 +165,7 @@ export const subjects: Subject[] = [
       { href: "/github-actions", label: "대시보드", icon: "◉", desc: "최근 워크플로 실행" },
       { href: "/github-actions/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
       { href: "/github-actions/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/github-actions/lab", label: "실험실", icon: "⚗", desc: "act 로 로컬 실행 · 캐시" },
     ],
     setup: [
       { label: "실행 보기", cmd: "gh run list" },
@@ -183,6 +184,7 @@ export const subjects: Subject[] = [
       { href: "/nginx", label: "대시보드", icon: "◉", desc: "프록시 점검" },
       { href: "/nginx/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
       { href: "/nginx/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
+      { href: "/nginx/lab", label: "실험실", icon: "⚗", desc: "레이트리밋 · 캐시 · 장애 전환" },
     ],
     setup: [
       { label: "프록시", cmd: "pnpm nginx:up" },
