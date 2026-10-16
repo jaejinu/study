@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="400" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">사고의 시간축 — 기계 기록으로 TTD 와 지속 시간을 잰다</text>
+  <line x1="60" y1="200" x2="900" y2="200" stroke="#30363d" stroke-width="2"/>
+  <!-- markers -->
+  <circle cx="120" cy="200" r="8" fill="#ef4444"/><text x="120" y="232" text-anchor="middle" fill="#ef4444" font-weight="600">시작</text>
+  <text x="120" y="250" text-anchor="middle" fill="#8b949e" font-size="11">첫 에러 로그 (Loki)</text>
+  <circle cx="300" cy="200" r="8" fill="#f59e0b"/><text x="300" y="232" text-anchor="middle" fill="#f59e0b" font-weight="600">감지</text>
+  <text x="300" y="250" text-anchor="middle" fill="#8b949e" font-size="11">첫 알림 웹훅 (/api/alerts)</text>
+  <circle cx="440" cy="200" r="8" fill="#a78bfa"/><text x="440" y="232" text-anchor="middle" fill="#a78bfa" font-weight="600">대응 시작</text>
+  <text x="440" y="250" text-anchor="middle" fill="#8b949e" font-size="11">ack · 지휘관 지정</text>
+  <circle cx="680" cy="200" r="8" fill="#22c55e"/><text x="680" y="232" text-anchor="middle" fill="#22c55e" font-weight="600">완화</text>
+  <text x="680" y="250" text-anchor="middle" fill="#8b949e" font-size="11">재시작 · 롤백 · unpause</text>
+  <circle cx="840" cy="200" r="8" fill="#3b82f6"/><text x="840" y="232" text-anchor="middle" fill="#3b82f6" font-weight="600">해결</text>
+  <text x="840" y="250" text-anchor="middle" fill="#8b949e" font-size="11">resolved 알림</text>
+  <!-- spans -->
+  <line x1="120" y1="160" x2="300" y2="160" stroke="#f59e0b" stroke-width="2"/><text x="210" y="150" text-anchor="middle" fill="#f59e0b">TTD (탐지 시간)</text>
+  <line x1="300" y1="120" x2="440" y2="120" stroke="#a78bfa" stroke-width="2"/><text x="370" y="110" text-anchor="middle" fill="#a78bfa">TTA (확인 시간)</text>
+  <line x1="120" y1="80" x2="840" y2="80" stroke="#3b82f6" stroke-width="2"/><text x="480" y="70" text-anchor="middle" fill="#3b82f6">사용자 영향 지속 시간 = 버짓 소진량</text>
+  <!-- sources -->
+  <rect x="60" y="290" width="840" height="90" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="80" y="315" fill="#e6edf3" font-weight="600">출처 (실험 sre-postmortem-timeline 이 API 로 합친다)</text>
+  <text x="80" y="340" fill="#8b949e">알림: Alertmanager → /api/alerts · 로그: Loki {service=~"study-app|redis"} · 트레이스: Tempo 느린 요청 · 메트릭: SLI 레코딩 룰</text>
+  <text x="80" y="362" fill="#8b949e">감지가 빠른데 지속이 길면 "알림은 왔는데 아무도 행동하지 않았다" — 온콜·에스컬레이션·자동 복구의 문제다.</text>
+</svg>

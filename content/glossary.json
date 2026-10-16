@@ -1432,5 +1432,191 @@
     "subject": "db-internals",
     "def": "작은 쪽으로 해시 테이블을 만들고 큰 쪽을 훑으며 탐색하는 조인. O(N+M) 이지만 빌드 쪽이 메모리를 넘으면 디스크로 유출된다.",
     "link": "/db-internals/notes/07-query-execution-columnar"
+  },
+  {
+    "term": "토일 (toil)",
+    "subject": "sre",
+    "def": "수동·반복·자동화 가능·전술적·지속 가치 없음·서비스 성장에 비례하는 운영 작업. SRE 는 토일을 시간의 50% 이하로 묶는다.",
+    "link": "/sre/notes/01-sre-principles-toil"
+  },
+  {
+    "term": "SLI / SLO / SLA",
+    "subject": "sre",
+    "def": "SLI 는 좋은 이벤트/유효 이벤트 비율로 재는 지표, SLO 는 그 목표값과 기간, SLA 는 SLO 미달 시의 계약상 결과. SLA 는 SLO 보다 느슨하게.",
+    "link": "/sre/notes/02-sli-slo-error-budget"
+  },
+  {
+    "term": "에러 버짓",
+    "subject": "sre",
+    "def": "1 - SLO 만큼 허용된 실패. 99.9%/30일이면 약 43분. 남으면 빠르게 배포하고 소진되면 기능 배포를 멈추는 정책으로 속도와 안정성을 중재한다.",
+    "link": "/sre/notes/02-sli-slo-error-budget"
+  },
+  {
+    "term": "번레이트 (burn rate)",
+    "subject": "sre",
+    "def": "관측 에러율 / (1 - SLO). 1 이면 기간 끝에 버짓을 정확히 소진하는 속도. 소진 비율 = 번레이트 × 창 / 기간.",
+    "link": "/sre/notes/03-burn-rate-alerting"
+  },
+  {
+    "term": "멀티윈도우 번레이트 알림",
+    "subject": "sre",
+    "def": "긴 창(1h)과 짧은 창(5m) 의 번레이트가 모두 임계(14.4 등)를 넘을 때만 울리는 알림. 정밀도와 빠른 리셋을 함께 얻는다.",
+    "link": "/sre/notes/03-burn-rate-alerting"
+  },
+  {
+    "term": "promtool test rules",
+    "subject": "sre",
+    "def": "합성 시계열을 넣고 특정 시각에 특정 레이블로 알림이 울리는지 단언하는 Prometheus 규칙 단위 테스트. CI 에서 알림 규칙을 검증한다.",
+    "link": "/sre/notes/03-burn-rate-alerting"
+  },
+  {
+    "term": "런북 (runbook)",
+    "subject": "sre",
+    "def": "알림 하나에 대응하는 절차 문서: 증상·영향·확인 명령·조치·에스컬레이션·끝난 뒤. 반복 실행되면 스크립트와 자동화로 승격한다.",
+    "link": "/sre/notes/04-oncall-runbooks"
+  },
+  {
+    "term": "페이지 피로 (alert fatigue)",
+    "subject": "sre",
+    "def": "알림이 많아 사람이 무시하는 법을 배우는 상태. 정밀도·조치율·중복률로 측정하고 원인 제거·자동 복구·증상 기반 통합으로 줄인다.",
+    "link": "/sre/notes/04-oncall-runbooks"
+  },
+  {
+    "term": "사고 지휘관 (Incident Commander)",
+    "subject": "sre",
+    "def": "사고 중 전체 그림·결정·역할 배정·공지 주기를 맡는 사람. 직접 고치지 않는다. 운영 리드·커뮤니케이션 리드·기록자와 역할을 나눈다.",
+    "link": "/sre/notes/05-incident-postmortem"
+  },
+  {
+    "term": "블레임리스 포스트모템",
+    "subject": "sre",
+    "def": "사고 후 사람을 비난하지 않고 시스템이 왜 실수를 허용했는지 묻는 학습 문서. 기계 기록 타임라인·기여 요인·소유자 있는 액션 아이템으로 구성.",
+    "link": "/sre/notes/05-incident-postmortem"
+  },
+  {
+    "term": "TTD / TTR",
+    "subject": "sre",
+    "def": "탐지 시간(시작→감지)과 복구 시간(감지→해결). 포스트모템 액션은 둘 중 하나를 줄이는 것을 겨냥한다.",
+    "link": "/sre/notes/05-incident-postmortem"
+  },
+  {
+    "term": "데드맨 스위치",
+    "subject": "chaos",
+    "def": "장애를 주입한 프로세스와 수명이 독립된 원복 장치. 주입 직전에 분리된 타이머를 장전해 주입한 쪽이 죽어도 일정 시간 뒤 반드시 원복한다.",
+    "link": "/sre/notes/05-incident-postmortem"
+  },
+  {
+    "term": "PRR (Production Readiness Review)",
+    "subject": "sre",
+    "def": "서비스가 온콜 대상이 되기 전 SLO·알림·배포·롤백·의존성·용량·보안·백업·운영을 점검하는 검토. 결과는 갭 목록이다.",
+    "link": "/sre/notes/06-capacity-release-change"
+  },
+  {
+    "term": "확장-축소 마이그레이션 (expand/contract)",
+    "subject": "sre",
+    "def": "호환되는 스키마를 먼저 추가하고 코드를 옮긴 뒤 다음 릴리스에서 옛 구조를 제거하는 방식. 모든 단계가 롤백 가능하다.",
+    "link": "/sre/notes/06-capacity-release-change"
+  },
+  {
+    "term": "SLO 기반 카나리 분석",
+    "subject": "sre",
+    "def": "카나리의 에러율·지연 SLI 를 절대 기준과 stable 대비로 판정해 자동 승격·롤백하고, 표본 부족은 판단 불가로 사람에게 넘기는 AnalysisTemplate.",
+    "link": "/sre/notes/07-slo-driven-automation"
+  },
+  {
+    "term": "eBPF",
+    "subject": "ebpf",
+    "def": "커널의 훅 지점에서 실행되도록 유저 공간이 올리는 작은 프로그램. 검증기가 안전성을 증명하고 JIT 로 네이티브 실행되며 맵으로 상태와 결과를 주고받는다.",
+    "link": "/ebpf/notes/01-what-is-ebpf"
+  },
+  {
+    "term": "검증기 (verifier)",
+    "subject": "ebpf",
+    "def": "eBPF 프로그램을 로드 전에 모든 경로를 추상 해석해 메모리 안전·종료성·허용 헬퍼만 쓰는지 검사하는 커널 구성 요소. 통과 못 하면 로드되지 않는다.",
+    "link": "/ebpf/notes/01-what-is-ebpf"
+  },
+  {
+    "term": "BTF / CO-RE",
+    "subject": "ebpf",
+    "def": "BTF 는 커널이 노출하는 타입 정보(/sys/kernel/btf/vmlinux), CO-RE 는 그것으로 로드 시 구조체 오프셋을 고쳐 한 번 컴파일한 프로그램이 여러 커널에서 돌게 하는 방식.",
+    "link": "/ebpf/notes/01-what-is-ebpf"
+  },
+  {
+    "term": "bpftrace",
+    "subject": "ebpf",
+    "def": "awk 와 비슷한 '프로브 /필터/ { 액션 }' 문법으로 eBPF 추적 프로그램을 즉석에서 만드는 도구. count·hist 집계가 커널 맵에서 일어난다.",
+    "link": "/ebpf/notes/02-bpftrace-one-liners"
+  },
+  {
+    "term": "tracepoint / kprobe / uprobe",
+    "subject": "ebpf",
+    "def": "tracepoint 는 커널이 심어 둔 안정 지점, kprobe 는 거의 모든 커널 함수의 동적 훅, uprobe 는 유저 프로그램 함수 훅. 안정성과 비용 순서대로 선호한다.",
+    "link": "/ebpf/notes/02-bpftrace-one-liners"
+  },
+  {
+    "term": "libbpf-tools",
+    "subject": "ebpf",
+    "def": "BCC 도구들의 CO-RE 정적 바이너리 판. LLVM 없이 BTF 만으로 수 ms 에 시작해 운영 환경에 적합하다(biolatency, runqlat, tcplife …).",
+    "link": "/ebpf/notes/03-bcc-libbpf-tools"
+  },
+  {
+    "term": "off-CPU 분석",
+    "subject": "ebpf",
+    "def": "스레드가 CPU 를 쓰지 않는 동안(디스크·락·네트워크 대기) 어디서 기다렸는지를 스택별 시간으로 보는 분석. on-CPU 프로파일에는 보이지 않는 지연을 찾는다.",
+    "link": "/ebpf/notes/03-bcc-libbpf-tools"
+  },
+  {
+    "term": "XDP",
+    "subject": "ebpf",
+    "def": "NIC 드라이버 수신 루프에서 sk_buff 생성 전에 실행되는 eBPF 훅. DROP/PASS/TX/REDIRECT 로 코어당 초당 천만 패킷 이상을 처리한다(DDoS 방어, L4 LB).",
+    "link": "/ebpf/notes/04-networking-xdp-tc-cilium"
+  },
+  {
+    "term": "Cilium",
+    "subject": "ebpf",
+    "def": "eBPF 기반 Kubernetes CNI. kube-proxy 를 소켓 기반 LB 로 대체하고 레이블 신원 기반 NetworkPolicy·L7 정책·Hubble 흐름 가시성을 제공한다.",
+    "link": "/ebpf/notes/04-networking-xdp-tc-cilium"
+  },
+  {
+    "term": "Hubble",
+    "subject": "ebpf",
+    "def": "Cilium 의 흐름 관측 계층. 모든 연결의 5튜플·신원·정책 판정(DROPPED 등)을 보여 주고 Prometheus 메트릭으로 내보낸다.",
+    "link": "/ebpf/notes/04-networking-xdp-tc-cilium"
+  },
+  {
+    "term": "Tetragon",
+    "subject": "ebpf",
+    "def": "Cilium 프로젝트의 eBPF 런타임 보안 도구. 커널 안에서 선택자로 이벤트를 거르고 프로세스 실행 이력을 남기며, 정책에 따라 강제도 할 수 있다.",
+    "link": "/ebpf/notes/05-security-falco-tetragon"
+  },
+  {
+    "term": "BPF LSM",
+    "subject": "ebpf",
+    "def": "리눅스 보안 모듈의 판단 지점(파일 열기·실행·연결 등)에 eBPF 프로그램을 붙이는 기능(5.7+). 반환값으로 허용·거부를 결정한다.",
+    "link": "/ebpf/notes/05-security-falco-tetragon"
+  },
+  {
+    "term": "샘플링 프로파일러",
+    "subject": "ebpf",
+    "def": "일정 주기(예: 99Hz)로 실행 중인 스택을 기록해 스택별 횟수로 CPU 시간을 추정하는 도구. eBPF 판은 스택을 맵 키로 커널 안에서 집계한다.",
+    "link": "/ebpf/notes/06-profiling-continuous"
+  },
+  {
+    "term": "프레임 포인터",
+    "subject": "ebpf",
+    "def": "각 스택 프레임이 이전 프레임을 가리키게 하는 레지스터 관례. 생략한 최적화 빌드는 유저 스택이 끊겨 [unknown] 이 생긴다.",
+    "link": "/ebpf/notes/06-profiling-continuous"
+  },
+  {
+    "term": "링버퍼 (BPF ringbuf)",
+    "subject": "ebpf",
+    "def": "커널→유저 이벤트 전달용 eBPF 맵(5.8+). reserve/submit 으로 복사 없이 쓰고, 가득 차면 reserve 가 실패하므로 유실을 따로 센다.",
+    "link": "/ebpf/notes/07-writing-your-own"
+  },
+  {
+    "term": "skeleton (libbpf)",
+    "subject": "ebpf",
+    "def": "bpftool gen skeleton 이 BPF 오브젝트에서 생성하는 C 헤더. open/load/attach 와 맵·프로그램 접근을 타입 있는 함수로 제공한다.",
+    "link": "/ebpf/notes/07-writing-your-own"
   }
 ]

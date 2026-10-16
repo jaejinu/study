@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">
+  <rect width="960" height="400" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">flame graph 읽기 — 실험 ebpf-profile-flamegraph 의 Redis 프로파일 (단순화)</text>
+  <!-- bottom: process -->
+  <rect x="40" y="300" width="880" height="26" fill="#7c2d12"/><text x="480" y="318" text-anchor="middle" fill="#fde68a">redis-server (전체 샘플 100%)</text>
+  <rect x="40" y="272" width="700" height="26" fill="#9a3412"/><text x="390" y="290" text-anchor="middle" fill="#fde68a">beforeSleep → handleClientsWithPendingWrites → writeToClient</text>
+  <rect x="742" y="272" width="150" height="26" fill="#9a3412"/><text x="817" y="290" text-anchor="middle" fill="#fde68a">readQueryFromClient</text>
+  <rect x="894" y="272" width="26" height="26" fill="#9a3412"/>
+  <rect x="40" y="244" width="700" height="26" fill="#c2410c"/><text x="390" y="262" text-anchor="middle" fill="#fde68a">connSocketWrite (52%)</text>
+  <rect x="742" y="244" width="150" height="26" fill="#c2410c"/><text x="817" y="262" text-anchor="middle" fill="#fde68a">connSocketRead (11%)</text>
+  <rect x="40" y="216" width="700" height="26" fill="#ea580c"/><text x="390" y="234" text-anchor="middle" fill="#0d1117">write (musl) → el0_svc  ── 커널로</text>
+  <rect x="742" y="216" width="150" height="26" fill="#ea580c"/><text x="817" y="234" text-anchor="middle" fill="#0d1117">read → el0_svc</text>
+  <rect x="40" y="188" width="520" height="26" fill="#f97316"/><text x="300" y="206" text-anchor="middle" fill="#0d1117">tcp_sendmsg → ip_finish_output2 → loopback_xmit</text>
+  <rect x="562" y="188" width="120" height="26" fill="#f97316"/><text x="622" y="206" text-anchor="middle" fill="#0d1117">bpf_prog_…sys_exit</text>
+  <rect x="684" y="188" width="56" height="26" fill="#f97316"/>
+  <rect x="40" y="160" width="300" height="26" fill="#fb923c"/><text x="190" y="178" text-anchor="middle" fill="#0d1117">net_rx_action → tcp_v4_rcv</text>
+  <rect x="342" y="160" width="218" height="26" fill="#fb923c"/><text x="451" y="178" text-anchor="middle" fill="#0d1117">tcp_wfree · sock_def_readable</text>
+  <rect x="40" y="132" width="180" height="26" fill="#fdba74"/><text x="130" y="150" text-anchor="middle" fill="#0d1117">tcp_rcv_established</text>
+  <!-- annotations -->
+  <text x="40" y="110" fill="#e6edf3">↑ 위로 갈수록 피호출자. 꼭대기(더 위에 아무것도 없는 끝) = 실제로 CPU 를 쓴 함수(self time)</text>
+  <text x="40" y="355" fill="#8b949e">가로 폭 = 그 스택이 샘플에 찍힌 비율. 왼→오 순서는 알파벳순일 뿐 시간 순서가 아니다. 색은 의미 없음.</text>
+  <text x="40" y="377" fill="#8b949e">bpf_prog_…sys_exit = 이미 올라가 있는 Falco 의 eBPF 프로그램이 매 syscall 마다 실행되는 비용 — 관측 도구의 오버헤드도 프로파일에 찍힌다.</text>
+</svg>

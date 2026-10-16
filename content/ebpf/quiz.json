@@ -1,1 +1,152 @@
-[]
+[
+  {
+    "note": "01-what-is-ebpf",
+    "q": "eBPF 프로그램이 커널 모듈보다 안전한 이유는?",
+    "a": "로드 전에 검증기가 모든 실행 경로를 따라가 메모리 안전·종료성·허용된 헬퍼만 쓰는지 증명한다. 통과한 프로그램은 커널을 죽일 수 없다."
+  },
+  {
+    "note": "01-what-is-ebpf",
+    "q": "맵(map)의 역할은?",
+    "a": "프로그램의 상태 저장소이자 커널↔유저 통신 채널. 해시·배열·퍼코어·링버퍼·스택 트레이스 등이 있다. 집계를 커널 안에서 하고 요약만 유저로 보낸다."
+  },
+  {
+    "note": "01-what-is-ebpf",
+    "q": "CO-RE 와 BTF 가 해결한 문제는?",
+    "a": "커널 버전마다 구조체 필드 오프셋이 달라 타깃에서 매번 컴파일해야 했다. BTF(커널 타입 정보)를 보고 로드 시 오프셋을 고쳐 한 바이너리가 여러 커널에서 돈다."
+  },
+  {
+    "note": "01-what-is-ebpf",
+    "q": "kind 안의 Falco 가 compose 컨테이너까지 본 이유는?",
+    "a": "Docker Desktop 에서 kind 노드와 compose 컨테이너가 같은 Linux VM 커널을 쓴다. eBPF 는 커널 단위로 본다."
+  },
+  {
+    "note": "02-bpftrace-one-liners",
+    "q": "bpftrace 프로브 선호 순서는?",
+    "a": "tracepoint(안정 ABI) > kfunc(BTF 타입) > kprobe(버전 의존) > uprobe(유저↔커널 트랩, 비쌈)."
+  },
+  {
+    "note": "02-bpftrace-one-liners",
+    "q": "진입-반환 지연을 재는 패턴은?",
+    "a": "진입에서 @start[tid] = nsecs, 반환에서 /@start[tid]/ 필터로 hist(nsecs - @start[tid]) 후 delete. 스레드별로 짝짓는다."
+  },
+  {
+    "note": "02-bpftrace-one-liners",
+    "q": "부하 중 Redis 의 상위 syscall 세 개와 그 의미는?",
+    "a": "write·read·epoll_pwait. 이벤트 루프로 기다리다 요청을 읽고 응답을 쓴다 — Redis 의 일은 대부분 네트워크 I/O 다."
+  },
+  {
+    "note": "02-bpftrace-one-liners",
+    "q": "strace -c 보다 bpftrace 집계가 싼 이유는?",
+    "a": "strace 는 ptrace 로 매 syscall 마다 프로세스를 멈춘다. eBPF 는 커널 안 맵에서 세고 요약만 유저로 꺼낸다."
+  },
+  {
+    "note": "03-bcc-libbpf-tools",
+    "q": "BCC 와 libbpf-tools 의 핵심 차이는?",
+    "a": "BCC 는 실행 시 타깃에서 LLVM 으로 컴파일(무겁고 느림), libbpf-tools 는 CO-RE 정적 바이너리라 BTF 만 있으면 수 ms 에 시작한다. 운영엔 libbpf-tools."
+  },
+  {
+    "note": "03-bcc-libbpf-tools",
+    "q": "'느린데 CPU 는 한가하다' 면 어떤 도구?",
+    "a": "offcputime — CPU 를 쓰지 않을 때 어디서(디스크·락·네트워크) 기다리는지 스택별로 보여 준다."
+  },
+  {
+    "note": "03-bcc-libbpf-tools",
+    "q": "runqlat 에 1~2ms 대기가 보이면?",
+    "a": "CPU 경합 신호. 컨테이너 CPU limit 스로틀링이나 코어 부족. 단일 스레드 Redis 에서는 그대로 명령 지연이 된다."
+  },
+  {
+    "note": "03-bcc-libbpf-tools",
+    "q": "tcplife 에서 짧은 수명·작은 바이트의 연결이 많으면?",
+    "a": "커넥션 풀 없이 매 요청 연결을 맺고 닫는 패턴. 실험에서 -k 0 은 2,000 요청에 2,017 연결, -k 1 은 20 연결이었다."
+  },
+  {
+    "note": "04-networking-xdp-tc-cilium",
+    "q": "XDP 가 빠른 이유는?",
+    "a": "드라이버 수신 루프에서 sk_buff 를 만들기 전에 실행된다. 할당·스택 처리 없이 DROP/PASS/TX/REDIRECT 를 결정한다."
+  },
+  {
+    "note": "04-networking-xdp-tc-cilium",
+    "q": "Cilium 이 ClusterIP 에서 NAT 를 없애는 방법은?",
+    "a": "cgroup/connect 훅에서 connect() 의 목적지를 백엔드 Pod IP 로 바꿔치기한다(소켓 기반 LB). 이후 패킷에 DNAT 가 없다."
+  },
+  {
+    "note": "04-networking-xdp-tc-cilium",
+    "q": "Cilium 의 '신원(identity)' 기반 정책이 IP 기반보다 나은 점은?",
+    "a": "레이블 집합에 번호를 붙여 (src_id, dst_id, port) 맵으로 판정한다. Pod IP 가 바뀌어도 정책이 바뀌지 않고 갱신이 µs 단위다."
+  },
+  {
+    "note": "04-networking-xdp-tc-cilium",
+    "q": "Hubble 이 Calico 실험에서 없던 무엇을 보여 주나?",
+    "a": "어떤 흐름이 어떤 정책에 의해 DROPPED 됐는지. 연결 실패의 '이유' 가 보인다."
+  },
+  {
+    "note": "05-security-falco-tetragon",
+    "q": "탐지와 강제의 실패 비용 차이는?",
+    "a": "탐지의 실패는 알림 누락, 강제의 실패(오탐)는 정상 업무 중단이다. 그래서 탐지로 시작해 노이즈를 깎은 뒤 소수 규칙만 강제한다."
+  },
+  {
+    "note": "05-security-falco-tetragon",
+    "q": "Falco 규칙 노이즈를 줄이는 정석은?",
+    "a": "기본 규칙을 고치지 말고 가장 좁은 exceptions(프로세스+이미지+네임스페이스)를 덧붙인다. 업그레이드에도 유지된다."
+  },
+  {
+    "note": "05-security-falco-tetragon",
+    "q": "Falco 의 open_read 매크로가 fd.num>=0 을 보는 의미는?",
+    "a": "성공한 open 만 본다. non-root 컨테이너에서 권한 오류로 실패한 시도는 이벤트가 되지 않는다."
+  },
+  {
+    "note": "05-security-falco-tetragon",
+    "q": "BPF LSM 이 다른 관측 훅과 다른 점은?",
+    "a": "보안 판단 지점이라 반환값으로 허용/거부를 결정하도록 설계됐다. 정책 강제 도구가 이 지점을 쓴다."
+  },
+  {
+    "note": "06-profiling-continuous",
+    "q": "샘플링 주기로 100Hz 대신 99Hz 를 쓰는 이유는?",
+    "a": "10ms 주기 작업과 위상이 맞아 같은 지점만 찍히는 것(lockstep)을 피하려고."
+  },
+  {
+    "note": "06-profiling-continuous",
+    "q": "flame graph 에서 가로 폭과 꼭대기의 의미는?",
+    "a": "폭은 그 스택이 샘플에 찍힌 비율, 꼭대기(위에 더 없는 끝)는 실제로 CPU 를 쓴 함수(self time). 왼→오 순서와 색은 의미 없다."
+  },
+  {
+    "note": "06-profiling-continuous",
+    "q": "유저 스택이 [unknown] 이나 주소로 끊기는 흔한 이유는?",
+    "a": "프레임 포인터를 생략한 최적화 빌드, 심볼이 없는 공유 라이브러리, JIT 코드(perf map 없음). 실험에서는 musl syscall 진입점이 주소로 나왔다."
+  },
+  {
+    "note": "06-profiling-continuous",
+    "q": "Redis 프로파일의 커널 스택에 bpf_prog_…sys_exit 가 보인 이유는?",
+    "a": "이미 올라가 있는 Falco 의 eBPF 프로그램이 매 syscall 마다 실행되는 비용. 관측 도구의 오버헤드도 프로파일에 찍힌다."
+  },
+  {
+    "note": "06-profiling-continuous",
+    "q": "연속 프로파일링이 네 번째 신호인 이유는?",
+    "a": "메트릭(무엇)·로그(무슨 일)·트레이스(어디서) 다음으로 '어떤 코드가' 를 사후에, 시계열로 보여 준다. 배포 전후 차분 flame graph 로 회귀를 잡는다."
+  },
+  {
+    "note": "07-writing-your-own",
+    "q": "bpftrace 대신 직접 작성이 필요한 때는?",
+    "a": "장기 실행 에이전트로 배포, 복잡한 유저 공간 로직(메트릭 노출), 복잡한 상태·테일 콜, XDP/TC 같은 네트워크 프로그램, 극단적 성능 요구."
+  },
+  {
+    "note": "07-writing-your-own",
+    "q": "링버퍼 reserve 가 실패하면 어떻게 해야 하나?",
+    "a": "가득 찬 것이니 이벤트를 버리되, 버린 횟수를 퍼코어 카운터로 세서 메트릭으로 노출한다. 유실을 모르는 것이 최악이다."
+  },
+  {
+    "note": "07-writing-your-own",
+    "q": "검증기 에러 'invalid mem access map_value_or_null' 의 원인은?",
+    "a": "bpf_map_lookup_elem 결과를 NULL 검사 없이 역참조했다. if (!p) return 0; 를 넣는다."
+  },
+  {
+    "note": "07-writing-your-own",
+    "q": "Apple Silicon 의 Docker Desktop 에서 eBPF 개발 시 주의점은?",
+    "a": "VM 이 arm64 라 -D__TARGET_ARCH_arm64 가 필요하고 syscall 번호표도 x86_64 와 다르다. vmlinux.h 는 VM 커널 BTF 에서 생성한다."
+  },
+  {
+    "note": "07-writing-your-own",
+    "q": "프로그램당 실행 시간을 재는 방법은?",
+    "a": "sysctl kernel.bpf_stats_enabled=1 후 bpftool prog show 의 run_time_ns / run_cnt 로 이벤트당 비용을 계산한다."
+  }
+]

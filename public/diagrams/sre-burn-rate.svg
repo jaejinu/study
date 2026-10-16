@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="440" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">멀티윈도우 번레이트 — 긴 창은 "충분히 썼다", 짧은 창은 "지금도 타고 있다"</text>
+  <!-- axes -->
+  <line x1="80" y1="330" x2="900" y2="330" stroke="#30363d"/>
+  <line x1="80" y1="70" x2="80" y2="330" stroke="#30363d"/>
+  <text x="70" y="75" text-anchor="end" fill="#8b949e" font-size="11">번레이트</text>
+  <text x="900" y="350" text-anchor="end" fill="#8b949e" font-size="11">시간 →</text>
+  <!-- threshold 14.4 -->
+  <line x1="80" y1="210" x2="900" y2="210" stroke="#f59e0b" stroke-dasharray="6 4"/>
+  <text x="88" y="203" fill="#f59e0b" font-size="11">14.4 (1h 동안 지속되면 30일 버짓의 2%)</text>
+  <!-- outage band -->
+  <rect x="260" y="70" width="160" height="260" fill="#ef4444" opacity="0.08"/>
+  <text x="340" y="88" text-anchor="middle" fill="#ef4444" font-size="12" font-weight="600">장애 (Redis hang)</text>
+  <!-- short window: fast up, fast down -->
+  <polyline points="80,325 255,325 275,110 415,110 440,325 900,325" fill="none" stroke="#22c55e" stroke-width="3"/>
+  <text x="455" y="300" fill="#22c55e" font-size="12">짧은 창(5m): 장애가 끝나면 곧바로 0</text>
+  <!-- long window: slow up, slow down -->
+  <polyline points="80,325 260,325 420,175 700,175 860,325 900,325" fill="none" stroke="#3b82f6" stroke-width="3"/>
+  <text x="560" y="165" fill="#3b82f6" font-size="12">긴 창(1h): 천천히 오르고 오래 남는다</text>
+  <!-- page region -->
+  <rect x="345" y="335" width="75" height="18" rx="4" fill="#ef4444" opacity="0.85"/>
+  <text x="382" y="348" text-anchor="middle" fill="#0d1117" font-size="11" font-weight="600">PAGE</text>
+  <line x1="345" y1="330" x2="345" y2="70" stroke="#ef4444" stroke-dasharray="3 3"/>
+  <line x1="420" y1="330" x2="420" y2="70" stroke="#ef4444" stroke-dasharray="3 3"/>
+  <!-- notes -->
+  <rect x="80" y="368" width="820" height="60" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="96" y="390" fill="#e6edf3">page = (1h 번레이트 &gt; 14.4) AND (5m 번레이트 &gt; 14.4). 긴 창만 쓰면 복구 뒤에도 수십 분 알림이 남고, 짧은 창만 쓰면 순간 노이즈에 울린다.</text>
+  <text x="96" y="412" fill="#8b949e" font-size="12">긴 창이 임계를 넘는 순간(왼쪽 점선) = 탐지, 짧은 창이 떨어지는 순간(오른쪽 점선) = 리셋. 실험 sre-burn-rate-under-chaos 가 이 곡선을 12배 압축(5m/30s)해 실측한다.</text>
+</svg>
