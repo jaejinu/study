@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="430" fill="#0d1117"/>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">에이전트 루프 — 모델은 고르고, 실행은 호스트가 한다</text>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker>
+  <marker id="g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#22c55e"/></marker></defs>
+  <!-- user -->
+  <rect x="30" y="70" width="150" height="70" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="105" y="98" text-anchor="middle" fill="#e6edf3" font-weight="600">사용자</text>
+  <text x="105" y="120" text-anchor="middle" fill="#8b949e" font-size="12">질문 · 승인 버튼</text>
+  <!-- host -->
+  <rect x="240" y="55" width="300" height="300" rx="12" fill="#161b22" stroke="#7c3aed"/>
+  <text x="390" y="80" text-anchor="middle" fill="#a78bfa" font-weight="600">호스트 (우리 코드: /api/ask)</text>
+  <rect x="260" y="95" width="260" height="44" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="390" y="113" text-anchor="middle" fill="#e6edf3">messages = [system, …기록, user]</text>
+  <text x="390" y="130" text-anchor="middle" fill="#8b949e" font-size="11">+ 검색 증강(searchSmart) 미리 첨부</text>
+  <rect x="260" y="150" width="260" height="44" rx="8" fill="#0d1117" stroke="#f59e0b"/>
+  <text x="390" y="168" text-anchor="middle" fill="#f59e0b">예산 검사: iter &lt; 5 ?</text>
+  <text x="390" y="185" text-anchor="middle" fill="#8b949e" font-size="11">넘으면 툴 없이 강제 마무리</text>
+  <rect x="260" y="205" width="260" height="56" rx="8" fill="#0d1117" stroke="#22c55e"/>
+  <text x="390" y="224" text-anchor="middle" fill="#22c55e">게이트: 허용 목록 · 승인 필요?</text>
+  <text x="390" y="242" text-anchor="middle" fill="#8b949e" font-size="11">읽기 → 실행 / 부작용 → 승인 대기</text>
+  <text x="390" y="256" text-anchor="middle" fill="#8b949e" font-size="11">목록 밖 이름 → 차단</text>
+  <rect x="260" y="272" width="260" height="66" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="390" y="292" text-anchor="middle" fill="#e6edf3">executeTool(name, args)</text>
+  <text x="390" y="310" text-anchor="middle" fill="#8b949e" font-size="11">결과 자르기(16,000자) → role:"tool"</text>
+  <text x="390" y="326" text-anchor="middle" fill="#8b949e" font-size="11">span tool.* · 메트릭 tool_calls</text>
+  <!-- model -->
+  <rect x="610" y="95" width="160" height="110" rx="10" fill="#161b22" stroke="#3b82f6"/>
+  <text x="690" y="122" text-anchor="middle" fill="#60a5fa" font-weight="600">LLM</text>
+  <text x="690" y="145" text-anchor="middle" fill="#8b949e" font-size="12">다음 행동 결정</text>
+  <text x="690" y="165" text-anchor="middle" fill="#8b949e" font-size="11">tool_calls[] 또는</text>
+  <text x="690" y="181" text-anchor="middle" fill="#8b949e" font-size="11">최종 답(스트리밍)</text>
+  <!-- tools -->
+  <rect x="610" y="255" width="160" height="100" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="690" y="280" text-anchor="middle" fill="#e6edf3" font-weight="600">툴</text>
+  <text x="690" y="302" text-anchor="middle" fill="#8b949e" font-size="11">search_notes · get_note</text>
+  <text x="690" y="318" text-anchor="middle" fill="#8b949e" font-size="11">get_progress</text>
+  <text x="690" y="334" text-anchor="middle" fill="#f59e0b" font-size="11">propose_experiment (제안만)</text>
+  <!-- traces -->
+  <rect x="820" y="95" width="120" height="260" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="880" y="122" text-anchor="middle" fill="#e6edf3" font-weight="600">관측</text>
+  <text x="880" y="150" text-anchor="middle" fill="#8b949e" font-size="11">span ask.chat</text>
+  <text x="880" y="168" text-anchor="middle" fill="#8b949e" font-size="11">gen_ai.* 속성</text>
+  <text x="880" y="186" text-anchor="middle" fill="#8b949e" font-size="11">토큰 · 비용</text>
+  <text x="880" y="204" text-anchor="middle" fill="#8b949e" font-size="11">TTFT · 총 지연</text>
+  <text x="880" y="222" text-anchor="middle" fill="#8b949e" font-size="11">라운드 수</text>
+  <text x="880" y="240" text-anchor="middle" fill="#8b949e" font-size="11">게이트 판정</text>
+  <!-- arrows -->
+  <line x1="180" y1="105" x2="238" y2="115" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="522" y1="125" x2="606" y2="135" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="565" y="118" text-anchor="middle" fill="#8b949e" font-size="11">① 요청</text>
+  <line x1="606" y1="185" x2="522" y2="228" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="575" y="222" text-anchor="middle" fill="#8b949e" font-size="11">② tool_call</text>
+  <line x1="522" y1="300" x2="606" y2="300" stroke="#22c55e" stroke-width="2" marker-end="url(#g)"/>
+  <text x="565" y="292" text-anchor="middle" fill="#22c55e" font-size="11">③ 실행</text>
+  <path d="M 250 330 C 205 330 205 170 250 168" fill="none" stroke="#22c55e" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#g)"/>
+  <text x="200" y="255" text-anchor="middle" fill="#22c55e" font-size="11">④ 결과를</text>
+  <text x="200" y="270" text-anchor="middle" fill="#22c55e" font-size="11">대화에 붙여</text>
+  <text x="200" y="285" text-anchor="middle" fill="#22c55e" font-size="11">다시 ①</text>
+  <line x1="772" y1="225" x2="818" y2="225" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#a)"/>
+  <!-- bottom -->
+  <rect x="30" y="375" width="910" height="40" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="485" y="400" text-anchor="middle" fill="#e6edf3" font-size="12">종료: 모델이 tool_call 없이 답함 · 예산 소진(강제 마무리) · 진척 없음 감지 · 검증 통과 · 사람이 중단/거부   —   비용 ≈ Σ 라운드마다 누적되는 입력</text>
+</svg>
