@@ -1,1 +1,167 @@
-[]
+[
+  {
+    "note": "01-rest-principles",
+    "q": "HTTP 에서 '멱등' 의 정확한 뜻은?",
+    "a": "같은 요청을 여러 번 보내도 서버 상태가 한 번 보낸 것과 같다는 것. 응답(예: 두 번째 DELETE 의 404)까지 같을 필요는 없다."
+  },
+  {
+    "note": "01-rest-principles",
+    "q": "POST 결제 API 에 Idempotency-Key 가 필요한 이유는?",
+    "a": "응답을 못 받은 클라이언트는 처리 여부를 모른 채 재시도한다. 키가 없으면 재시도가 이중 결제가 된다. 실험에서 키 없이 동시 10번 → 결제 10건, 키를 쓰면 1건이었다."
+  },
+  {
+    "note": "01-rest-principles",
+    "q": "같은 Idempotency-Key 에 다른 본문이 오면 왜 422 인가?",
+    "a": "같은 키는 같은 요청의 재시도여야 한다. 본문이 다르면 클라이언트 버그이므로 저장된 응답을 재생하지도, 새로 처리하지도 않고 명시적으로 거절한다."
+  },
+  {
+    "note": "01-rest-principles",
+    "q": "오프셋 페이지네이션이 깊은 페이지와 중간 삽입에서 겪는 문제는?",
+    "a": "깊을수록 DB 가 앞의 행을 다 읽고 버려 느려지고, 중간에 삽입·삭제가 있으면 항목이 중복되거나 빠진다. 커서(키셋) 방식은 둘 다 없다."
+  },
+  {
+    "note": "01-rest-principles",
+    "q": "모든 에러를 HTTP 200 + {success:false} 로 감싸면 무엇이 깨지나?",
+    "a": "프록시·모니터링·재시도 로직이 전부 성공으로 본다. 에러율 메트릭과 알림이 동작하지 않는다."
+  },
+  {
+    "note": "02-openapi-contract-first",
+    "q": "OpenAPI 에서 operationId 를 바꾸면 왜 위험한가?",
+    "a": "코드 생성기가 operationId 로 SDK 함수 이름을 만든다. 바꾸면 생성된 클라이언트의 함수 이름이 바뀌어 사용자 코드가 컴파일되지 않는다."
+  },
+  {
+    "note": "02-openapi-contract-first",
+    "q": "요청 스키마에 additionalProperties: false 를 두는 이유는?",
+    "a": "오타 필드(ammount 등)가 조용히 무시되고 기본값으로 처리되는 버그를 400 으로 드러내기 위해서."
+  },
+  {
+    "note": "02-openapi-contract-first",
+    "q": "JSON Schema 로 표현할 수 없는 규칙의 예와 처리 방법은?",
+    "a": "필드 간·상태 의존 규칙(주문 수량 ≤ 재고). 서버 로직에서 검증해 422 + 에러 type 으로 응답하고 문서 description 에 적는다."
+  },
+  {
+    "note": "02-openapi-contract-first",
+    "q": "Schemathesis 같은 스펙 기반 퍼징이 찾는 것은?",
+    "a": "스펙의 모든 오퍼레이션에 경계값·이상한 입력을 자동 생성해 보내, 500 응답이나 스펙과 다른 응답(계약 위반)을 찾는다."
+  },
+  {
+    "note": "03-protobuf-grpc",
+    "q": "Protobuf 태그 바이트 0x12 는 무엇을 뜻하나?",
+    "a": "(필드 번호 << 3) | 와이어 타입. 0x12 = 2<<3 | 2 → 필드 2, 길이 접두(LEN) 타입(문자열·바이트·하위 메시지)."
+  },
+  {
+    "note": "03-protobuf-grpc",
+    "q": "proto3 에서 int32 로 -1 을 보내면 몇 바이트이고 대안은?",
+    "a": "10바이트(64비트 2의 보수 varint). 음수가 잦으면 ZigZag 인코딩인 sint32 를 쓴다(-1 → 1바이트)."
+  },
+  {
+    "note": "03-protobuf-grpc",
+    "q": "실험에서 서버 스트리밍 1번(13.5ms)보다 JSON 배열 한 번(1.5ms)이 빨랐던 이유는?",
+    "a": "스트리밍은 메시지 1000개 각각에 프레이밍·직렬화·콜백 비용을 낸다. 스트리밍의 가치는 작은 고정 목록의 속도가 아니라 첫 항목을 먼저 처리하거나 끝없는 흐름을 다루는 데 있다."
+  },
+  {
+    "note": "03-protobuf-grpc",
+    "q": "gRPC 에러가 일반 HTTP 프록시의 5xx 메트릭에 안 잡히는 이유는?",
+    "a": "HTTP 상태는 거의 항상 200 이고 실제 결과는 트레일러의 grpc-status 에 있기 때문이다. gRPC 인식 프록시나 앱 메트릭이 필요하다."
+  },
+  {
+    "note": "03-protobuf-grpc",
+    "q": "gRPC 메타데이터에 한글 값을 넣으면 어떻게 되고 해결책은?",
+    "a": "메타데이터는 HTTP 헤더라 ASCII 만 허용된다. 실험에서 호출이 즉시 UNKNOWN 으로 실패했다. 비 ASCII·바이너리는 키를 -bin 으로 끝내 base64 로 싣는다."
+  },
+  {
+    "note": "04-errors-retries-deadlines",
+    "q": "DEADLINE_EXCEEDED 를 받은 비멱등 호출을 그냥 재시도하면 안 되는 이유는?",
+    "a": "데드라인 초과는 '처리 안 됨' 이 아니다. 서버가 처리한 뒤 응답만 늦었을 수 있어 재시도가 이중 처리가 된다. 멱등 키가 필요하다."
+  },
+  {
+    "note": "04-errors-retries-deadlines",
+    "q": "타임아웃과 데드라인의 차이는?",
+    "a": "타임아웃은 호출마다 최대 대기 시간, 데드라인은 요청 전체의 종료 시각이다. 데드라인을 전파하면 각 단계가 남은 시간만큼만 기다려 전체 예산을 넘지 않는다."
+  },
+  {
+    "note": "04-errors-retries-deadlines",
+    "q": "실험에서 데드라인을 전파하지 않았을 때 하위 서버는 어떻게 됐나?",
+    "a": "클라이언트는 300ms 에 DEADLINE_EXCEEDED 를 받았지만 하위 SlowWork 는 데드라인이 없어 1025ms 까지 아무도 기다리지 않는 작업을 끝까지 했다. 전파하면 306ms 에 멈췄다."
+  },
+  {
+    "note": "04-errors-retries-deadlines",
+    "q": "gRPC retryThrottling(maxTokens, tokenRatio)이 하는 일은?",
+    "a": "재시도 예산이다. 실패마다 토큰을 빼고 성공마다 tokenRatio 만큼 채워, 토큰이 절반 아래면 재시도를 멈춰 재시도 폭풍을 막는다."
+  },
+  {
+    "note": "04-errors-retries-deadlines",
+    "q": "서버 스트리밍에서 call.write() 가 false 를 반환하면?",
+    "a": "HTTP/2 흐름 제어 창이 찼다는 백프레셔 신호다. drain 이벤트까지 기다려야 하며 무시하면 내부 버퍼에 쌓여 메모리가 오른다."
+  },
+  {
+    "note": "05-graphql-comparison",
+    "q": "GraphQL 리졸버의 N+1 은 어떻게 생기고 DataLoader 는 어떻게 푸나?",
+    "a": "목록 항목마다 하위 필드 리졸버가 따로 DB 를 부른다. DataLoader 는 한 틱 동안의 load(key) 를 모아 WHERE id = ANY(...) 한 번으로 바꾸고 요청 안에서 중복을 제거한다."
+  },
+  {
+    "note": "05-graphql-comparison",
+    "q": "GraphQL 이 HTTP 캐시를 잃는 이유와 보완책은?",
+    "a": "모든 질의가 POST /graphql 하나로 가 URL 이 캐시 키가 못 된다. 영속 질의 해시를 GET 으로 보내거나 클라이언트 정규화 캐시, 서버 리졸버 캐시로 보완한다."
+  },
+  {
+    "note": "05-graphql-comparison",
+    "q": "중첩 질의 공격을 막는 서버 측 장치 세 가지는?",
+    "a": "깊이 제한, 필드 비용 기반 복잡도 상한, 페이지 크기(first) 상한. 공개 앱이면 영속 질의 허용 목록이 가장 확실하다."
+  },
+  {
+    "note": "05-graphql-comparison",
+    "q": "GraphQL 에서 권한 검사를 진입 리졸버가 아닌 데이터 접근 층에 둬야 하는 이유는?",
+    "a": "같은 객체에 여러 경로로 닿을 수 있어(order.customer.paymentMethods), 진입점만 검사하면 깊은 경로로 남의 데이터를 읽는다."
+  },
+  {
+    "note": "06-gateway-auth-ratelimit",
+    "q": "게이트웨이가 맡으면 안 되는 일의 대표 예는?",
+    "a": "객체 수준 인가(이 주문이 이 사용자 것인가)와 비즈니스 규칙. 데이터를 봐야 알 수 있고, 쌓이면 게이트웨이가 모든 팀의 배포 병목이 된다."
+  },
+  {
+    "note": "06-gateway-auth-ratelimit",
+    "q": "게이트웨이가 클라이언트가 보낸 x-user-id 헤더를 지우지 않으면?",
+    "a": "클라이언트가 직접 x-user-id: 1 을 보내 다른 사용자로 위장할 수 있다. 검증된 클레임 헤더는 게이트웨이만 붙여야 한다."
+  },
+  {
+    "note": "06-gateway-auth-ratelimit",
+    "q": "토큰 버킷이 API 레이트리밋에 흔히 쓰이는 이유는?",
+    "a": "평균 속도(채우는 속도 r)와 순간 버스트(버킷 크기 b)를 따로 정할 수 있어 사용자 행동에 자연스럽다."
+  },
+  {
+    "note": "06-gateway-auth-ratelimit",
+    "q": "Nginx grpc_pass 에서 업스트림 장애를 grpc-status 14 로 바꿔 주는 이유는?",
+    "a": "기본 HTML 502 는 gRPC 클라이언트가 해석하지 못해 UNKNOWN/INTERNAL 로 본다. UNAVAILABLE(14)이면 클라이언트 재시도 정책이 올바르게 동작한다."
+  },
+  {
+    "note": "06-gateway-auth-ratelimit",
+    "q": "분산 레이트리밋에서 Redis 장애 시 보통 허용(fail-open)으로 두는 이유는?",
+    "a": "레이트리밋 저장소 장애가 전체 서비스를 멈추게 하지 않기 위해서다. 보호 기능이 가용성의 단일 장애점이 되면 안 된다."
+  },
+  {
+    "note": "07-versioning-evolution-governance",
+    "q": "응답 enum 에 값을 추가하는 것이 위험할 수 있는 이유는?",
+    "a": "모르는 값에 switch 가 예외를 던지는 클라이언트가 있다. 문서에 '모르는 enum 은 UNKNOWN 으로 처리' 를 명시해야 안전하게 추가할 수 있다."
+  },
+  {
+    "note": "07-versioning-evolution-governance",
+    "q": "Protobuf 에서 지운 필드 번호를 reserved 로 막아야 하는 이유는?",
+    "a": "번호를 재사용하면 옛 데이터의 그 번호 값이 새 필드로 조용히 잘못 읽힌다(예: discount=5000 → gift_wrap=true). 에러도 나지 않는다."
+  },
+  {
+    "note": "07-versioning-evolution-governance",
+    "q": "Protobuf enum 의 첫 값을 _UNSPECIFIED = 0 으로 두는 이유는?",
+    "a": "필드가 없을 때의 기본값이 0 이므로, 옛 메시지나 모르는 값이 의미 있는 값(예: KRW)으로 오해되지 않게 하기 위해서다."
+  },
+  {
+    "note": "07-versioning-evolution-governance",
+    "q": "Deprecation 과 Sunset 헤더의 차이는?",
+    "a": "Deprecation 은 '폐기가 결정됐다'(언제부터), Sunset 은 '이 시각에 동작이 멈춘다'. 둘 다 응답 헤더로 클라이언트에 예고한다."
+  },
+  {
+    "note": "07-versioning-evolution-governance",
+    "q": "폐기 절차에서 '브라운아웃' 이란?",
+    "a": "종료 몇 주 전 짧은 시간 동안 일부러 실패시켜, 공지를 무시하던 사용자가 로그의 에러를 보고 이전하게 만드는 방법."
+  }
+]

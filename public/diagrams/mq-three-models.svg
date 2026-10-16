@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 380" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="380" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">메시징의 세 가지 모델</text>
+
+  <!-- 작업 큐 -->
+  <rect x="20" y="55" width="290" height="300" rx="12" fill="#161b22" stroke="#58a6ff"/>
+  <text x="165" y="82" text-anchor="middle" fill="#58a6ff" font-weight="600" font-size="15">작업 큐 (경쟁 소비자)</text>
+  <g font-size="12" fill="#e6edf3">
+    <rect x="40" y="110" width="150" height="34" rx="6" fill="#0d1117" stroke="#30363d"/>
+    <text x="52" y="132">m1  m2  m3  m4  m5</text>
+  </g>
+  <line x1="190" y1="120" x2="238" y2="104" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="190" y1="134" x2="238" y2="150" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="244" y="108" fill="#e6edf3" font-size="12">A: m1 m3</text>
+  <text x="244" y="154" fill="#e6edf3" font-size="12">B: m2 m4</text>
+  <g fill="#8b949e" font-size="12">
+    <text x="40" y="196">• 메시지 하나 = 소비자 하나</text>
+    <text x="40" y="218">• ack 하면 삭제</text>
+    <text x="40" y="240">• 브로커가 메시지별 상태 관리</text>
+    <text x="40" y="262">• 개별 재시도·지연·DLQ 쉬움</text>
+    <text x="40" y="284">• 재처리 불가</text>
+  </g>
+  <text x="40" y="330" fill="#58a6ff" font-size="12">RabbitMQ · SQS · Redis List · PG SKIP LOCKED</text>
+
+  <!-- pub/sub -->
+  <rect x="335" y="55" width="290" height="300" rx="12" fill="#161b22" stroke="#d2a8ff"/>
+  <text x="480" y="82" text-anchor="middle" fill="#d2a8ff" font-weight="600" font-size="15">pub/sub 토픽 (팬아웃)</text>
+  <rect x="355" y="110" width="110" height="34" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="368" y="132" fill="#e6edf3" font-size="12">orders.created</text>
+  <line x1="465" y1="118" x2="525" y2="100" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="465" y1="127" x2="525" y2="127" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="465" y1="136" x2="525" y2="154" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="530" y="104" fill="#e6edf3" font-size="12">재고 (전부)</text>
+  <text x="530" y="131" fill="#e6edf3" font-size="12">알림 (전부)</text>
+  <text x="530" y="158" fill="#e6edf3" font-size="12">분석 (전부)</text>
+  <g fill="#8b949e" font-size="12">
+    <text x="355" y="196">• 메시지 하나 = 구독자 전부</text>
+    <text x="355" y="218">• 순수 pub/sub 는 저장 없음</text>
+    <text x="355" y="240">• 지금 연결된 구독자만 받음</text>
+    <text x="355" y="262">• 생산자는 구독자를 모름</text>
+    <text x="355" y="284">• 느린 구독자는 버려짐</text>
+  </g>
+  <text x="355" y="330" fill="#d2a8ff" font-size="12">Redis Pub/Sub · NATS core · SNS</text>
+
+  <!-- 로그 -->
+  <rect x="650" y="55" width="290" height="300" rx="12" fill="#161b22" stroke="#3fb950"/>
+  <text x="795" y="82" text-anchor="middle" fill="#3fb950" font-weight="600" font-size="15">로그 (재생 가능)</text>
+  <g font-size="11" fill="#e6edf3">
+    <rect x="668" y="110" width="36" height="30" fill="#0d1117" stroke="#30363d"/><text x="680" y="130">0</text>
+    <rect x="704" y="110" width="36" height="30" fill="#0d1117" stroke="#30363d"/><text x="716" y="130">1</text>
+    <rect x="740" y="110" width="36" height="30" fill="#0d1117" stroke="#30363d"/><text x="752" y="130">2</text>
+    <rect x="776" y="110" width="36" height="30" fill="#0d1117" stroke="#30363d"/><text x="788" y="130">3</text>
+    <rect x="812" y="110" width="36" height="30" fill="#0d1117" stroke="#30363d"/><text x="824" y="130">4</text>
+    <rect x="848" y="110" width="36" height="30" fill="#0d1117" stroke="#30363d"/><text x="860" y="130">5</text>
+    <text x="890" y="130" fill="#8b949e">→</text>
+  </g>
+  <text x="740" y="160" fill="#3fb950" font-size="11">↑ 분석 그룹 @2</text>
+  <text x="830" y="160" fill="#3fb950" font-size="11">↑ 재고 @5</text>
+  <g fill="#8b949e" font-size="12">
+    <text x="668" y="196">• 그룹마다 한 번씩</text>
+    <text x="668" y="218">• 읽어도 남음 (보존 기간까지)</text>
+    <text x="668" y="240">• 소비 위치 = 소비자의 오프셋</text>
+    <text x="668" y="262">• 되감기·재처리 쉬움</text>
+    <text x="668" y="284">• 순서는 파티션 안에서만</text>
+  </g>
+  <text x="668" y="330" fill="#3fb950" font-size="12">Kafka · Redis Streams · JetStream</text>
+</svg>

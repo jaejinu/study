@@ -1618,5 +1618,185 @@
     "subject": "ebpf",
     "def": "bpftool gen skeleton 이 BPF 오브젝트에서 생성하는 C 헤더. open/load/attach 와 맵·프로그램 접근을 타입 있는 함수로 제공한다.",
     "link": "/ebpf/notes/07-writing-your-own"
+  },
+  {
+    "term": "데드라인 전파 (deadline propagation)",
+    "subject": "api-design",
+    "def": "요청 전체의 종료 시각을 하위 호출로 넘겨 각 단계가 남은 시간만큼만 기다리게 하는 것. gRPC 는 grpc-timeout 헤더와 { parent: call } 로 전파한다. 전파하지 않으면 사용자가 떠난 뒤에도 하위 서버가 헛일을 한다.",
+    "link": "/api-design/notes/04-errors-retries-deadlines"
+  },
+  {
+    "term": "gRPC 상태 코드",
+    "subject": "api-design",
+    "def": "HTTP 상태 대신 트레일러의 grpc-status 로 전달되는 17개 결과 코드. UNAVAILABLE(14)은 재시도, INVALID_ARGUMENT(3)·FAILED_PRECONDITION(9)은 재시도 무의미, DEADLINE_EXCEEDED(4)는 처리됐을 수도 있어 멱등일 때만 재시도.",
+    "link": "/api-design/notes/04-errors-retries-deadlines"
+  },
+  {
+    "term": "varint",
+    "subject": "api-design",
+    "def": "정수를 7비트씩 끊고 최상위 비트로 '다음 바이트 있음' 을 표시하는 가변 길이 인코딩. 작은 수는 1바이트. Protobuf 의 정수·bool·enum 이 쓴다. 음수가 잦으면 ZigZag(sint32)를 쓴다.",
+    "link": "/api-design/notes/03-protobuf-grpc"
+  },
+  {
+    "term": "Protobuf 필드 번호",
+    "subject": "api-design",
+    "def": "와이어에 이름 대신 실리는 필드 식별자. 태그 = (번호 << 3) | 와이어 타입. 이름은 바꿔도 되지만 번호는 바꾸거나 재사용하면 안 되며, 지운 번호는 reserved 로 막는다.",
+    "link": "/api-design/notes/07-versioning-evolution-governance"
+  },
+  {
+    "term": "HTTP/2 다중화",
+    "subject": "api-design",
+    "def": "한 TCP 연결 위에 여러 요청·응답 스트림을 동시에 흘리는 것. gRPC 동시 호출 1000개가 연결 하나로 처리돼 순차 대비 약 3배 빨랐다(실험). L4 로드밸런서에서는 연결 단위 분산이라 쏠림이 생긴다.",
+    "link": "/api-design/notes/03-protobuf-grpc"
+  },
+  {
+    "term": "Problem Details (RFC 9457)",
+    "subject": "api-design",
+    "def": "HTTP API 에러 본문의 표준 형식(application/problem+json). type(기계 분기 키)·title·status·detail·instance 필드를 갖고 필드별 오류 등을 확장할 수 있다.",
+    "link": "/api-design/notes/01-rest-principles"
+  },
+  {
+    "term": "커서 페이지네이션",
+    "subject": "api-design",
+    "def": "마지막으로 본 항목의 정렬 키를 불투명한 커서 문자열로 주고 그 다음부터 가져오는 방식. 깊은 페이지에서도 일정하게 빠르고 중간 삽입·삭제에 중복·누락이 없다. 임의 페이지 이동은 안 된다.",
+    "link": "/api-design/notes/01-rest-principles"
+  },
+  {
+    "term": "계약 우선 설계 (contract-first)",
+    "subject": "api-design",
+    "def": "OpenAPI·.proto 같은 기계가 읽는 스펙을 먼저 쓰고 리뷰한 뒤 서버·클라이언트 코드와 검증을 생성하는 방식. 클라이언트·서버 병렬 개발과 사전 설계 리뷰가 가능하다.",
+    "link": "/api-design/notes/02-openapi-contract-first"
+  },
+  {
+    "term": "DataLoader",
+    "subject": "api-design",
+    "def": "한 이벤트 루프 틱 동안 들어온 load(key) 를 모아 배치 조회 한 번으로 바꾸고 요청 안에서 중복을 제거하는 유틸리티. GraphQL 리졸버의 N+1 을 해결한다. 요청마다 새 인스턴스를 만든다.",
+    "link": "/api-design/notes/05-graphql-comparison"
+  },
+  {
+    "term": "영속 질의 (persisted query)",
+    "subject": "api-design",
+    "def": "GraphQL 질의 문자열을 빌드 때 등록하고 런타임에는 해시만 보내는 방식. GET 으로 보내 CDN 캐시가 가능해지고, 허용 목록으로 쓰면 임의 질의 공격을 막는다.",
+    "link": "/api-design/notes/05-graphql-comparison"
+  },
+  {
+    "term": "BFF (Backend for Frontend)",
+    "subject": "api-design",
+    "def": "웹·iOS·안드로이드 등 클라이언트 종류마다 두는 전용 앞단 서비스. 화면에 맞춘 묶음 응답을 만들고 내부 서비스를 병렬로 불러 왕복 횟수를 줄인다.",
+    "link": "/api-design/notes/05-graphql-comparison"
+  },
+  {
+    "term": "토큰 버킷 (token bucket)",
+    "subject": "api-design",
+    "def": "초당 r 개씩 채워지는 최대 b 개 버킷에서 요청마다 토큰을 꺼내는 레이트리밋 알고리즘. 평균 속도와 순간 버스트를 따로 정할 수 있다. Redis 에서는 Lua 로 원자 구현한다.",
+    "link": "/api-design/notes/06-gateway-auth-ratelimit"
+  },
+  {
+    "term": "API 게이트웨이",
+    "subject": "api-design",
+    "def": "TLS 종단·토큰 검증·레이트리밋·라우팅·프로토콜 변환·관측 시작을 한 곳에서 하는 앞단. 객체 수준 인가와 비즈니스 규칙은 맡기지 않고 얇게 유지한다.",
+    "link": "/api-design/notes/06-gateway-auth-ratelimit"
+  },
+  {
+    "term": "관대한 수신자 원칙",
+    "subject": "api-design",
+    "def": "클라이언트가 모르는 필드는 무시하고 모르는 enum 값은 UNKNOWN 으로 처리해야 한다는 규칙. API 문서에 명시해야 서버가 필드·enum 을 깨지 않고 추가할 수 있다.",
+    "link": "/api-design/notes/07-versioning-evolution-governance"
+  },
+  {
+    "term": "Deprecation / Sunset 헤더",
+    "subject": "api-design",
+    "def": "Deprecation(RFC 9745)은 폐기 결정 시점, Sunset(RFC 8594)은 동작이 멈추는 시각을 응답 헤더로 알린다. 사용량 측정·직접 연락·브라운아웃과 함께 쓰는 폐기 절차의 첫 단계.",
+    "link": "/api-design/notes/07-versioning-evolution-governance"
+  },
+  {
+    "term": "buf breaking",
+    "subject": "api-design",
+    "def": ".proto 의 깨지는 변경(필드 삭제 후 번호 미예약, RPC 삭제, 타입 변경)을 기준 브랜치와 비교해 CI 에서 막는 도구. FILE·PACKAGE·WIRE_JSON·WIRE 수준을 고른다.",
+    "link": "/api-design/notes/07-versioning-evolution-governance"
+  },
+  {
+    "term": "경쟁 소비자 (competing consumers)",
+    "subject": "messaging",
+    "def": "여러 소비자가 같은 큐를 읽되 메시지 하나는 한 소비자만 처리하는 작업 큐 모델. 소비자를 늘려 처리량을 늘리고, 브로커가 메시지별 ack 상태를 관리한다.",
+    "link": "/messaging/notes/01-queue-topic-log-models"
+  },
+  {
+    "term": "head-of-line blocking (메시징)",
+    "subject": "messaging",
+    "def": "로그 모델에서 파티션 앞쪽 메시지 하나가 실패·지연되면 그 뒤 메시지가 모두 막히는 현상. 오프셋이 파티션당 하나라 개별 메시지를 건너뛸 수 없어서 생긴다.",
+    "link": "/messaging/notes/05-when-not-kafka"
+  },
+  {
+    "term": "익스체인지 (exchange)",
+    "subject": "messaging",
+    "def": "RabbitMQ 에서 생산자의 메시지를 받아 바인딩 규칙에 따라 큐로 라우팅하는 요소. direct·topic·fanout·headers 네 종류가 있고 메시지를 저장하지 않는다.",
+    "link": "/messaging/notes/02-rabbitmq"
+  },
+  {
+    "term": "DLX (Dead Letter Exchange)",
+    "subject": "messaging",
+    "def": "거절(nack requeue=false)·만료(TTL)·길이 초과된 메시지를 버리지 않고 보내는 RabbitMQ 익스체인지. TTL 큐와 조합해 지연 재시도를 만들고, x-death 헤더에 여정이 기록된다.",
+    "link": "/messaging/notes/02-rabbitmq"
+  },
+  {
+    "term": "퍼블리셔 확인 (publisher confirm)",
+    "subject": "messaging",
+    "def": "RabbitMQ 가 발행된 메시지를 큐에 넣었음(persistent 면 디스크까지)을 basic.ack 로 알려 주는 기능. 묶음으로 보내고 waitForConfirms 로 한 번에 기다리는 것이 표준이다.",
+    "link": "/messaging/notes/02-rabbitmq"
+  },
+  {
+    "term": "prefetch",
+    "subject": "messaging",
+    "def": "소비자가 ack 하지 않은 상태로 받을 수 있는 최대 메시지 수. 0(무제한)이면 한 소비자에게 몰려 OOM, 1 이면 공정하지만 RTT 에 묶인다. 보통 10~300.",
+    "link": "/messaging/notes/02-rabbitmq"
+  },
+  {
+    "term": "quorum 큐",
+    "subject": "messaging",
+    "def": "Raft 로 과반 노드에 복제되는 RabbitMQ 큐. 노드 장애에도 메시지가 남고 x-delivery-limit 로 독 메시지 재배달 횟수를 제한한다. RabbitMQ 4.x 의 운영 기본값.",
+    "link": "/messaging/notes/02-rabbitmq"
+  },
+  {
+    "term": "JetStream",
+    "subject": "messaging",
+    "def": "NATS 서버에 내장된 영속 계층. subject 를 잡는 스트림(저장)과 컨슈머(읽는 위치·ack·ack_wait·max_deliver)로 at-least-once 를 제공하고, 보존 정책으로 로그·작업 큐·관심 기반 모델을 고른다.",
+    "link": "/messaging/notes/03-nats-jetstream"
+  },
+  {
+    "term": "큐 그룹 (NATS)",
+    "subject": "messaging",
+    "def": "같은 이름으로 구독한 NATS 클라이언트들 중 하나에게만 메시지를 보내는 기능. 설정 없이 경쟁 소비자·로드밸런싱이 되지만 core NATS 라 ack 는 없다.",
+    "link": "/messaging/notes/03-nats-jetstream"
+  },
+  {
+    "term": "ack_wait / max_deliver",
+    "subject": "messaging",
+    "def": "JetStream 컨슈머 설정. ack_wait 안에 ack 가 없으면 재배달하고, max_deliver 횟수에 닿으면 멈추고 MAX_DELIVERIES 어드바이저리를 발행한다. 실험에서 1초 간격 3회 후 어드바이저리가 왔다.",
+    "link": "/messaging/notes/03-nats-jetstream"
+  },
+  {
+    "term": "at-least-once",
+    "subject": "messaging",
+    "def": "메시지가 적어도 한 번 전달되되 중복될 수 있는 보장. 확인을 받을 때까지 재전송하고 처리 후 ack 해서 얻는다. 멱등 소비자와 합쳐야 실질적인 정확히 한 번이 된다.",
+    "link": "/messaging/notes/04-delivery-guarantees-delay"
+  },
+  {
+    "term": "멱등 소비자 (idempotent consumer)",
+    "subject": "messaging",
+    "def": "같은 메시지를 여러 번 받아도 결과가 한 번과 같은 소비자. 처리 기록 테이블(같은 트랜잭션), 자연 멱등 연산(절대값 설정·ON CONFLICT), 버전 비교로 구현한다.",
+    "link": "/messaging/notes/04-delivery-guarantees-delay"
+  },
+  {
+    "term": "지연 메시지 (delayed message)",
+    "subject": "messaging",
+    "def": "지정한 시간 뒤에 소비되는 메시지. 브로커 기능(nak delay, SQS DelaySeconds), RabbitMQ TTL+DLX, Redis Sorted Set 폴러, DB 스케줄 테이블 네 가지 방법으로 만든다.",
+    "link": "/messaging/notes/04-delivery-guarantees-delay"
+  },
+  {
+    "term": "가장 오래된 메시지 나이",
+    "subject": "messaging",
+    "def": "큐 맨 앞의 미처리 메시지가 기다린 시간. 사용자가 체감하는 지연이라 큐 깊이보다 SLO·알림에 직접 연결된다. Kafka 에서는 시간 랙으로 계산한다.",
+    "link": "/messaging/notes/07-operations-observability"
   }
 ]

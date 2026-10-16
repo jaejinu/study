@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="430" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">데드라인 전파 — 사용자가 떠나면 아래 단계도 멈춰야 한다</text>
+  <text x="480" y="52" text-anchor="middle" fill="#8b949e">실험 api-grpc-deadline-cancel 실측: 클라이언트 데드라인 300ms, 하위 SlowWork 는 1000ms 짜리 작업</text>
+
+  <!-- 시간축 -->
+  <line x1="200" y1="395" x2="900" y2="395" stroke="#30363d"/>
+  <g fill="#8b949e" font-size="11" text-anchor="middle">
+    <text x="200" y="412">0ms</text><text x="340" y="412">200</text><text x="410" y="412">300</text><text x="550" y="412">500</text><text x="900" y="412">1000ms</text>
+  </g>
+  <line x1="410" y1="70" x2="410" y2="395" stroke="#f85149" stroke-dasharray="4 4"/>
+  <text x="414" y="84" fill="#f85149" font-size="12">데드라인 (사용자 포기)</text>
+
+  <!-- 행 1: 전파함 -->
+  <text x="20" y="130" fill="#3fb950" font-weight="600">전파함</text>
+  <text x="20" y="148" fill="#8b949e" font-size="11">{ parent: call }</text>
+  <rect x="200" y="112" width="210" height="22" rx="4" fill="#1f6feb" opacity="0.85"/>
+  <text x="208" y="127" fill="#fff" font-size="11">클라이언트 → Chain (DEADLINE_EXCEEDED @301)</text>
+  <rect x="200" y="142" width="214" height="22" rx="4" fill="#238636" opacity="0.9"/>
+  <text x="208" y="157" fill="#fff" font-size="11">하위 SlowWork — 남은 시간 300ms 받음</text>
+  <text x="422" y="157" fill="#3fb950" font-size="12">✓ 306ms 에 멈춤</text>
+
+  <!-- 행 2: 전파 안 함 -->
+  <text x="20" y="230" fill="#f85149" font-weight="600">전파 안 함</text>
+  <text x="20" y="248" fill="#8b949e" font-size="11">옵션 없음</text>
+  <rect x="200" y="212" width="212" height="22" rx="4" fill="#1f6feb" opacity="0.85"/>
+  <text x="208" y="227" fill="#fff" font-size="11">클라이언트 → Chain (DEADLINE_EXCEEDED @303)</text>
+  <rect x="200" y="242" width="217" height="22" rx="4" fill="#238636" opacity="0.9"/>
+  <rect x="417" y="242" width="497" height="22" rx="4" fill="#da3633" opacity="0.55"/>
+  <text x="208" y="257" fill="#fff" font-size="11">하위 SlowWork — 데드라인 없음</text>
+  <text x="430" y="257" fill="#fff" font-size="11">아무도 기다리지 않는 응답을 계산 중 … 1025ms 에 끝까지 완료 (헛일 약 720ms)</text>
+
+  <!-- 설명 박스 -->
+  <rect x="200" y="290" width="700" height="88" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="220" y="314" fill="#e6edf3" font-weight="600">왜 헛일이 장애를 키우나</text>
+  <text x="220" y="336" fill="#8b949e">느려진 서버 → 타임아웃 증가 → 하위의 헛일 증가 → 큐가 더 밀림 → 더 느려짐 (준안정 장애의 고리)</text>
+  <text x="220" y="358" fill="#8b949e">해법: 데드라인을 grpc-timeout 헤더로 넘기고, 핸들러는 call.cancelled / AbortSignal 을 I/O 까지 전달한다</text>
+</svg>
