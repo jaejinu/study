@@ -139,12 +139,16 @@ pnpm k8s:rollouts:watch
 
 - `k8s/argocd/application.yaml`: `automated.prune/selfHeal`, `ignoreDifferences` 로 HPA/Rollouts 가 바꾸는 replicas 는 드리프트로 보지 않는다.
 - `k8s/rollouts/web-rollout.yaml`: Ingress 없이 **복제본 비율**로 카나리. AnalysisTemplate 은 kube-prometheus-stack 의 Prometheus 에서 `study_redis_up` 과 타깃 `up` 을 본다 — 실패하면 자동 롤백.
-- 드리프트 실험: `kubectl -n study set env deploy/web DRIFT=1` 로 git 에 없는 env 를 넣으면 수 초~3분 안에 ArgoCD 가 지운다 (기본 폴링 3분, 웹훅 연결 시 즉시). **replicas 는 `ignoreDifferences` 에 있어서 `scale` 로는 드리프트가 생기지 않는다** — HPA/Rollouts 와 싸우지 않기 위한 의도적 예외.
+- 드리프트 실험 (직접 해 본 결과):
+  - `kubectl -n study set env deploy/web REDIS_URL=redis://wrong:6379` 처럼 **git 에 있는 값을 바꾸면** 다음 조정(수동 refresh 또는 3분 폴링)에서 OutOfSync → selfHeal 이 **5초 안에** 되돌렸다.
+  - `kubectl -n study set env deploy/web DRIFT=1` 처럼 **git 에 없는 필드를 추가하면** ArgoCD 는 계속 Synced 다. 3-way diff(desired · live · last-applied)는 "desired 에도 last-applied 에도 없는 live 필드" 를 다른 컨트롤러/웹훅/기본값이 넣은 것으로 보고 무시하기 때문이다. 추가 드리프트까지 잡으려면 `argocd.argoproj.io/compare-options: ServerSideDiff=true` 같은 옵션이나 정책 엔진(Kyverno/OPA)이 필요하다.
+  - `kubectl scale` 은 `ignoreDifferences` 에 replicas 가 있어서 드리프트가 아니다 — HPA/Rollouts 와 싸우지 않기 위한 의도적 예외.
 - Argo Rollouts 의 CRD 는 커서 `kubectl apply` 의 어노테이션 한도(256KB)를 넘는다. `kubectl apply --server-side` 로 설치해야 한다(`pnpm k8s:rollouts` 에 반영).
+- 카나리 실측: `study:dev2` 로 바꾸자 25%(1/4) → 60초 pause → AnalysisRun(`target-up`, `app-redis-up` 각 3/3 Successful) → 50% → 60초 → 100%, 약 3분에 Healthy. 분석이 실패하면 같은 경로로 자동 롤백된다.
 
 ## 실습 체크리스트
 
 - [ ] kind 에 ArgoCD 를 설치하고 이 저장소 `k8s/` 를 Application 으로 등록, Synced/Healthy 확인
-- [ ] `kubectl -n study set env deploy/web DRIFT=1` 로 드리프트를 만들고 selfHeal 이 되돌리는지 보기 (`scale` 은 왜 드리프트가 아닌지 설명해 보기)
+- [ ] `kubectl -n study set env deploy/web REDIS_URL=redis://wrong:6379` 로 드리프트를 만들고 selfHeal 이 되돌리는지 보기. 새 env 를 *추가*하면 왜 Synced 그대로인지 설명해 보기
 - [ ] Argo Rollouts 를 설치해 web 을 Rollout 으로 바꾸고 `setWeight: 50` 에서 pause 되는지 확인
 - [ ] AnalysisTemplate 을 kube-prometheus-stack 에 연결해 자동 판정 돌려 보기
