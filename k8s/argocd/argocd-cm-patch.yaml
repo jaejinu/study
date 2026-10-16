@@ -4,6 +4,9 @@ kind: ConfigMap
 metadata:
   name: argocd-cm
   namespace: argocd
+  labels:                                   # 이 레이블이 없으면 ArgoCD 가 ConfigMap 을 못 본다 (informer 셀렉터)
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
 data:
   kustomize.buildOptions: "--load-restrictor LoadRestrictionsNone"
   # 이미지 로컬 로드(kind load) 를 쓰므로 레지스트리 접근 불필요

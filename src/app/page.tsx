@@ -56,6 +56,7 @@ export default async function Home() {
         })}
       </div>
       <div className="mt-8 flex justify-center gap-3 text-sm">
+        <Link href="/assistant" className="rounded-md border border-accent/40 bg-accent-soft px-3 py-1.5 hover:border-accent">🤖 AI 도우미</Link>
         <Link href="/search" className="rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">🔍 검색</Link>
         <Link href="/glossary" className="rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">📖 용어집</Link>
         <Link href="/graph" className="rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">🕸 링크 그래프</Link>

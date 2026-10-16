@@ -30,3 +30,7 @@ spec:
     - group: apps
       kind: Deployment
       jsonPointers: [/spec/replicas]
+    # StatefulSet 의 volumeClaimTemplates 는 API 서버가 기본값을 채워 넣어 항상 diff 가 생긴다 (불변 필드)
+    - group: apps
+      kind: StatefulSet
+      jsonPointers: [/spec/volumeClaimTemplates, /spec/persistentVolumeClaimRetentionPolicy]

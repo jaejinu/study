@@ -107,6 +107,7 @@ export function Sidebar() {
 
           <div className="flex gap-1 border-t border-border px-3 py-2 text-[11px]">
             {[
+              { href: "/assistant", label: "AI 도우미" },
               { href: "/glossary", label: "용어집" },
               { href: "/graph", label: "링크 그래프" },
               { href: "/search", label: "검색" },

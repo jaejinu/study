@@ -199,6 +199,7 @@ export const subjects: Subject[] = [
       { href: "/ai-systems/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
       { href: "/ai-systems/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
       { href: "/ai-systems/lab", label: "실험실", icon: "⚗", desc: "벡터 검색 · 시맨틱 캐시 · RAG" },
+      { href: "/assistant", label: "AI 도우미", icon: "🤖", desc: "노트 기반 Q&A · 실험 제안" },
     ],
     setup: [
       { label: "벡터 DB", cmd: "pnpm redis:docker  (Redis 8, Search 모듈)" },
