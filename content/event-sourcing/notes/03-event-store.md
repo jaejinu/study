@@ -1,0 +1,146 @@
+---
+title: "이벤트 스토어 — PostgreSQL append-only, 스트림·버전, 낙관적 동시성, 전역 순서"
+order: 3
+level: 중급
+summary: "PostgreSQL 테이블 하나로 이벤트 스토어를 만드는 법: 스키마, unique(stream_id, version) 로 expected_version 검사, 충돌 재시도, 전역 위치(global_position)와 '빈 번호' 문제, 구독(폴링·LISTEN/NOTIFY·CDC), EventStoreDB·Kafka 와의 비교. 실험에서 동시 출금 20건이 정확히 10건만 성공하는 과정을 숫자로 본다"
+tags: [이벤트 스토어, 낙관적 동시성, expected_version, PostgreSQL, 전역 순서, 구독]
+experiments: [es-optimistic-concurrency, es-upcasting]
+---
+
+## 최소 스키마
+
+```sql
+create table events (
+  global_position bigserial primary key,   -- 전체 순서 (프로젝션 체크포인트)
+  stream_id       text not null,           -- 집합 ID: 'account-42'
+  version         int  not null,           -- 스트림 안 순번 1, 2, 3 …
+  type            text not null,           -- 'MoneyDeposited'
+  schema          int  not null default 1, -- 데이터 스키마 버전
+  data            jsonb not null,
+  metadata        jsonb not null default '{}',
+  created_at      timestamptz not null default now(),
+  unique (stream_id, version)              -- ★ 낙관적 동시성의 전부
+);
+create index on events (type, global_position);   -- 타입별 구독용 (선택)
+```
+
+| 열 | 왜 필요한가 |
+|---|---|
+| `global_position` | 프로젝션이 "어디까지 처리했나" 를 기억하는 체크포인트 ([노트 04](/event-sourcing/notes/04-projections-replay)) |
+| `stream_id, version` | 집합 로딩(`where stream_id = $1 order by version`)과 동시성 검사 |
+| `unique (stream_id, version)` | 같은 버전을 두 번 쓰지 못하게 → expected_version 검사 |
+| `schema` | 읽을 때 업캐스터 선택 ([노트 06](/event-sourcing/notes/06-schema-evolution)) |
+
+**append-only** 를 권한으로 강제하자. 앱 역할에는 `INSERT, SELECT` 만 주고 `UPDATE, DELETE` 는 주지 않는다. 사람 실수로 이벤트가 바뀌면 모든 프로젝션의 근거가 무너진다.
+
+```sql
+revoke update, delete on events from app_role;
+```
+
+## 낙관적 동시성 — expected_version
+
+명령 처리기는 스트림을 읽을 때 본 **마지막 버전**을 기억했다가, 새 이벤트를 `version + 1` 로 넣는다. 그 사이 다른 명령이 먼저 `version + 1` 을 썼다면 유일 제약이 `23505 unique_violation` 으로 거부한다.
+
+```ts
+async function append(c, stream, expectedVersion, events) {
+  let v = expectedVersion;
+  try {
+    await c.query("begin");
+    for (const e of events) {
+      v += 1;
+      await c.query(
+        "insert into events (stream_id, version, type, schema, data, metadata) values ($1,$2,$3,$4,$5,$6)",
+        [stream, v, e.type, e.schema, e.data, e.metadata],
+      );
+    }
+    await c.query("commit");
+  } catch (err) {
+    await c.query("rollback");
+    if (err.code === "23505") throw new ConcurrencyError(stream, expectedVersion);
+    throw err;
+  }
+}
+```
+
+- 한 명령이 이벤트 여러 개를 낼 수 있으니 **트랜잭션**으로 묶는다.
+- `ConcurrencyError` 를 받으면 **다시 읽고 다시 결정**한다. 결정 규칙이 같은 결과를 낸다면 재시도는 안전하다.
+- 재시도 사이에 지터를 둔다 — 같은 스트림을 노리는 명령들이 다시 동시에 부딪히지 않게.
+
+![낙관적 동시성 타임라인](/diagrams/es-optimistic-concurrency.svg)
+
+### 실측 — 동시 출금 20건
+
+[es-optimistic-concurrency](/event-sourcing/lab/es-optimistic-concurrency) 는 잔액 100 계좌에 10원 출금 명령 20개를 동시에 보낸다(결정 단계에 0~5ms 지연을 넣어 경쟁을 키움).
+
+| 스토어 | 성공 | 잔액 부족 거절 | 충돌 | 재시도 | 최종 잔액 | 중복 버전 |
+|---|---|---|---|---|---|---|
+| 유일 제약 + 재시도 | 10 | 10 | 0 | 55회 | 0 | 0 |
+| 유일 제약, 재시도 없음 | 1 | 0 | 19 | 0 | 90 | 0 |
+| 버전 검사 없음 | 20 | 0 | 0 | 0 | **-100** | 19 |
+
+- 재시도가 있으면 **정확히 10건**만 성공하고 나머지 10건은 다시 읽었을 때 잔액 부족으로 정당하게 거절된다.
+- 재시도가 없으면 19건이 사용자에게 "다시 시도하세요"(HTTP 409)로 돌아간다. 사용자 경험은 나쁘지만 데이터는 안전하다.
+- 버전 검사가 없으면 20건이 모두 "잔액 100" 을 보고 출금한다. 같은 `version 2` 가 20번 기록됐다.
+
+> 왜 행 잠금(`select … for update`)을 안 쓰나? 상태 테이블에서는 그게 정답이다([PostgreSQL 노트 04](/postgres/notes/04-locks-deadlocks)). 이벤트 스토어에는 잠글 "현재 행" 이 없다. 스트림의 다음 버전 자리를 유일 제약으로 선점하는 것이 같은 효과를 낸다. 낙관적 방식은 경합이 드물 때 빠르고, 경합이 잦으면 재시도 비용이 커진다.
+
+## 전역 순서와 "빈 번호" 문제
+
+프로젝션은 `global_position` 순서로 이벤트를 읽는다. 그런데 `bigserial` 은 **트랜잭션 커밋 순서가 아니라 번호를 받은 순서**다.
+
+```
+T1: nextval → 101 ……(아직 커밋 안 함)……………………… commit
+T2: nextval → 102 → commit
+프로젝션: "102 까지 처리" 를 기록 → 나중에 101 이 커밋되면 영영 건너뜀!
+```
+
+해결책:
+
+| 방법 | 설명 |
+|---|---|
+| 지연 읽기 | `created_at < now() - interval '1 second'` 인 것만 처리(경험적, 긴 트랜잭션엔 불완전) |
+| 트랜잭션 ID 기준 | `pg_current_xact_id()` 를 저장하고 `pg_snapshot_xmin(pg_current_snapshot())` 보다 작은 것만 처리 — 진행 중 트랜잭션 이전까지만 안전하게 |
+| 단일 작성자 | 쓰기를 한 프로세스로 직렬화(처리량 제한) |
+| CDC 구독 | WAL 의 커밋 순서대로 받는다 — [Debezium](/kafka/notes/08-cdc-outbox-debezium) |
+
+작은 시스템이라면 "1초 지연 + 체크포인트 겹쳐 읽기 + 멱등 프로젝션" 으로 충분하다. 핵심은 **프로젝션이 같은 이벤트를 두 번 받아도 결과가 같게**(멱등) 만드는 것이다. MVCC 가시성 규칙 자체는 [PostgreSQL 노트 03](/postgres/notes/03-mvcc-isolation)에 있다.
+
+## 구독 — 새 이벤트를 어떻게 알까
+
+| 방식 | 지연 | 비고 |
+|---|---|---|
+| 폴링 (`where global_position > $cp limit 500`) | 폴링 간격 | 가장 단순, 대부분 이걸로 충분 |
+| `LISTEN/NOTIFY` | ms | 알림으로 깨우고 실제 데이터는 폴링으로 읽기. 연결이 끊기면 알림 유실 → 폴링과 병행 |
+| CDC(논리 복제) | ms | 커밋 순서 보장, 외부 시스템(Kafka)으로 발행까지 |
+| 전용 스토어 구독 | ms | EventStoreDB 의 catch-up/persistent 구독 |
+
+## 무엇으로 만들까
+
+| 선택지 | 장점 | 단점 |
+|---|---|---|
+| PostgreSQL 테이블 | 이미 있다, 트랜잭션·SQL·백업, 프로젝션과 같은 DB 면 한 트랜잭션으로 갱신 | 전역 순서 문제, 수십억 이벤트면 파티셔닝 필요 |
+| EventStoreDB / Kurrent | 스트림·구독·프로젝션이 1급 | 운영할 시스템이 하나 늘어난다 |
+| Kafka | 발행·재처리·대용량 | 스트림(집합)별 expected_version 검사가 어렵다 → 스토어로는 부적합, 발행 채널로 |
+| DynamoDB 등 | 조건부 쓰기로 낙관적 동시성 | 전역 순서는 스트림 기능(DynamoDB Streams)에 의존 |
+
+## 예시로 보기 — 이 프로젝트에서
+
+이 실험실의 이벤트 스토어 테이블은 실험마다 `lab_es_…_events` 로 만들고 끝나면 지운다. 직접 돌려 보려면:
+
+```bash
+pnpm pg:up
+docker exec -it study-postgres psql -U study -c "
+create table events (global_position bigserial primary key, stream_id text, version int, type text, data jsonb, unique (stream_id, version));
+insert into events (stream_id, version, type, data) values ('acc-1', 1, 'MoneyDeposited', '{\"amount\":100}');
+insert into events (stream_id, version, type, data) values ('acc-1', 1, 'MoneyWithdrawn', '{\"amount\":10}');"
+# ERROR:  duplicate key value violates unique constraint "events_stream_id_version_key"  ← 이것이 충돌 신호
+```
+
+같은 원리가 이 저장소의 다른 곳에도 있다. Redis 의 `WATCH`/`MULTI` 낙관적 잠금([Redis 노트 05](/redis/notes/05-transactions-lua)), 그리고 멱등 키 실험 [api-idempotency-key](/api-design/lab/api-idempotency-key) 는 "먼저 자리를 차지한 쪽이 이긴다" 는 같은 모양의 동시성 제어다.
+
+## 실습 체크리스트
+
+- [ ] 위 psql 예시로 같은 버전을 두 번 넣어 23505 를 직접 받아 보기
+- [ ] 실험 es-optimistic-concurrency 의 재시도 횟수가 결정 지연(0~5ms)을 늘리면 어떻게 바뀔지 예상하고 코드로 확인하기
+- [ ] 앱 역할에서 UPDATE·DELETE 권한을 빼는 SQL 작성하기
+- [ ] "빈 번호" 문제가 실제로 생기는 두 트랜잭션 순서를 psql 두 창으로 재현하기

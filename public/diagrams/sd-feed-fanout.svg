@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 380" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">
+  <rect width="960" height="380" fill="#0d1117"/>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8b949e"/></marker></defs>
+  <text x="480" y="30" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">뉴스피드 fan-out — push · pull · 하이브리드</text>
+  <g>
+    <rect x="24" y="56" width="290" height="190" rx="10" fill="#161b22" stroke="#3b82f6"/>
+    <text x="169" y="80" text-anchor="middle" fill="#60a5fa" font-weight="600">push (쓰기 시)</text>
+    <circle cx="70" cy="140" r="18" fill="#1e3a5f"/><text x="70" y="145" text-anchor="middle" fill="#e6edf3" font-size="11">작성</text>
+    <g fill="#30363d"><rect x="190" y="100" width="100" height="16" rx="3"/><rect x="190" y="124" width="100" height="16" rx="3"/><rect x="190" y="148" width="100" height="16" rx="3"/><rect x="190" y="172" width="100" height="16" rx="3"/></g>
+    <text x="240" y="204" text-anchor="middle" fill="#8b949e" font-size="11">팔로워 타임라인마다</text>
+    <line x1="90" y1="135" x2="186" y2="108" stroke="#8b949e" marker-end="url(#a)"/><line x1="90" y1="138" x2="186" y2="132" stroke="#8b949e" marker-end="url(#a)"/><line x1="90" y1="142" x2="186" y2="156" stroke="#8b949e" marker-end="url(#a)"/><line x1="90" y1="146" x2="186" y2="180" stroke="#8b949e" marker-end="url(#a)"/>
+    <text x="169" y="226" text-anchor="middle" fill="#e6edf3" font-size="12">쓰기 1,357,881 · 최악 9,764</text>
+    <text x="169" y="240" text-anchor="middle" fill="#8b949e" font-size="11">조회: LRANGE 1번</text>
+  </g>
+  <g>
+    <rect x="335" y="56" width="290" height="190" rx="10" fill="#161b22" stroke="#22c55e"/>
+    <text x="480" y="80" text-anchor="middle" fill="#4ade80" font-weight="600">pull (읽기 시)</text>
+    <circle cx="580" cy="140" r="18" fill="#14361f"/><text x="580" y="145" text-anchor="middle" fill="#e6edf3" font-size="11">조회</text>
+    <g fill="#30363d"><rect x="360" y="100" width="100" height="16" rx="3"/><rect x="360" y="124" width="100" height="16" rx="3"/><rect x="360" y="148" width="100" height="16" rx="3"/><rect x="360" y="172" width="100" height="16" rx="3"/></g>
+    <text x="410" y="204" text-anchor="middle" fill="#8b949e" font-size="11">팔로이들의 글 목록</text>
+    <line x1="464" y1="108" x2="558" y2="134" stroke="#8b949e" marker-end="url(#a)"/><line x1="464" y1="132" x2="558" y2="138" stroke="#8b949e" marker-end="url(#a)"/><line x1="464" y1="156" x2="558" y2="142" stroke="#8b949e" marker-end="url(#a)"/><line x1="464" y1="180" x2="558" y2="146" stroke="#8b949e" marker-end="url(#a)"/>
+    <text x="480" y="226" text-anchor="middle" fill="#e6edf3" font-size="12">쓰기 2,000 · 조회 명령 20개</text>
+    <text x="480" y="240" text-anchor="middle" fill="#8b949e" font-size="11">팔로이 수만큼 병합</text>
+  </g>
+  <g>
+    <rect x="646" y="56" width="290" height="190" rx="10" fill="#161b22" stroke="#f59e0b"/>
+    <text x="791" y="80" text-anchor="middle" fill="#fbbf24" font-weight="600">하이브리드</text>
+    <text x="791" y="110" text-anchor="middle" fill="#e6edf3" font-size="12">일반 작성자 → push</text>
+    <text x="791" y="132" text-anchor="middle" fill="#e6edf3" font-size="12">셀럽(팔로워 &gt; 1,000) → pull</text>
+    <text x="791" y="160" text-anchor="middle" fill="#8b949e" font-size="11">조회 = 내 타임라인 1 + 셀럽 글 병합</text>
+    <text x="791" y="226" text-anchor="middle" fill="#e6edf3" font-size="12">쓰기 53,418 · 최악 957</text>
+    <text x="791" y="240" text-anchor="middle" fill="#8b949e" font-size="11">조회 명령 8.7개 (셀럽 26명)</text>
+  </g>
+  <rect x="24" y="266" width="912" height="96" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="44" y="290" fill="#f59e0b" font-weight="600">왜 하이브리드인가 — 멱법칙</text>
+  <text x="44" y="312" fill="#e6edf3" font-size="12">사용자 1만 명 그래프에서 팔로워 수 상위 5명 9,764 · 8,359 · 6,889 · 5,717 · 4,899명, 중앙값 4명.</text>
+  <text x="44" y="332" fill="#e6edf3" font-size="12">push 쓰기의 대부분은 셀럽 26명의 글이 만든다. 이들만 pull 로 돌리면 쓰기가 25분의 1로 준다. 임계값이 설계 변수.</text>
+  <text x="44" y="352" fill="#8b949e" font-size="11">실험 sd-feed-fanout (Redis LPUSH + LTRIM 200, 게시물 2,000개, 타임라인 300개 조회)</text>
+</svg>
