@@ -4,7 +4,7 @@ order: 5
 level: 중급
 summary: "공급망 공격이 무엇이고 왜 늘어나는지(SolarWinds·xz·npm 타이포스쿼팅), 의존성 고정과 락파일·프로비넌스, trivy 로 이미지·파일시스템·IaC 스캔, Dockerfile 하드닝(핀 고정 베이스·multi-stage·non-root·읽기 전용 루트·capabilities 드롭), distroless/alpine 의 트레이드오프, SBOM(CycloneDX/SPDX) 생성과 활용, cosign 서명·검증과 SLSA, 런타임 보안(seccomp·AppArmor·Falco), 이 프로젝트 Dockerfile 점검"
 tags: [공급망, trivy, SBOM, cosign, SLSA, Dockerfile, non-root, distroless, seccomp, Falco]
-experiments: [sec-image-scan]
+experiments: [sec-image-scan, sec-falco-runtime]
 ---
 
 ## 공급망 공격 — 내 코드가 아니라 내가 가져온 것
@@ -158,7 +158,9 @@ cosign verify ghcr.io/jaejinu/study@sha256:... \
 | **탐지** | **Falco** (eBPF) | "컨테이너에서 셸이 떴다", "/etc/shadow 읽음", "예상 밖 아웃바운드 연결", "ptrace 시도" 를 **규칙**으로 알림 |
 | 격리 강화 | gVisor, Kata, Firecracker | 커널 공유 자체를 줄임(멀티테넌트·신뢰 못 하는 코드) |
 
-Falco 는 이 프로젝트의 관심사(관측)와 딱 맞는다: 이벤트를 JSON 으로 내보내 **Loki 에 넣고**, falco-exporter 로 **Prometheus 메트릭**(규칙별 카운트) → Alertmanager. "셸 실행" 규칙은 셸 실험이 `docker exec` 를 할 때 울릴 것이다 — 그게 바로 탐지 규칙의 튜닝 연습이다.
+Falco 는 이 프로젝트의 관심사(관측)와 딱 맞는다: 이벤트를 JSON 으로 내보내 **Loki 에 넣고**, falco-exporter 로 **Prometheus 메트릭**(규칙별 카운트) → Alertmanager. `pnpm k8s:falco` 가 kind-study 에 Falco(modern eBPF 드라이버, Docker Desktop 의 6.12 커널에서 동작) + Falcosidekick 을 설치하고, 실험 `sec-falco-runtime` 이 web Pod 에서 `/etc/shadow` 읽기와 tty 셸 실행을 재현해 `Read sensitive file untrusted`·`Terminal shell in container` 이벤트를 Pod·네임스페이스·프로세스 트리 필드와 함께 보여 준다.
+
+직접 설치해 보고 알게 된 것: kind 노드와 compose 컨테이너는 **같은 Docker Desktop 커널**을 쓰므로 kind 안의 Falco 가 `study-postgres` 의 healthcheck(`pg_isready` 가 perl 로 `/etc/shadow` 를 읽는다)까지 잡는다. eBPF 는 커널 단위라 '내 클러스터' 경계를 모른다. 운영에서 Falco 를 켜면 처음 며칠은 이런 **정상 노이즈를 예외 규칙으로 깎는 일**이 대부분이다 — 그게 바로 탐지 규칙의 튜닝 연습이다.
 
 ```yaml
 # Falco 규칙 예
@@ -179,7 +181,7 @@ Falco 는 이 프로젝트의 관심사(관측)와 딱 맞는다: 이벤트를 J
 | 스캔 | CI 에 없음 | `aquasecurity/trivy-action` 추가, `--ignore-unfixed --severity CRITICAL --exit-code 1` |
 | SBOM/서명 | 없음 | ghcr 푸시 시 cosign keyless + attest |
 | k8s securityContext | `k8s/` 의 web Deployment 확인 | `runAsNonRoot`, `readOnlyRootFilesystem`(Next 는 `.next/cache` 쓰기 필요 → emptyDir), `drop ALL` |
-| 런타임 | 없음 | kind 에 Falco Helm 설치 → 셸 실험 때 알림 보기 |
+| 런타임 | `pnpm k8s:falco` (Falco + Falcosidekick) | 실험 `sec-falco-runtime` 으로 알림 확인, 다음은 sidekick → Loki 출력 연결 |
 
 `redis:8-alpine` 은 `USER` 가 비어 있어 **root 로 뜬다**(이미지 안에 `redis` 사용자는 있다). compose 에 `user: "999:1000"` 과 볼륨 권한을 맞추면 non-root 가 된다 — 실험이 이 점을 지적한다.
 

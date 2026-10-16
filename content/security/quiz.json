@@ -233,5 +233,30 @@
     "note": "08-web-api-llm-security",
     "q": "허니토큰이 좋은 탐지기인 이유는?",
     "a": "정당한 용도가 없으므로 사용되면 100% 침해 신호. 오탐이 거의 0 이다."
+  },
+  {
+    "note": "02-tls-certificates",
+    "q": "curl --cacert ca.crt 와 curl -k 의 차이는?",
+    "a": "--cacert 는 '이 CA 가 서명한 서버만 믿는다'(검증 수행), -k 는 검증 자체를 끈다. -k 는 중간자에게 그대로 노출된다."
+  },
+  {
+    "note": "06-kubernetes-security",
+    "q": "NetworkPolicy 를 만들었는데 아무것도 막히지 않는다. 가장 먼저 의심할 것은?",
+    "a": "CNI 가 정책을 강제하는지. kind 기본 kindnet 등 일부 CNI 는 NetworkPolicy 를 무시한다. Calico/Cilium 필요."
+  },
+  {
+    "note": "06-kubernetes-security",
+    "q": "egress default-deny 를 걸면 서비스 이름 해석이 실패하는 이유는?",
+    "a": "DNS(kube-dns 53) 로 나가는 트래픽도 egress 라 막힌다. kube-system 의 kube-dns 로의 53 UDP/TCP 를 따로 허용해야 한다."
+  },
+  {
+    "note": "05-container-supply-chain",
+    "q": "kind 안의 Falco 가 compose 컨테이너의 이벤트까지 보는 이유는?",
+    "a": "eBPF 는 커널 단위로 시스템 콜을 본다. Docker Desktop 에서는 kind 노드와 compose 컨테이너가 같은 VM 커널을 쓴다."
+  },
+  {
+    "note": "02-tls-certificates",
+    "q": "Nginx server 블록에 HSTS add_header 를 넣었는데 어떤 경로에서는 헤더가 없다. 왜?",
+    "a": "그 location 안에 add_header 가 하나라도 있으면 상위(server) 의 add_header 를 상속하지 않는다. 헤더를 location 에서 다시 선언하거나 add_header 를 피한다."
   }
 ]

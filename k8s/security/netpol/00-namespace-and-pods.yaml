@@ -1,0 +1,52 @@
+# NetworkPolicy 실험 대상: redis 서버 + 정당한 클라이언트 web + 침해된 척하는 intruder
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netpol-lab
+  labels: { lab: netpol }
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis
+  namespace: netpol-lab
+  labels: { app: redis }
+spec:
+  containers:
+    - name: redis
+      image: redis:8-alpine
+      ports: [{ containerPort: 6379 }]
+      readinessProbe: { exec: { command: [redis-cli, ping] }, periodSeconds: 2 }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: netpol-lab
+spec:
+  selector: { app: redis }
+  ports: [{ port: 6379 }]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web
+  namespace: netpol-lab
+  labels: { app: web }
+spec:
+  containers:
+    - name: sh
+      image: busybox:1.36
+      command: [sleep, "3600"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: intruder
+  namespace: netpol-lab
+  labels: { app: intruder }
+spec:
+  containers:
+    - name: sh
+      image: busybox:1.36
+      command: [sleep, "3600"]

@@ -4,7 +4,7 @@ order: 6
 level: 심화
 summary: "4C(클라우드·클러스터·컨테이너·코드) 모델, API 서버의 인증→인가(RBAC)→어드미션 파이프라인, ServiceAccount 토큰과 최소 권한·권한 상승 경로(escalate/bind/impersonate, secrets list, pods/exec), Pod Security Standards(privileged/baseline/restricted) 와 네임스페이스 레이블, NetworkPolicy 로 기본 거부·egress 제어, Kyverno/Gatekeeper 로 정책 강제(서명 검증·레이블·리소스 제한), etcd 암호화·감사 로그·kube-bench, 이 프로젝트 kind 클러스터의 점검과 개선"
 tags: [Kubernetes, RBAC, ServiceAccount, Pod Security Standards, NetworkPolicy, Kyverno, 어드미션, 감사 로그, kube-bench]
-experiments: [sec-k8s-rbac]
+experiments: [sec-k8s-rbac, sec-k8s-networkpolicy]
 ---
 
 ## 4C — 계층마다 책임이 있다
@@ -112,7 +112,7 @@ kubectl -n study apply -f pod-without-securitycontext.yaml
 
 ## NetworkPolicy — 기본은 "모두가 모두와" 다
 
-Kubernetes 는 기본적으로 모든 Pod 가 모든 Pod·외부와 통신한다. 침해된 Pod 하나가 DB·메타데이터 서비스·다른 네임스페이스로 **측면 이동**하는 걸 막으려면 NetworkPolicy 가 필요하다(CNI 가 지원해야: Calico, Cilium. kind 기본 kindnet 은 **미지원** → `pnpm k8s:cluster` 를 Calico 로 바꾸거나 Cilium 설치).
+Kubernetes 는 기본적으로 모든 Pod 가 모든 Pod·외부와 통신한다. 침해된 Pod 하나가 DB·메타데이터 서비스·다른 네임스페이스로 **측면 이동**하는 걸 막으려면 NetworkPolicy 가 필요하다(CNI 가 지원해야: Calico, Cilium. kind 기본 kindnet 은 **미지원** — 정책을 만들어도 아무 일도 안 일어나는 것이 가장 흔한 "정책이 있는데 뚫린" 사고다. 이 프로젝트는 `pnpm k8s:netpol` 로 Calico 를 넣은 별도 kind 클러스터 `study-netpol` 을 만들고, 실험 `sec-k8s-networkpolicy` 가 `k8s/security/netpol/` 의 매니페스트를 순서대로 적용하며 redis·web·intruder 세 Pod 의 연결을 `nc` 로 확인한다: 정책 없음(둘 다 연결) → default-deny(둘 다 차단, **DNS 도 차단**) → DNS 허용(이름은 풀리지만 6379 는 차단) → web→redis 허용(web 만 연결).)
 
 ```yaml
 # 1. 네임스페이스 기본 거부 (ingress + egress)

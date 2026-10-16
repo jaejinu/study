@@ -41,6 +41,10 @@ pnpm kafka:up       # Kafka KRaft 브로커 (19092)
 pnpm pg:up          # PostgreSQL 16 + pgvector (15432, study/study, wal_level=logical), pnpm pg:cli
 pnpm cdc:up         # Kafka + PostgreSQL + Kafka Connect/Debezium (18083) — CDC/Outbox 실험
 brew install trivy opentofu k6   # 보안(이미지 스캔) · IaC(plan/apply) · 성능(부하 테스트) 실험 도구
+pnpm nginx:tls      # 사설 CA + Nginx TLS 종단 (https://localhost:18444)
+pnpm k8s:netpol     # NetworkPolicy 실험용 kind 클러스터 (Calico, 컨텍스트 kind-study-netpol)
+pnpm k8s:falco      # kind-study 에 Falco(modern eBPF) 런타임 탐지
+pnpm tf:cluster / tf:platform   # infra/local 을 OpenTofu 로 (kind 클러스터 study-tf + Redis)
 pnpm obs:up         # Prometheus(19090) + redis_exporter + Loki/Alloy(로그) + Tempo(트레이스) + Grafana(13000)
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:14318 pnpm dev   # 앱 트레이스를 Tempo 로
 pnpm k8s:metrics    # kind 에 metrics-server (HPA 실험), pnpm k8s:monitoring 으로 kube-prometheus-stack

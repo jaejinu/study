@@ -50,3 +50,10 @@ redis/cluster/run/
 
 # 앱 로그 (Alloy 가 수집)
 logs/
+
+# 로컬 TLS 인증서 / Terraform 상태
+/nginx/tls/certs/
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl

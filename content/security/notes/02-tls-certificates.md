@@ -4,7 +4,7 @@ order: 2
 level: 기초
 summary: "TLS 가 보장하는 세 가지(기밀성·무결성·인증), TLS 1.3 핸드셰이크의 실제 순서와 왜 1-RTT 인지, 공개키·서명·인증서 체인·SAN·신뢰 저장소로 이뤄진 PKI, openssl 로 체인을 만들고 검증하고 실제 사이트를 읽는 법, mTLS 와 서비스 메시, Let's Encrypt/cert-manager 자동 갱신, 인증서 만료 모니터링과 흔한 사고"
 tags: [TLS, 인증서, PKI, 핸드셰이크, SAN, mTLS, Let's Encrypt, cert-manager, openssl]
-experiments: [sec-tls-inspect]
+experiments: [sec-tls-inspect, sec-nginx-tls]
 ---
 
 ## TLS 가 주는 세 가지
@@ -182,7 +182,7 @@ spec:
 
 ## 예시로 보기 — 이 프로젝트에서
 
-- `pnpm nginx:up` 의 Nginx 는 18080 평문이다. 실습으로 사설 CA 인증서를 만들어 `listen 18443 ssl` 을 추가하고, `curl --cacert ca.crt https://localhost:18443` 으로 검증하면 "신뢰 저장소" 의 의미가 손에 잡힌다.
+- `pnpm nginx:up` 의 Nginx 는 18080 평문이다. `pnpm nginx:tls` 는 `nginx/tls/gen-certs.sh` 로 사설 CA + `localhost` 인증서(SAN: localhost, study.local, 127.0.0.1)를 만들고 `nginx/nginx-tls.conf`(TLS 1.2+, HSTS, 80→443 리다이렉트, 보안 헤더)로 **https://localhost:18444** 를 띄운다. 실험 `sec-nginx-tls` 가 `curl` 없이/`--cacert`/`-k` 의 차이, TLS 1.3 협상, TLS 1.1 거부, SAN 불일치 거부를 한 번에 보여 준다. 브라우저에서 경고 없이 보려면 `nginx/tls/certs/ca.crt` 를 키체인에 신뢰로 추가하면 된다 — 그게 바로 '신뢰 저장소에 CA 를 넣는' 일이다. 직접 겪은 함정 하나: Nginx 는 `location` 안에 `add_header` 가 하나라도 있으면 `server` 의 `add_header`(HSTS 등)를 **상속하지 않는다**. `/health` 에 `add_header Content-Type` 을 썼다가 HSTS 가 빠진 채 응답했다 — 보안 헤더는 반드시 응답으로 확인하라(`curl -I`).
 - Redis 는 `tls-port 6380 --tls-cert-file ... --tls-ca-cert-file ...` 로 TLS 를 켤 수 있다. ioredis 는 `tls: { ca }` 옵션. 벤치마크로 평문 대비 지연 차이를 재 보자(핸드셰이크 비용은 연결당 한 번, 데이터 암호화는 AES-NI 로 수 % 수준).
 - 앱 → Anthropic API 는 당연히 HTTPS. `NODE_EXTRA_CA_CERTS` 를 잘못 잡으면 Node 가 모든 외부 호출을 거부하는 식의 장애가 난다 — 로그에 `UNABLE_TO_VERIFY_LEAF_SIGNATURE` 가 보이면 여기.
 
@@ -193,5 +193,5 @@ spec:
 - [ ] 실험 `sec-tls-inspect` 를 돌리고 세 가지 실패(CA 없음·이름 불일치·만료)를 각각 설명해 보기
 - [ ] `openssl s_client -connect <내가 쓰는 사이트>:443` 로 체인 길이·프로토콜·암호 스위트 읽기
 - [ ] `openssl x509 -text` 출력에서 SAN, keyUsage, basicConstraints, AIA, CRL 위치 찾기
-- [ ] Nginx 에 사설 인증서로 TLS 를 켜고 `curl --cacert` 와 `curl -k` 의 차이를 말로 설명하기
+- [ ] `pnpm nginx:tls` 로 TLS 를 켜고 실험 `sec-nginx-tls` 를 돌린 뒤, `curl --cacert` 와 `curl -k` 의 차이를 말로 설명하기
 - [ ] blackbox_exporter + `CertExpiringSoon` 규칙을 관측 스택에 추가해 Grafana 에서 남은 일수 보기

@@ -49,7 +49,15 @@
     "k8s:rollouts": "kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f - && kubectl apply --server-side -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml && kubectl -n argo-rollouts rollout status deploy/argo-rollouts --timeout=300s && kubectl apply -f k8s/rollouts/web-rollout.yaml",
     "k8s:rollouts:watch": "kubectl argo rollouts get rollout web-canary -n study --watch",
     "cdc:up": "docker compose --profile kafka --profile postgres --profile cdc up -d kafka postgres connect",
-    "cdc:down": "docker compose --profile cdc stop connect"
+    "cdc:down": "docker compose --profile cdc stop connect",
+    "nginx:tls": "bash nginx/tls/gen-certs.sh && docker compose --profile nginx-tls up -d nginx-tls",
+    "nginx:tls:down": "docker compose --profile nginx-tls stop nginx-tls",
+    "k8s:netpol": "kind create cluster --config k8s/security/kind-netpol.yaml && kubectl --context kind-study-netpol apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/calico.yaml && kubectl --context kind-study-netpol -n kube-system rollout status ds/calico-node --timeout=300s",
+    "k8s:netpol:down": "kind delete cluster --name study-netpol",
+    "k8s:falco": "helm repo add falcosecurity https://falcosecurity.github.io/charts && helm upgrade --install falco falcosecurity/falco -n falco --create-namespace --set driver.kind=modern_ebpf --set tty=true --set falco.json_output=true --set falco.json_include_output_property=true --set falcosidekick.enabled=true --set collectors.kubernetes.enabled=false --wait --timeout 420s",
+    "k8s:falco:down": "helm uninstall falco -n falco",
+    "tf:cluster": "tofu -chdir=infra/local/10-cluster",
+    "tf:platform": "tofu -chdir=infra/local/20-platform"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",

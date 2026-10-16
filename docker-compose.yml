@@ -213,6 +213,19 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  # ---- Nginx TLS 종단 : pnpm nginx:tls (사설 CA, https://localhost:18444) ----
+  nginx-tls:
+    image: nginx:1.27-alpine
+    container_name: study-nginx-tls
+    profiles: ["nginx-tls"]
+    ports:
+      - "127.0.0.1:18444:443"
+    volumes:
+      - ./nginx/nginx-tls.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/tls/certs:/etc/nginx/tls:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   redis-data:
   pg-data:

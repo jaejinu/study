@@ -244,3 +244,87 @@ docker ps --filter name=lab-iac-import`,
     }
   },
 };
+
+// ---------------------------------------------------------------- infra/local 두 단계 스택
+const TF_ROOT = process.cwd();
+const TF_CLUSTER = path.join(TF_ROOT, "infra/local/10-cluster");
+const TF_PLATFORM = path.join(TF_ROOT, "infra/local/20-platform");
+
+async function cleanupLocalStack(ctx: ShellCtx) {
+  await tf(ctx, TF_PLATFORM, ["destroy", "-auto-approve", "-input=false"], { allowFail: true, label: "tofu -chdir=infra/local/20-platform destroy" });
+  await tf(ctx, TF_CLUSTER, ["destroy", "-auto-approve", "-input=false"], { allowFail: true, label: "tofu -chdir=infra/local/10-cluster destroy" });
+  await ctx.sh("kind", ["delete", "cluster", "--name", "study-tf"], { allowFail: true, label: "kind delete cluster --name study-tf   # state 가 꼬였을 때 대비" });
+}
+
+export const iacLocalStack: ShellExperiment = {
+  id: "iac-local-stack",
+  subject: "iac",
+  title: "infra/local: kind 클러스터(1단계) 와 그 위의 Redis(2단계) 를 tofu apply 로 만들고, 멱등성·변경·파괴를 확인한다",
+  category: "스택",
+  summary: "10-cluster(tehcyx/kind) 로 study-tf 클러스터를 만들고 20-platform(hashicorp/kubernetes) 으로 네임스페이스·ConfigMap·Deployment·Service 를 배포한다. 두 번째 plan 이 No changes 인지, 변수(redis_maxmemory) 변경이 ConfigMap 과 Pod 만 바꾸는지, 역순 destroy 가 깨끗한지 본다 (3~4분)",
+  notes: ["07-provider-kubernetes-docker", "05-state-management-deep", "02-terraform-core-model"],
+  description: `
+\`pnpm k8s:cluster && pnpm k8s:up\` 은 명령형이다: 순서를 사람이 기억하고, 두 번 실행하면 에러가 나고, 무엇이 깔렸는지는 클러스터를 조회해야 안다.
+같은 것을 **선언형**으로: \`infra/local/10-cluster\` 는 클러스터 자체를, \`20-platform\` 은 그 위의 리소스를 state 로 관리한다. 단계를 나눈 이유는 **프로바이더가 클러스터가 있어야 초기화**되기 때문(닭과 달걀) — 한 state 에 넣으면 plan 단계에서 kubernetes 프로바이더가 연결할 곳이 없다.
+이 실험은 apply → 재 plan(No changes) → 변수 변경(ConfigMap 해시 → Pod 재생성) → destroy 를 끝까지 돌린다. 기존 \`kind-study\`(ArgoCD 소유)와는 분리된 클러스터 \`study-tf\` 를 쓴다.
+`,
+  code: `pnpm tf:cluster init && pnpm tf:cluster apply -auto-approve     # kind_cluster.this → 컨텍스트 kind-study-tf
+pnpm tf:platform init && pnpm tf:platform apply -auto-approve    # namespace, configmap, deployment(wait_for_rollout), service
+pnpm tf:platform plan -detailed-exitcode                         # exit 0 = No changes (멱등)
+pnpm tf:platform apply -auto-approve -var redis_maxmemory=128mb  # ConfigMap + Pod 템플릿(해시) 만 변경
+pnpm tf:platform destroy -auto-approve && pnpm tf:cluster destroy -auto-approve`,
+  requires: async () => {
+    const r = await requiresTf();
+    if (r) return r;
+    if (!(await exec("kind", ["version"], { timeout: 5000 })).ok) return "kind 가 필요합니다 (brew install kind).";
+    return null;
+  },
+  cleanup: cleanupLocalStack,
+  async run(ctx) {
+    await ctx.sh("kind", ["delete", "cluster", "--name", "study-tf"], { allowFail: true, label: "kind delete cluster --name study-tf   # 이전 실행 정리" });
+    await ctx.sh("rm", ["-f", path.join(TF_CLUSTER, "terraform.tfstate"), path.join(TF_PLATFORM, "terraform.tfstate")], { allowFail: true, label: "rm -f infra/local/*/terraform.tfstate   # 로컬 state 초기화 (실습용)" });
+
+    ctx.note("1단계 — 클러스터. kind 프로바이더가 docker 로 노드 컨테이너를 만들고 kubeconfig 에 컨텍스트를 등록한다");
+    await tf(ctx, TF_CLUSTER, ["init", "-input=false", "-no-color"], { label: "tofu -chdir=infra/local/10-cluster init", timeout: 240_000 });
+    const t0 = performance.now();
+    await tf(ctx, TF_CLUSTER, ["apply", "-auto-approve", "-input=false", "-no-color"], { label: "tofu -chdir=infra/local/10-cluster apply -auto-approve", timeout: 400_000 });
+    ctx.note(`클러스터 생성 ${Math.round((performance.now() - t0) / 1000)}초`);
+    const outCtx = (await tf(ctx, TF_CLUSTER, ["output", "-raw", "context"], { label: "tofu output -raw context" })).out.trim();
+    ctx.check("output context = kind-study-tf", outCtx === "kind-study-tf", outCtx);
+    const nodes = await ctx.sh("kubectl", ["--context", outCtx, "get", "nodes", "--no-headers"]);
+    ctx.check("노드가 Ready", /\sReady\s/.test(nodes.out));
+    const replan = await tf(ctx, TF_CLUSTER, ["plan", "-detailed-exitcode", "-input=false", "-no-color"], { allowFail: true, label: "tofu -chdir=infra/local/10-cluster plan -detailed-exitcode   # 두 번째 plan" });
+    ctx.check("1단계 재 plan: No changes (exit 0)", replan.code === 0, `exit=${replan.code}`);
+
+    ctx.note("2단계 — 플랫폼. kubernetes 프로바이더가 1단계의 컨텍스트로 연결한다");
+    await tf(ctx, TF_PLATFORM, ["init", "-input=false", "-no-color"], { label: "tofu -chdir=infra/local/20-platform init", timeout: 240_000 });
+    const plan = await tf(ctx, TF_PLATFORM, ["plan", "-input=false", "-no-color"], { label: "tofu -chdir=infra/local/20-platform plan" });
+    const adds = plan.out.match(/Plan: (\d+) to add/)?.[1];
+    ctx.check("plan: 4 to add (namespace, configmap, deployment, service)", adds === "4", `to add=${adds}`);
+    await tf(ctx, TF_PLATFORM, ["apply", "-auto-approve", "-input=false", "-no-color"], { label: "tofu -chdir=infra/local/20-platform apply -auto-approve   # wait_for_rollout 으로 Pod Ready 까지 기다림", timeout: 300_000 });
+    const pods = await ctx.sh("kubectl", ["--context", outCtx, "-n", "study-tf", "get", "pods", "-o", "wide"]);
+    ctx.check("study-tf 네임스페이스에 redis Pod 가 Running", /redis-\S+\s+1\/1\s+Running/.test(pods.out));
+    const ping = await ctx.sh("kubectl", ["--context", outCtx, "-n", "study-tf", "exec", "deploy/redis", "--", "redis-cli", "config", "get", "maxmemory"], { allowFail: true });
+    ctx.check("ConfigMap 의 maxmemory 64mb 가 적용됨 (67108864)", /67108864/.test(ping.out), ping.out.replace(/\n/g, " "));
+    const replan2 = await tf(ctx, TF_PLATFORM, ["plan", "-detailed-exitcode", "-input=false", "-no-color"], { allowFail: true, label: "tofu -chdir=infra/local/20-platform plan -detailed-exitcode   # 멱등성" });
+    ctx.check("2단계 재 plan: No changes (exit 0)", replan2.code === 0, `exit=${replan2.code}`);
+
+    ctx.note("변경 — 변수 하나를 바꾸면 영향 범위가 plan 에 정확히 보인다");
+    const change = await tf(ctx, TF_PLATFORM, ["plan", "-input=false", "-no-color", "-var", "redis_maxmemory=128mb"], { label: "tofu plan -var redis_maxmemory=128mb" });
+    const summary = change.out.match(/Plan: (\d+) to add, (\d+) to change, (\d+) to destroy/);
+    ctx.table("변경 plan 요약", ["add", "change", "destroy"], [[summary?.[1] ?? "?", summary?.[2] ?? "?", summary?.[3] ?? "?"]]);
+    ctx.check("ConfigMap 과 Deployment(템플릿 해시) 2개만 change, 파괴 0", summary?.[2] === "2" && summary?.[3] === "0");
+    await tf(ctx, TF_PLATFORM, ["apply", "-auto-approve", "-input=false", "-no-color", "-var", "redis_maxmemory=128mb"], { label: "tofu apply -var redis_maxmemory=128mb", timeout: 300_000 });
+    const ping2 = await ctx.sh("kubectl", ["--context", outCtx, "-n", "study-tf", "exec", "deploy/redis", "--", "redis-cli", "config", "get", "maxmemory"], { allowFail: true });
+    ctx.check("새 Pod 가 128mb(134217728) 로 떴다 — 해시 어노테이션이 롤아웃을 유발", /134217728/.test(ping2.out));
+    const list = await tf(ctx, TF_PLATFORM, ["state", "list"], { label: "tofu state list" });
+    ctx.note(`state 가 아는 리소스: ${list.out.split("\n").filter(Boolean).join(", ")}`);
+
+    ctx.note("파괴 — 역순. 2단계를 먼저 지워야 프로바이더가 연결할 클러스터가 남아 있다");
+    await tf(ctx, TF_PLATFORM, ["destroy", "-auto-approve", "-input=false", "-no-color"], { label: "tofu -chdir=infra/local/20-platform destroy -auto-approve", timeout: 300_000 });
+    await tf(ctx, TF_CLUSTER, ["destroy", "-auto-approve", "-input=false", "-no-color"], { label: "tofu -chdir=infra/local/10-cluster destroy -auto-approve", timeout: 300_000 });
+    const left = await ctx.sh("kind", ["get", "clusters"], { allowFail: true });
+    ctx.check("study-tf 클러스터가 사라졌다", !/^study-tf$/m.test(left.out));
+    ctx.note("실무라면 state 는 원격 백엔드(잠금 포함)에, 변수는 환경별 tfvars 에, 그리고 2단계 이후는 ArgoCD 에 넘긴다 (노트 07·13).");
+  },
+};

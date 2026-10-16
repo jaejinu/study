@@ -1,0 +1,16 @@
+# egress 기본 거부는 DNS 도 막는다 → 서비스 이름 해석이 안 돼 "연결 실패" 처럼 보인다. kube-dns 로의 53 을 열어 준다.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: netpol-lab
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+          podSelector: { matchLabels: { k8s-app: kube-dns } }
+      ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }

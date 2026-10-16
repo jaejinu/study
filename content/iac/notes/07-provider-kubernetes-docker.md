@@ -4,7 +4,7 @@ order: 7
 level: 심화
 summary: "package.json 의 명령형 스크립트(kind create, helm install, kubectl apply)를 Terraform 으로 옮기는 과정 — kind 프로바이더로 클러스터, kubernetes/helm 프로바이더로 네임스페이스·kube-prometheus-stack·Redis, 프로바이더 설정의 의존 문제(클러스터가 생기기 전의 kubeconfig)와 해결, kubernetes_manifest 와 CRD 타이밍, Helm 값 관리, 그리고 '어디까지 Terraform 이고 어디부터 ArgoCD 인가' 의 경계 설계, Kustomize·Helm·Terraform 의 역할 비교, 흔한 함정"
 tags: [kind, helm 프로바이더, kubernetes 프로바이더, kubernetes_manifest, ArgoCD, 경계, Kustomize, 부트스트랩]
-experiments: [iac-plan-apply-docker, iac-drift-detect]
+experiments: [iac-plan-apply-docker, iac-drift-detect, iac-local-stack]
 ---
 
 ## 지금: 명령형 스크립트
@@ -186,7 +186,7 @@ resource "kubernetes_manifest" "app_study" {
 
 ## 예시로 보기 — 단계별 이행 계획
 
-1. `infra/local/10-cluster` 에 `kind_cluster` 만. `pnpm k8s:cluster` 를 `tofu -chdir=infra/local/10-cluster apply` 로 교체. 두 번 실행 → No changes 확인.
+1. **(완료)** `infra/local/10-cluster` 에 `kind_cluster` 만(`pnpm tf:cluster apply`, 클러스터 `study-tf`). `20-platform` 에 네임스페이스 + Redis ConfigMap·Deployment·Service(`pnpm tf:platform apply`). 실험 `iac-local-stack` 이 apply → 재 plan No changes → `-var redis_maxmemory=128mb` 로 ConfigMap·Deployment 2개만 change(해시 어노테이션으로 롤아웃) → 역순 destroy 를 끝까지 돌린다. 기존 `kind-study`(ArgoCD 소유)와는 분리 — 한 리소스에 소유자는 하나.
 2. `20-platform` 에 metrics-server·kps·ArgoCD(`helm_release`). 기존 `k8s/monitoring/values.yaml` 재사용. `pnpm k8s:monitoring`/`k8s:argocd` 제거.
 3. `bootstrap.tf` 로 Application 생성 → `k8s/` 는 그대로 ArgoCD 가 동기화(이미 Synced/Healthy 인 상태를 재현).
 4. 환경 점검 카드([IaC 대시보드](/iac))에 `tofu show`/`state list` 결과를 띄워 "코드가 아는 리소스" 와 실제를 비교(드리프트 패널).
@@ -194,7 +194,7 @@ resource "kubernetes_manifest" "app_study" {
 
 ## 실습 체크리스트
 
-- [ ] `infra/local/10-cluster` 를 만들어 `tofu apply` 로 kind 클러스터 생성, `kubectl config get-contexts` 로 확인, 두 번째 apply 가 No changes 인지
+- [ ] 실험 `iac-local-stack` 을 돌리고, `infra/local/20-platform/main.tf` 의 `config-hash` 어노테이션을 지운 뒤 변수를 바꿔 Pod 가 재시작되지 **않는** 것을 확인(ConfigMap 만 바뀌고 프로세스는 옛 값)
 - [ ] `20-platform` 에 metrics-server 를 `helm_release` 로 설치하고 `kubectl top nodes` 확인
 - [ ] kps 를 Terraform 으로 설치하되 기존 values 파일을 재사용, Grafana(13001) 접속
 - [ ] ArgoCD 를 helm_release 로 설치 → Application 을 `kubernetes_manifest` 로 만들 때 CRD 타이밍 문제를 **직접 겪고** 해결

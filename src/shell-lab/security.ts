@@ -310,3 +310,219 @@ redis-cli ACL DELUSER cache_ro`,
     await cli(["DEL", "cache:lab", "session:lab"]);
   },
 };
+
+// ---------------------------------------------------------------- Nginx TLS 종단
+const TLS_PORT = 18444;
+const TLS_NAME = "lab-nginx-tls";
+const ROOT = process.cwd();
+
+async function cleanupNginxTls(ctx: ShellCtx) {
+  await ctx.sh("docker", ["rm", "-f", TLS_NAME], { allowFail: true, label: `docker rm -f ${TLS_NAME}` });
+}
+
+export const secNginxTls: ShellExperiment = {
+  id: "sec-nginx-tls",
+  subject: "security",
+  title: "Nginx TLS 종단: 사설 CA 로 HTTPS 를 켜고, 신뢰 저장소·SAN·프로토콜·HSTS 를 curl 로 확인한다",
+  category: "TLS",
+  summary: "nginx/tls/gen-certs.sh 로 CA + localhost 인증서를 만들고 nginx-tls.conf 로 컨테이너를 띄운 뒤, --cacert 없이는 실패(60)·있으면 200·TLS1.3·HSTS 헤더·80→443 리다이렉트·TLS1.1 거부·SNI 불일치를 차례로 확인한다",
+  notes: ["02-tls-certificates", "08-web-api-llm-security"],
+  description: `
+"HTTPS 를 켠다" 는 서버에 **인증서 + 개인키** 를 두고, 클라이언트가 그 인증서를 **신뢰하는 CA** 로 검증할 수 있게 하는 일이다.
+운영에선 Let's Encrypt 가 CA 지만, 로컬에선 내가 CA 다. 그래서 \`curl\` 이 처음엔 거부하고(모르는 CA), \`--cacert ca.crt\` 를 주면(신뢰 저장소에 추가) 통과한다. \`-k\` 는 검증을 **끄는** 것이라 다르다 — 중간자 공격에 그대로 노출된다.
+이 실험은 \`nginx/nginx-tls.conf\` 를 그대로 써서 프로토콜 제한(1.2+), HSTS, 리다이렉트가 실제로 동작하는지 본다.
+`,
+  code: `bash nginx/tls/gen-certs.sh                      # CA + server 인증서 (SAN: localhost, study.local, 127.0.0.1)
+docker run -d --name lab-nginx-tls -p 127.0.0.1:18444:443 \\
+  -v $PWD/nginx/nginx-tls.conf:/etc/nginx/nginx.conf:ro -v $PWD/nginx/tls/certs:/etc/nginx/tls:ro \\
+  --add-host host.docker.internal:host-gateway nginx:1.27-alpine
+curl -sS https://localhost:18444/health                   # 실패 60: 모르는 CA
+curl -sS --cacert nginx/tls/certs/ca.crt https://localhost:18444/health   # ok
+curl -sSI --cacert ca.crt https://localhost:18444/ | grep -i strict-transport   # HSTS
+curl -sv --cacert ca.crt --tls-max 1.1 https://localhost:18444/health   # 거부
+openssl s_client -connect localhost:18444 -servername localhost -brief </dev/null   # TLSv1.3`,
+  requires: async () => {
+    const b = await openssl();
+    if (b === "openssl" && /LibreSSL/.test((await exec("openssl", ["version"])).out)) return "brew install openssl@3 이 필요합니다 (-addext, -copy_extensions).";
+    const d = await exec("docker", ["version", "--format", "{{.Server.Version}}"], { timeout: 6000 });
+    if (!d.ok) return "Docker 데몬이 필요합니다.";
+    return null;
+  },
+  cleanup: cleanupNginxTls,
+  async run(ctx) {
+    await cleanupNginxTls(ctx);
+    const ssl = await openssl();
+    await ctx.sh("bash", ["nginx/tls/gen-certs.sh"], { label: "bash nginx/tls/gen-certs.sh   # CA + 서버 인증서 생성" });
+    const ca = path.join(ROOT, "nginx/tls/certs/ca.crt");
+    await ctx.sh("docker", ["run", "-d", "--name", TLS_NAME, "-p", `127.0.0.1:${TLS_PORT}:443`, "-p", "127.0.0.1:18445:80", "-v", `${ROOT}/nginx/nginx-tls.conf:/etc/nginx/nginx.conf:ro`, "-v", `${ROOT}/nginx/tls/certs:/etc/nginx/tls:ro`, "--add-host", "host.docker.internal:host-gateway", "nginx:1.27-alpine"], { label: `docker run -d --name ${TLS_NAME} -p 127.0.0.1:${TLS_PORT}:443 … nginx:1.27-alpine` });
+    await ctx.poll("Nginx 가 TLS 로 응답할 때까지", async () => ((await exec("curl", ["-sS", "--cacert", ca, "-o", "/dev/null", "-w", "%{http_code}", `https://localhost:${TLS_PORT}/health`], { timeout: 5000 })).out === "200" ? true : undefined), { timeoutMs: 30_000, intervalMs: 1000 });
+
+    const noCa = await ctx.sh("curl", ["-sS", `https://localhost:${TLS_PORT}/health`], { allowFail: true, label: `curl https://localhost:${TLS_PORT}/health   # CA 를 모르는 상태` });
+    ctx.check("CA 를 신뢰하지 않으면 curl 이 거부한다 (exit 60, 'unable to get local issuer certificate')", noCa.code === 60, `exit=${noCa.code}`);
+    const withCa = await ctx.sh("curl", ["-sS", "--cacert", ca, "-w", "\\nhttp=%{http_code} ssl_verify=%{ssl_verify_result}", `https://localhost:${TLS_PORT}/health`], { label: `curl --cacert nginx/tls/certs/ca.crt https://localhost:${TLS_PORT}/health` });
+    ctx.check("우리 CA 를 신뢰 저장소로 주면 200 + 검증 결과 0", /http=200 ssl_verify=0/.test(withCa.out));
+    const insecure = await ctx.sh("curl", ["-sk", "-o", "/dev/null", "-w", "%{http_code}", `https://localhost:${TLS_PORT}/health`], { label: "curl -k   # 검증을 끈다 — 통과하지만 상대가 누구인지 모른다" });
+    ctx.note(`-k 도 ${insecure.out} 이지만 그건 '아무나 믿겠다' 는 뜻. --cacert 는 '이 CA 가 보증한 서버만 믿겠다'.`);
+
+    const head = await ctx.sh("curl", ["-sSI", "--cacert", ca, `https://localhost:${TLS_PORT}/health`], { label: "curl -I   # 응답 헤더" });
+    ctx.check("HSTS 헤더 (브라우저가 이후 1년간 http 를 https 로 강제)", /strict-transport-security: max-age=31536000/i.test(head.out));
+    ctx.check("X-Content-Type-Options / X-Frame-Options 보안 헤더", /nosniff/i.test(head.out) && /x-frame-options: DENY/i.test(head.out));
+    const redirect = await ctx.sh("curl", ["-sI", "-o", "/dev/null", "-w", "%{http_code} %{redirect_url}", "http://localhost:18445/health"], { label: "curl -I http://localhost:18445/health   # 평문 포트" });
+    ctx.check("평문 80 은 301 로 https 로 보낸다", /^301 https:\/\//.test(redirect.out), redirect.out);
+
+    const brief = await ctx.sh(ssl, ["s_client", "-connect", `localhost:${TLS_PORT}`, "-servername", "localhost", "-CAfile", ca, "-brief"], { input: "", allowFail: true, timeout: 10_000, label: "openssl s_client -brief   # 협상된 프로토콜·스위트" });
+    const proto = (brief.err + brief.out).match(/Protocol version: (\S+)/)?.[1] ?? "?";
+    const cipher = (brief.err + brief.out).match(/Ciphersuite: (\S+)/)?.[1] ?? "?";
+    ctx.table("협상 결과", ["프로토콜", "암호 스위트", "검증"], [[proto, cipher, /Verification: OK/.test(brief.err + brief.out) ? "OK" : "?"]]);
+    ctx.check("TLS 1.3 으로 협상된다", proto === "TLSv1.3");
+    const old = await ctx.sh("curl", ["-sS", "--cacert", ca, "--tls-max", "1.1", "-o", "/dev/null", `https://localhost:${TLS_PORT}/health`], { allowFail: true, label: "curl --tls-max 1.1   # 구식 프로토콜 강제" });
+    ctx.check("TLS 1.1 이하는 서버가 거부한다 (ssl_protocols TLSv1.2 TLSv1.3)", !old.ok);
+    const wrongHost = await ctx.sh("curl", ["-sS", "--cacert", ca, "--resolve", `api.other.com:${TLS_PORT}:127.0.0.1`, "-o", "/dev/null", `https://api.other.com:${TLS_PORT}/health`], { allowFail: true, label: `curl --resolve api.other.com:${TLS_PORT}:127.0.0.1 https://api.other.com:${TLS_PORT}/   # SAN 에 없는 이름` });
+    ctx.check("SAN 에 없는 호스트 이름으로 접속하면 거부 (exit 60, hostname mismatch)", wrongHost.code === 60, `exit=${wrongHost.code}`);
+    const log = await ctx.sh("docker", ["logs", "--tail", "4", TLS_NAME], { allowFail: true, label: "docker logs   # ssl=$ssl_protocol/$ssl_cipher sni=… 가 로그에" });
+    ctx.note(/ssl=TLSv1\.3/.test(log.out + log.err) ? "Nginx 로그에 프로토콜·스위트·SNI 가 남는다 → Loki 에서 'TLSv1.2 비율' 같은 질의가 가능" : "로그 형식은 nginx-tls.conf 의 log_format tls 참고");
+    await cleanupNginxTls(ctx);
+    ctx.note("수동으로 계속 쓰려면 pnpm nginx:tls (compose 프로파일, https://localhost:18444). 브라우저에서 경고 없이 보려면 certs/ca.crt 를 키체인에 '신뢰' 로 추가.");
+  },
+};
+
+// ---------------------------------------------------------------- NetworkPolicy (Calico kind 클러스터)
+const NP_CTX = "kind-study-netpol";
+const NP_NS = "netpol-lab";
+const npk = (args: string[]) => ["--context", NP_CTX, ...args];
+
+async function requiresNetpol(): Promise<string | null> {
+  const r = await exec("kubectl", npk(["-n", "kube-system", "get", "ds", "calico-node", "-o", "jsonpath={.status.numberReady}", "--request-timeout=5s"]), { timeout: 8000 });
+  if (!r.ok) return "Calico 가 있는 kind 클러스터 study-netpol 이 필요합니다: `pnpm k8s:netpol` (기본 kindnet 은 NetworkPolicy 를 강제하지 않습니다).";
+  if (Number(r.out) < 1) return "calico-node 가 아직 Ready 가 아닙니다. 잠시 후 다시.";
+  return null;
+}
+
+async function cleanupNetpol(ctx: ShellCtx) {
+  await ctx.sh("kubectl", npk(["delete", "ns", NP_NS, "--ignore-not-found", "--wait=false"]), { allowFail: true, label: `kubectl delete ns ${NP_NS}` });
+}
+
+export const secK8sNetworkPolicy: ShellExperiment = {
+  id: "sec-k8s-networkpolicy",
+  subject: "security",
+  title: "NetworkPolicy: 기본 거부를 걸면 모두 끊기고, web→redis 만 구멍을 내면 침입자는 여전히 막힌다",
+  category: "Kubernetes",
+  summary: "Calico 가 깔린 kind 클러스터에 redis·web·intruder Pod 를 띄우고 정책 전(둘 다 연결됨) → default-deny(둘 다 끊김, DNS 도) → DNS 허용 → web→redis 허용(web 만 연결) 순서로 nc 로 확인한다",
+  notes: ["06-kubernetes-security", "01-security-mindset-threat-modeling"],
+  description: `
+Kubernetes 의 기본은 **모든 Pod 가 모든 Pod 와 통신**이다. 침해된 Pod 하나가 DB 로 바로 가는 **측면 이동**을 막으려면 NetworkPolicy 로 "기본 거부 + 필요한 구멍" 을 선언해야 한다.
+두 가지를 몸으로 익힌다: (1) egress 기본 거부는 **DNS 까지 막아서** "서비스 이름이 안 풀리는" 형태로 나타난다 — kube-dns 로의 53 을 따로 열어야 한다. (2) 허용은 **양쪽**에 필요하다: redis 의 ingress 와 web 의 egress.
+CNI 가 정책을 강제해야 하므로 Calico 를 넣은 별도 kind 클러스터(\`pnpm k8s:netpol\`)를 쓴다. kindnet 에서는 정책을 만들어도 아무 일도 일어나지 않는다 — 그게 가장 흔한 "정책이 있는데 뚫린" 사고다.
+`,
+  code: `kubectl apply -f k8s/security/netpol/00-namespace-and-pods.yaml
+kubectl -n netpol-lab exec web      -- nc -zw2 redis 6379   # 정책 전: 성공
+kubectl -n netpol-lab exec intruder -- nc -zw2 redis 6379   # 성공 (문제!)
+kubectl apply -f k8s/security/netpol/10-default-deny.yaml   # 둘 다 실패 + DNS 도 실패
+kubectl apply -f k8s/security/netpol/30-allow-dns.yaml      # 이름은 풀리지만 연결은 실패
+kubectl apply -f k8s/security/netpol/20-allow-web-to-redis.yaml   # web 만 성공`,
+  requires: requiresNetpol,
+  cleanup: cleanupNetpol,
+  async run(ctx) {
+    const d = "k8s/security/netpol";
+    await ctx.sh("kubectl", npk(["delete", "ns", NP_NS, "--ignore-not-found"]), { allowFail: true, timeout: 90_000, label: "이전 실행 정리" });
+    await ctx.sh("kubectl", npk(["apply", "-f", `${d}/00-namespace-and-pods.yaml`]));
+    await ctx.sh("kubectl", npk(["-n", NP_NS, "wait", "--for=condition=Ready", "pod/redis", "pod/web", "pod/intruder", "--timeout=120s"]), { timeout: 130_000 });
+    const probe = async (from: string, label: string) => {
+      const r = await ctx.sh("kubectl", npk(["-n", NP_NS, "exec", from, "--", "nc", "-zw3", "redis", "6379"]), { allowFail: true, timeout: 20_000, label: `kubectl exec ${from} -- nc -zw3 redis 6379   # ${label}` });
+      return r.ok;
+    };
+    const dns = async (from: string, label: string) => {
+      const r = await ctx.sh("kubectl", npk(["-n", NP_NS, "exec", from, "--", "nslookup", "redis.netpol-lab.svc.cluster.local"]), { allowFail: true, timeout: 20_000, label: `kubectl exec ${from} -- nslookup redis   # ${label}` });
+      return r.ok;
+    };
+    const rows: string[][] = [];
+    let w = await probe("web", "정책 없음"), i = await probe("intruder", "정책 없음");
+    rows.push(["정책 없음", w ? "연결" : "차단", i ? "연결" : "차단"]);
+    ctx.check("정책이 없으면 침입자도 Redis 에 바로 붙는다", w && i);
+
+    await ctx.sh("kubectl", npk(["apply", "-f", `${d}/10-default-deny.yaml`]));
+    await ctx.sleep(2000);
+    w = await probe("web", "default-deny"); i = await probe("intruder", "default-deny");
+    const dnsDenied = await dns("web", "default-deny — egress 거부는 DNS 도 막는다");
+    rows.push(["default-deny", w ? "연결" : "차단", i ? "연결" : "차단"]);
+    ctx.check("기본 거부 후엔 둘 다 끊긴다 (Calico 가 강제)", !w && !i);
+    ctx.check("DNS 조회도 실패한다 — egress 거부의 흔한 함정", !dnsDenied);
+
+    await ctx.sh("kubectl", npk(["apply", "-f", `${d}/30-allow-dns.yaml`]));
+    await ctx.sleep(2000);
+    const dnsOk = await dns("web", "DNS egress 허용 후");
+    w = await probe("web", "DNS 만 허용"); i = await probe("intruder", "DNS 만 허용");
+    rows.push(["+ allow-dns", w ? "연결" : "차단", i ? "연결" : "차단"]);
+    ctx.check("이름은 풀리지만 6379 는 여전히 막혀 있다", dnsOk && !w && !i);
+
+    await ctx.sh("kubectl", npk(["apply", "-f", `${d}/20-allow-web-to-redis.yaml`]));
+    await ctx.sleep(2000);
+    w = await probe("web", "web→redis 허용"); i = await probe("intruder", "web→redis 허용");
+    rows.push(["+ web→redis", w ? "연결" : "차단", i ? "연결" : "차단"]);
+    ctx.check("web 만 연결되고 침입자는 막힌다 (ingress + egress 양쪽 허용)", w && !i);
+    ctx.table("단계별 연결 결과 (nc -z redis 6379)", ["정책", "web", "intruder"], rows);
+    await ctx.sh("kubectl", npk(["-n", NP_NS, "get", "networkpolicy"]));
+    ctx.note("정책은 OR 로 더해진다. 기본 거부가 없으면 '허용' 정책은 아무 의미가 없다. 운영에선 네임스페이스마다 default-deny 를 템플릿으로 깔고 시작하자.");
+    await cleanupNetpol(ctx);
+  },
+};
+
+// ---------------------------------------------------------------- Falco 런타임 탐지
+async function requiresFalco(): Promise<string | null> {
+  const r = await exec("kubectl", ["--context", "kind-study", "-n", "falco", "get", "ds", "falco", "-o", "jsonpath={.status.numberReady}", "--request-timeout=5s"], { timeout: 8000 });
+  if (!r.ok || Number(r.out) < 1) return "Falco 가 kind-study 에 설치돼 있어야 합니다: `pnpm k8s:falco` (modern eBPF 드라이버, 1~2분).";
+  const ns = await exec("kubectl", ["--context", "kind-study", "get", "ns", "study", "--request-timeout=5s"], { timeout: 8000 });
+  if (!ns.ok) return "study 네임스페이스(web Pod)가 필요합니다: `pnpm k8s:up`.";
+  return null;
+}
+
+export const secFalcoRuntime: ShellExperiment = {
+  id: "sec-falco-runtime",
+  subject: "security",
+  title: "Falco 런타임 탐지: 컨테이너 안에서 키를 뒤지고, 바이너리를 떨어뜨려 실행하고, /etc/shadow 를 읽으면 eBPF 가 그것을 보고 알린다",
+  category: "런타임",
+  summary: "kind-study 의 Falco(modern eBPF) 가 web Pod(non-root) 의 'Search Private Keys or Passwords'·'Drop and execute new binary in container' 와 redis-0(root) 의 'Read sensitive file untrusted' 를 어떤 우선순위·필드(Pod/네임스페이스/프로세스 트리)로 보고하는지 확인한다. non-root 가 /etc/shadow 를 못 여는 것도, 같은 커널의 compose 컨테이너까지 보이는 것도 함께",
+  notes: ["05-container-supply-chain", "08-web-api-llm-security"],
+  description: `
+스캔·정책은 **배포 전** 방어다. 배포 후 컨테이너 안에서 무슨 일이 벌어지는지는 **런타임 탐지**가 본다. Falco 는 eBPF 로 커널 시스템 콜을 구독하고 규칙에 맞으면 이벤트를 낸다.
+이 실험은 침해 후 공격자가 흔히 하는 세 가지를 \`kubectl exec\` 로 재현한다: **자격 증명 사냥**(\`find / -name id_rsa\`), **도구 반입**(바이너리를 복사해 실행), **민감 파일 읽기**(\`/etc/shadow\`). 이벤트 JSON 에는 **k8s Pod·네임스페이스·컨테이너 이미지·프로세스 트리** 가 붙어 있어 Loki 로 보내면 바로 조사 가능한 로그가 된다.
+두 가지 교훈이 덤으로 온다. (1) web 은 \`USER node\` 라 \`/etc/shadow\` 를 **열지조차 못한다** — Falco 의 open_read 는 성공한 open 만 보므로 이벤트도 없다. non-root 는 알림을 줄이는 게 아니라 **공격 자체를 실패**시킨다. (2) kind 노드와 compose 컨테이너는 **같은 Docker Desktop 커널**이라 kind 안의 Falco 가 \`study-postgres\` 의 healthcheck 까지 본다. eBPF 는 커널 단위다.
+`,
+  code: `pnpm k8s:falco                                              # helm: driver.kind=modern_ebpf, json_output
+kubectl -n study exec deploy/web -- find / -name id_rsa          # Search Private Keys or Passwords
+kubectl -n study exec deploy/web -- sh -c 'cp /bin/ls /tmp/x && /tmp/x'   # Drop and execute new binary in container
+kubectl -n study exec redis-0 -- cat /etc/shadow                 # Read sensitive file untrusted (root 컨테이너)
+kubectl -n study exec -it deploy/web -- sh                       # 터미널에서: Terminal shell in container (tty)
+kubectl -n falco logs ds/falco -c falco --since=2m | jq -c '{rule, pod: .output_fields["k8s.pod.name"], cmd: .output_fields["proc.cmdline"]}'`,
+  requires: requiresFalco,
+  async run(ctx) {
+    const k = ["--context", "kind-study"];
+    const pod = (await exec("kubectl", [...k, "-n", "study", "get", "pod", "-l", "app=web", "-o", "jsonpath={.items[0].metadata.name}"])).out;
+    ctx.note(`대상 Pod: study/${pod} (web, USER node) 와 study/redis-0 (root)`);
+    const denied = await ctx.sh("kubectl", [...k, "-n", "study", "exec", pod, "--", "sh", "-c", "cat /etc/shadow"], { allowFail: true, label: `kubectl -n study exec ${pod} -- cat /etc/shadow   # non-root: 열기 자체가 실패` });
+    ctx.check("non-root 컨테이너에서는 /etc/shadow 를 열 수 없다 (Permission denied) → 공격 실패, Falco 이벤트도 없음", !denied.ok);
+    await ctx.sh("kubectl", [...k, "-n", "study", "exec", pod, "--", "sh", "-c", "find / -name id_rsa 2>/dev/null | head -1; true"], { allowFail: true, label: `kubectl -n study exec ${pod} -- find / -name id_rsa   # 공격 1: 자격 증명 사냥` });
+    await ctx.sh("kubectl", [...k, "-n", "study", "exec", pod, "--", "sh", "-c", "cp /bin/ls /tmp/lab-dropped && /tmp/lab-dropped /tmp >/dev/null; rm -f /tmp/lab-dropped"], { allowFail: true, label: `kubectl -n study exec ${pod} -- sh -c 'cp /bin/ls /tmp/lab-dropped && /tmp/lab-dropped'   # 공격 2: 반입한 바이너리 실행` });
+    await ctx.sh("kubectl", [...k, "-n", "study", "exec", "redis-0", "--", "sh", "-c", "cat /etc/shadow >/dev/null"], { allowFail: true, label: "kubectl -n study exec redis-0 -- cat /etc/shadow   # 공격 3: root 컨테이너의 민감 파일 읽기" });
+
+    type Ev = { rule: string; priority: string; output: string; output_fields: Record<string, unknown> };
+    const events = await ctx.poll("Falco 로그에 세 규칙의 이벤트가 나타날 때까지", async () => {
+      const r = await exec("kubectl", [...k, "-n", "falco", "logs", "ds/falco", "-c", "falco", "--since=3m", "--tail=800"], { timeout: 20_000 });
+      const parsed = r.out.split("\n").filter((l) => l.startsWith("{")).flatMap((l) => { try { return [JSON.parse(l) as Ev]; } catch { return []; } });
+      const byPod = (rule: RegExp, p: string) => parsed.find((e) => rule.test(e.rule) && e.output_fields?.["k8s.pod.name"] === p);
+      const keys = byPod(/Private Keys/i, pod), drop = byPod(/Drop and execute/i, pod), sensitive = byPod(/sensitive file/i, "redis-0");
+      return keys && drop && sensitive ? { keys, drop, sensitive, all: parsed } : undefined;
+    }, { timeoutMs: 90_000, intervalMs: 3000 });
+    const f = (e: Ev, k2: string) => String(e.output_fields[k2] ?? "");
+    const row = (e: Ev) => [e.rule, e.priority, f(e, "k8s.pod.name"), `${f(e, "proc.pname")} → ${f(e, "proc.name")}`, (f(e, "proc.cmdline") || f(e, "fd.name")).slice(0, 60), f(e, "container.image.repository")];
+    ctx.table("잡힌 이벤트", ["규칙", "우선순위", "Pod", "프로세스 트리", "명령/파일", "이미지"], [row(events.keys), row(events.drop), row(events.sensitive)]);
+    ctx.check("세 규칙 모두 k8s 네임스페이스 study 로 태깅됐다 (조사 가능한 로그)", [events.keys, events.drop, events.sensitive].every((e) => f(e, "k8s.ns.name") === "study"));
+    ctx.check("'Read sensitive file untrusted' 는 root 로 뜨는 redis-0 에서만 잡혔다 (fd.name=/etc/shadow)", f(events.sensitive, "fd.name") === "/etc/shadow");
+    const byRule = new Map<string, number>();
+    for (const e of events.all) byRule.set(e.rule, (byRule.get(e.rule) ?? 0) + 1);
+    ctx.table("최근 3분 전체 이벤트 (규칙별)", ["규칙", "건수"], [...byRule.entries()].sort((a, b) => b[1] - a[1]).map(([r, n]) => [r, String(n)]));
+    const others = events.all.filter((e) => e.output_fields?.["k8s.pod.name"] == null && e.output_fields?.["container.id"]);
+    ctx.note(others.length ? `k8s Pod 가 아닌 컨테이너의 이벤트 ${others.length}건 — 예: ${others[0].output.slice(0, 140)}… (compose 컨테이너도 같은 커널이라 보인다. 운영에선 이런 '정상 노이즈' 를 예외 규칙으로 튜닝하는 것이 일이다)` : "이번엔 k8s 밖 컨테이너 이벤트가 없었다 (study-postgres 가 떠 있으면 pg_isready 가 /etc/shadow 를 읽는 이벤트가 5초마다 보인다)");
+    ctx.note("터미널에서 `kubectl -n study exec -it deploy/web -- sh` 를 하면 'Terminal shell in container'(proc.tty != 0) 가 추가로 잡힌다 — 헤드리스 실행엔 tty 가 없어 여기선 생략. 다음 단계: falcosidekick → Loki(13100) 출력 + 규칙별 카운트를 Alertmanager 로 (노트 05).");
+  },
+};

@@ -1,0 +1,9 @@
+# 네임스페이스 기본 거부: 들어오는 것도 나가는 것도 전부 막는다. 이게 없으면 나머지 정책은 장식이다.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: netpol-lab
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
