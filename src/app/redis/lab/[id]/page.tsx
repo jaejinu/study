@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExperimentRunner } from "@/components/ExperimentRunner";
+import { LabHistory } from "@/components/LabHistory";
 import { CodeBlock } from "@/components/CodeBlock";
 import { Markdown } from "@/components/Markdown";
 import { Badge, Card } from "@/components/ui";
@@ -65,6 +66,11 @@ export default async function ExperimentPage({ params }: Props) {
       <section className="mt-6 rounded-xl border border-border bg-surface p-6">
         <h2 className="mb-3 text-lg font-semibold">실행 결과</h2>
         <ExperimentRunner id={exp.id} />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-border bg-surface p-6">
+        <h2 className="mb-3 text-lg font-semibold">실행 이력</h2>
+        <LabHistory subject="redis" id={exp.id} />
       </section>
 
       <nav className="mt-10 flex justify-between border-t border-border pt-4 text-sm">

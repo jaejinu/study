@@ -4,6 +4,7 @@ import { CodeBlock } from "@/components/CodeBlock";
 import { Markdown } from "@/components/Markdown";
 import { ShellLabRunner } from "@/components/ShellLabRunner";
 import { CodeLabRunner } from "@/components/CodeLabRunner";
+import { LabHistory } from "@/components/LabHistory";
 import { Badge, Card } from "@/components/ui";
 import { getLab, listLab } from "@/lab/registry";
 import { listNotes } from "@/lib/notes";
@@ -71,6 +72,11 @@ export default async function ShellExperimentPage({ params }: Props) {
       <section className="mt-6 rounded-xl border border-border bg-surface p-6">
         <h2 className="mb-3 text-lg font-semibold">실행 결과</h2>
         {exp.kind === "shell" ? <ShellLabRunner subject={sid} id={exp.id} /> : <CodeLabRunner subject={sid} id={exp.id} />}
+      </section>
+
+      <section className="mt-6 rounded-xl border border-border bg-surface p-6">
+        <h2 className="mb-3 text-lg font-semibold">실행 이력</h2>
+        <LabHistory subject={sid} id={exp.id} />
       </section>
 
       <nav className="mt-10 flex justify-between border-t border-border pt-4 text-sm">
