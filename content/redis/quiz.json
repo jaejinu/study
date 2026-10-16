@@ -1,0 +1,82 @@
+[
+ {
+  "note": "01-redis-overview",
+  "q": "Redis 명령 실행이 단일 스레드라서 좋은 점과 조심할 점은?",
+  "a": "좋은 점: INCR·ZADD 등 단일 명령이 원자적이고 락 경합이 없다. 조심할 점: KEYS *, 큰 SMEMBERS, 긴 Lua 처럼 느린 명령 하나가 모든 클라이언트를 막는다."
+ },
+ {
+  "note": "02-data-types",
+  "q": "리더보드(순위·점수 범위 조회)에 적합한 자료형과 그 이유는?",
+  "a": "Sorted Set. 멤버마다 score 를 가지며 skiplist+hash 로 삽입·순위·범위 조회가 O(log N) 이다."
+ },
+ {
+  "note": "03-keys-expiration",
+  "q": "SET 으로 값을 덮어쓰면 TTL 은 어떻게 되나? 유지하려면?",
+  "a": "TTL 이 제거된다. SET key value KEEPTTL 을 쓰거나, 값만 수정하는 INCR/HSET 류를 쓴다."
+ },
+ {
+  "note": "03-keys-expiration",
+  "q": "allkeys-lru 와 volatile-lru 의 차이는?",
+  "a": "allkeys-lru 는 모든 키 중 LRU 로 축출, volatile-lru 는 TTL 이 있는 키만 대상. TTL 키가 없으면 volatile-* 는 noeviction 처럼 동작한다."
+ },
+ {
+  "note": "04-persistence",
+  "q": "appendfsync everysec 에서 유실될 수 있는 데이터 범위는?",
+  "a": "최대 1초 분량. always 는 거의 없지만 매우 느리고, no 는 OS 버퍼(보통 30초)만큼."
+ },
+ {
+  "note": "05-transactions-lua",
+  "q": "MULTI/EXEC 안에서 런타임 에러가 나면 나머지 명령은?",
+  "a": "그대로 실행된다. Redis 트랜잭션에는 롤백이 없다. 문법 오류만 EXEC 전체를 거부한다."
+ },
+ {
+  "note": "05-transactions-lua",
+  "q": "WATCH 한 키가 EXEC 전에 바뀌면?",
+  "a": "EXEC 가 null 을 반환하고 아무것도 실행되지 않는다. 클라이언트가 재시도한다(낙관적 락)."
+ },
+ {
+  "note": "06-pipelining",
+  "q": "파이프라인과 MULTI 의 차이는?",
+  "a": "파이프라인은 RTT 를 줄일 뿐 원자성이 없다. MULTI/EXEC 는 명령 묶음을 원자적으로 실행한다. 둘을 함께 쓸 수 있다."
+ },
+ {
+  "note": "07-pubsub-streams",
+  "q": "구독자가 없을 때 PUBLISH 한 메시지는?",
+  "a": "사라진다. Pub/Sub 은 저장하지 않는 fire-and-forget. 유실이 안 되려면 Stream 을 쓴다."
+ },
+ {
+  "note": "07-pubsub-streams",
+  "q": "Stream 컨슈머 그룹에서 PEL 은 무엇인가?",
+  "a": "전달됐지만 XACK 되지 않은 메시지 목록(Pending Entries List). XPENDING/XAUTOCLAIM 으로 죽은 소비자의 메시지를 넘겨받는다."
+ },
+ {
+  "note": "08-caching-patterns",
+  "q": "Cache-Aside 에서 쓰기 시 캐시를 갱신(SET)하지 않고 삭제(DEL)하는 이유는?",
+  "a": "동시 갱신 순서가 꼬여 오래된 값이 남는 경쟁을 줄이기 위해. 삭제하면 다음 읽기가 최신 값을 채운다."
+ },
+ {
+  "note": "09-distributed-lock",
+  "q": "분산 락 해제에 Lua 가 필요한 이유는?",
+  "a": "GET 으로 내 토큰인지 확인하고 DEL 하는 사이에 락이 만료되고 남이 획득할 수 있다. Lua 로 확인+삭제를 원자적으로 해야 남의 락을 지우지 않는다."
+ },
+ {
+  "note": "10-rate-limiting",
+  "q": "고정 윈도우 카운터의 경계 문제란?",
+  "a": "윈도우 경계 양쪽에 요청이 몰리면 짧은 시간에 한도의 2배가 통과한다. 슬라이딩 윈도우나 토큰 버킷으로 완화."
+ },
+ {
+  "note": "11-replication-sentinel-cluster",
+  "q": "Cluster 에서 MGET a b 가 CROSSSLOT 에러를 내는 이유와 해결은?",
+  "a": "a, b 가 다른 해시 슬롯(노드)에 있기 때문. {tag}:a, {tag}:b 처럼 해시태그로 같은 슬롯에 둔다."
+ },
+ {
+  "note": "12-memory-performance",
+  "q": "운영에서 KEYS * 대신 무엇을 써야 하나?",
+  "a": "SCAN cursor MATCH pattern COUNT n 으로 나눠 순회. 중복 반환 가능하니 클라이언트에서 제거."
+ },
+ {
+  "note": "13-probabilistic",
+  "q": "HyperLogLog 로 할 수 없는 질문은?",
+  "a": "특정 멤버가 포함되어 있는지(멤버십). 카디널리티(고유 개수)만 근사한다."
+ }
+]

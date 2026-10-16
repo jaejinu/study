@@ -91,3 +91,9 @@ redis-benchmark -h host                  # 이 프로젝트의 벤치마크 페�
 - Cloudflare 블로그 (QUIC, 네트워크 디버깅 사례)
 - Wireshark 로 pcap 을 열어 핸드셰이크·TLS 를 눈으로 따라가기
 - eBPF 도구 (bcc/bpftrace) 로 커널 수준 관찰
+
+## 관련 노트
+
+- [Docker 운영과 디버깅](/docker/notes/07-ops-debugging)
+- [Kubernetes Service 와 Ingress](/kubernetes/notes/04-service-ingress) — kube-proxy 의 DNAT
+- [Redis 운영 명령 — 보안 기본](/redis/notes/14-ops-commands)

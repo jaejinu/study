@@ -98,3 +98,9 @@ curl http://localhost:18080/nginx_status   # Active connections ...
 - [ ] `location = /health` 를 지우면 `/health` 가 어디로 가는지 확인 (업스트림 404)
 - [ ] `server_name` 을 바꾸고 `curl -H 'Host: other'` 로 default_server 동작 확인
 - [ ] 설정을 일부러 틀리게 하고 `nginx -t` 메시지 읽기
+
+## 관련 노트
+
+- [리버스 프록시와 로드밸런싱](/nginx/notes/02-reverse-proxy-lb)
+- [Linux: 포트·소켓·TCP 상태](/linux-network/notes/02-ip-ports-sockets) — 이벤트 모델이 다루는 소켓
+- [Redis 란 무엇인가](/redis/notes/01-redis-overview) — 같은 이벤트 루프 철학

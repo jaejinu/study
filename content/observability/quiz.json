@@ -1,0 +1,32 @@
+[
+ {
+  "note": "01-three-pillars",
+  "q": "메트릭 라벨에 user_id 를 넣으면 안 되는 이유는?",
+  "a": "라벨 조합마다 시계열이 생겨 카디널리티가 폭발하고 Prometheus 메모리가 터진다. 식별자는 로그/트레이스로."
+ },
+ {
+  "note": "01-three-pillars",
+  "q": "평균 지연 대신 p99 를 보는 이유는?",
+  "a": "소수의 느린 요청이 사용자 불만의 대부분을 만들고 평균은 이를 숨긴다."
+ },
+ {
+  "note": "02-prometheus-promql",
+  "q": "Counter 를 그래프에 그대로 그리면 안 되는 이유는?",
+  "a": "단조 증가 누적값이라 의미가 없다. rate()/increase() 로 변화율을 본다."
+ },
+ {
+  "note": "02-prometheus-promql",
+  "q": "histogram_quantile(0.99, sum by (le)(rate(..._bucket[5m]))) 가 하는 일은?",
+  "a": "히스토그램 버킷 카운터의 증가율을 모아 p99 지연을 추정한다."
+ },
+ {
+  "note": "03-instrumentation-exporters",
+  "q": "exporter 는 무엇인가?",
+  "a": "Prometheus 형식을 모르는 시스템(Redis, DB) 옆에서 그 상태를 /metrics 로 번역해 주는 프로세스."
+ },
+ {
+  "note": "04-grafana-alerting",
+  "q": "좋은 알림의 기준은?",
+  "a": "사용자 증상(에러율, 지연) 기반, for 로 지속 조건, 런북 링크, 사람을 깨울 가치가 있는 것만."
+ }
+]

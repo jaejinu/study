@@ -32,6 +32,7 @@ export const subjects: Subject[] = [
     nav: [
       { href: "/redis", label: "대시보드", icon: "◉", desc: "서버 상태 · 학습 현황" },
       { href: "/redis/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/redis/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
       { href: "/redis/lab", label: "실험실", icon: "⚗", desc: "실제 Redis 로 동작 확인" },
       { href: "/redis/console", label: "콘솔", icon: "›_", desc: "redis-cli 처럼 명령 실행" },
       { href: "/redis/keys", label: "키 브라우저", icon: "⌘", desc: "저장된 키와 값 살펴보기" },
@@ -54,6 +55,7 @@ export const subjects: Subject[] = [
     nav: [
       { href: "/docker", label: "대시보드", icon: "◉", desc: "환경 점검 · 학습 현황" },
       { href: "/docker/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/docker/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
       { href: "/docker/lab", label: "실험실", icon: "⚗", desc: "실제 docker 명령으로 확인" },
     ],
     setup: [
@@ -71,6 +73,7 @@ export const subjects: Subject[] = [
     nav: [
       { href: "/kubernetes", label: "대시보드", icon: "◉", desc: "클러스터 점검 · 학습 현황" },
       { href: "/kubernetes/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/kubernetes/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
       { href: "/kubernetes/lab", label: "실험실", icon: "⚗", desc: "kind 클러스터에서 동작 확인" },
     ],
     setup: [
@@ -88,6 +91,7 @@ export const subjects: Subject[] = [
     nav: [
       { href: "/kafka", label: "대시보드", icon: "◉", desc: "브로커 점검 · 학습 현황" },
       { href: "/kafka/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/kafka/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
       { href: "/kafka/lab", label: "실험실", icon: "⚗", desc: "kafkajs 로 동작 확인" },
     ],
     setup: [
@@ -105,6 +109,7 @@ export const subjects: Subject[] = [
     nav: [
       { href: "/postgres", label: "대시보드", icon: "◉", desc: "DB 점검 · 학습 현황" },
       { href: "/postgres/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/postgres/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
       { href: "/postgres/lab", label: "실험실", icon: "⚗", desc: "EXPLAIN · 격리 · 잠금 실험" },
     ],
     setup: [
@@ -122,6 +127,7 @@ export const subjects: Subject[] = [
     nav: [
       { href: "/observability", label: "대시보드", icon: "◉", desc: "수집 스택 점검" },
       { href: "/observability/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/observability/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
     ],
     setup: [
       { label: "스택", cmd: "pnpm obs:up" },
@@ -138,6 +144,7 @@ export const subjects: Subject[] = [
     nav: [
       { href: "/github-actions", label: "대시보드", icon: "◉", desc: "최근 워크플로 실행" },
       { href: "/github-actions/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/github-actions/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
     ],
     setup: [
       { label: "실행 보기", cmd: "gh run list" },
@@ -154,6 +161,7 @@ export const subjects: Subject[] = [
     nav: [
       { href: "/nginx", label: "대시보드", icon: "◉", desc: "프록시 점검" },
       { href: "/nginx/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/nginx/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
     ],
     setup: [
       { label: "프록시", cmd: "pnpm nginx:up" },
@@ -170,6 +178,7 @@ export const subjects: Subject[] = [
     nav: [
       { href: "/linux-network", label: "대시보드", icon: "◉", desc: "내 네트워크 환경" },
       { href: "/linux-network/notes", label: "학습 노트", icon: "✎", desc: "목차대로 읽는 정리 노트" },
+      { href: "/linux-network/quiz", label: "퀴즈", icon: "?", desc: "플래시카드로 복습" },
       { href: "/linux-network/lab", label: "실험실", icon: "⚗", desc: "소켓·DNS·HTTP 관찰" },
     ],
     setup: [

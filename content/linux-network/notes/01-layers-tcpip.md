@@ -63,3 +63,8 @@ traceroute 1.1.1.1              # 홉마다 TTL 만료 응답으로 경로 추�
 - [ ] `netstat -rn` 에서 default 게이트웨이와 내 서브넷 확인
 - [ ] `curl -w` 로 DNS/connect/TTFB 시간 분리 (실험실)
 - [ ] `ping -s 1472 -D 1.1.1.1` (DF 설정) 로 MTU 경계 실험 (1473 부터 실패하는지)
+
+## 관련 노트
+
+- [포트·소켓·TCP 상태](/linux-network/notes/02-ip-ports-sockets)
+- [Docker 볼륨과 네트워크](/docker/notes/04-volumes-networks) — 컨테이너의 네트워크 네임스페이스

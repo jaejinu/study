@@ -81,3 +81,8 @@ Grafana Alerting(통합) 또는 Prometheus rules + Alertmanager. 라우팅: seve
 - [ ] 패널 하나 수정 → JSON model 복사 → `study-redis.json` 에 반영 → 재시작 후 유지 확인
 - [ ] `redis_memory_used_bytes > 100MB` 알림 규칙을 만들고 상태 변화 보기
 - [ ] 가용성 SLI 를 PromQL 로 써 보기
+
+## 관련 노트
+
+- [관측성의 세 기둥](/observability/notes/01-three-pillars)
+- [Kafka 전달 보장 — LAG 모니터링](/kafka/notes/04-delivery-guarantees)

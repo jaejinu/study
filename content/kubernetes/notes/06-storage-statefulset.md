@@ -142,3 +142,8 @@ pnpm k8s:web:port                      # http://localhost:3200 — 클러스터 
 - [ ] `kubectl get pvc,pv` 로 동적 프로비저닝 결과 확인
 - [ ] Pod 삭제 후 같은 이름·같은 데이터로 돌아오는지 확인
 - [ ] `replicas: 2` 로 바꿔 `redis-1` 과 `data-redis-1` 이 생기는지 보기 (복제 설정은 없으니 독립 인스턴스)
+
+## 관련 노트
+
+- [Redis 고가용성](/redis/notes/11-replication-sentinel-cluster) — k8s 위의 Sentinel/Cluster 는 Operator 로
+- [Docker 볼륨](/docker/notes/04-volumes-networks)

@@ -111,3 +111,9 @@ jobs:
 - [ ] `workflow_dispatch` 를 ci.yml 에 추가하고 `gh workflow run CI` 로 수동 실행
 - [ ] 스텝에 `if: failure()` 로 실패 시에만 도는 디버그 스텝 추가
 - [ ] 일부러 lint 를 깨뜨려 PR 체크가 빨간불이 되는 것 확인
+
+## 관련 노트
+
+- [Docker 이미지와 Dockerfile](/docker/notes/03-images-dockerfile) — image 잡이 빌드하는 것
+- [Redis 란 무엇인가](/redis/notes/01-redis-overview) — 서비스 컨테이너로 띄우는 Redis
+- [캐시·매트릭스·아티팩트](/github-actions/notes/02-cache-matrix-artifacts)

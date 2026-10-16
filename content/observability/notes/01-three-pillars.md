@@ -57,3 +57,9 @@ pnpm obs:down
 2. 모든 서비스가 같은 라벨 규칙(`service`, `env`, `version`)을 쓴다.
 3. 메트릭 이름은 `<namespace>_<subsystem>_<name>_<unit>` 예 `http_server_request_duration_seconds`.
 4. 계측은 라이브러리로 자동화(OpenTelemetry), 비즈니스 지표만 수동.
+
+## 관련 노트
+
+- [Redis 메모리와 성능 진단](/redis/notes/12-memory-performance) — INFO·SLOWLOG 가 exporter 메트릭의 원천
+- [Kubernetes 운영과 디버깅](/kubernetes/notes/08-ops-debugging) — 관측 스택을 어디에 두는가
+- [Linux 네트워크 진단 도구](/linux-network/notes/05-tools)

@@ -4,7 +4,7 @@ order: 7
 level: 중급
 summary: Helm 과 Kustomize 로 환경별 매니페스트 관리, requests/limits 와 QoS, HPA 오토스케일링, 네임스페이스 쿼터
 tags: [Helm, Kustomize, requests, limits, HPA, QoS, 배포전략]
-experiments: []
+experiments: [k8s-rolling-update, k8s-scale]
 ---
 
 ## 매니페스트를 환경별로 관리하기

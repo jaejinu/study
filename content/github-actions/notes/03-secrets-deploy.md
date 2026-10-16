@@ -123,3 +123,9 @@ runs:
 - `act` — 로컬에서 워크플로 실행 (`brew install act`)
 - `gh` CLI: `gh workflow`, `gh run`, `gh api`
 - ArgoCD / Flux 로 CD 를 GitOps 로 분리
+
+## 관련 노트
+
+- [Kubernetes 배포 전략과 리소스](/kubernetes/notes/07-deploy-resources) — GitOps 로 이어지는 배포
+- [Kubernetes ConfigMap 과 Secret](/kubernetes/notes/05-configmap-secret)
+- [Docker 이미지 최적화와 보안](/docker/notes/06-optimization-security)

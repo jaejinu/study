@@ -4,7 +4,7 @@ order: 2
 level: 기초
 summary: 컨테이너 생명주기와 핵심 명령. 포트 매핑, 환경 변수, 백그라운드 실행, 안으로 들어가기
 tags: [run, ps, logs, exec, 생명주기, 포트]
-experiments: []
+experiments: [docker-container-lifecycle]
 ---
 
 ## 생명주기

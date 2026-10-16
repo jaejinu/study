@@ -55,7 +55,12 @@ export default async function Home() {
           );
         })}
       </div>
-      <p className="mt-10 text-center text-xs text-muted">
+      <div className="mt-8 flex justify-center gap-3 text-sm">
+        <Link href="/search" className="rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">🔍 검색</Link>
+        <Link href="/glossary" className="rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">📖 용어집</Link>
+        <Link href="/graph" className="rounded-md border border-border bg-surface px-3 py-1.5 hover:border-muted">🕸 링크 그래프</Link>
+      </div>
+      <p className="mt-6 text-center text-xs text-muted">
         주제를 추가하려면 <code>src/lib/subjects.ts</code> 에 항목을 넣고 <code>content/&lt;id&gt;/notes</code> 에 노트를 작성하세요.
       </p>
     </div>

@@ -4,7 +4,7 @@ order: 4
 level: 기초
 summary: Pod 의 바뀌는 IP 를 감추는 Service 의 네 가지 타입, 클러스터 DNS, HTTP 라우팅을 맡는 Ingress
 tags: [Service, ClusterIP, NodePort, LoadBalancer, DNS, Ingress]
-experiments: []
+experiments: [k8s-service-endpoints]
 ---
 
 ## 문제: Pod IP 는 계속 바뀐다

@@ -4,7 +4,7 @@ order: 4
 level: 기초
 summary: 컨테이너가 사라져도 데이터를 남기는 볼륨·바인드 마운트, 컨테이너끼리 이름으로 통신하는 네트워크
 tags: [volume, bind-mount, network, bridge, DNS]
-experiments: []
+experiments: [docker-volumes, docker-network]
 ---
 
 ## 데이터는 컨테이너 밖에

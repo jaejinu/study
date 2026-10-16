@@ -87,3 +87,9 @@ pnpm pg:cli
 ```
 
 실험실은 `pg` 라이브러리로 두세 커넥션을 열어 EXPLAIN, 격리 수준, 잠금, 데드락을 재현한다.
+
+## 관련 노트
+
+- [인덱스와 실행 계획](/postgres/notes/02-indexes-explain)
+- [Redis 영속성 — RDB 와 AOF](/redis/notes/04-persistence) — WAL 과 AOF 의 비교
+- [Docker 볼륨](/docker/notes/04-volumes-networks) — pg-data 볼륨

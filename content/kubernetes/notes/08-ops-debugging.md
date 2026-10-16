@@ -4,7 +4,7 @@ order: 8
 level: 심화
 summary: 문제가 생겼을 때 보는 순서(describe·events·logs), 임시 디버그 컨테이너, RBAC 기본, 자주 겪는 장애와 해법
 tags: [describe, events, logs, debug, RBAC, 트러블슈팅]
-experiments: []
+experiments: [k8s-broken-image]
 ---
 
 ## 디버깅 순서

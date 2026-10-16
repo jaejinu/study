@@ -69,3 +69,8 @@ pnpm kafka:down
 ```
 
 실험실은 kafkajs 로 브로커에 붙어 파티션 배치, 컨슈머 그룹 분배, 오프셋 리셋을 실제로 보여준다. CLI 도구는 컨테이너 안 `/opt/kafka/bin/` 에 있다.
+
+## 관련 노트
+
+- [Redis 메시징 — List, Pub/Sub, Stream](/redis/notes/07-pubsub-streams) — Stream 과의 비교
+- [토픽·파티션·프로듀서](/kafka/notes/02-topics-partitions)

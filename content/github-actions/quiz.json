@@ -1,0 +1,27 @@
+[
+ {
+  "note": "01-workflow-basics",
+  "q": "잡(job) 끼리 파일을 공유하지 못하는 이유와 해결은?",
+  "a": "잡마다 새 러너에서 실행된다. 아티팩트(upload/download-artifact)나 outputs 로 전달."
+ },
+ {
+  "note": "01-workflow-basics",
+  "q": "pull_request 이벤트에서 포크 PR 이 시크릿을 못 받는 이유는?",
+  "a": "외부 코드가 시크릿을 유출할 수 있어 보안상 차단된다. pull_request_target 으로 우회하면 위험."
+ },
+ {
+  "note": "02-cache-matrix-artifacts",
+  "q": "캐시와 아티팩트의 차이는?",
+  "a": "캐시는 실행 간 의존성 재사용(키 기반, 7일), 아티팩트는 실행 결과 보관과 잡 간 전달."
+ },
+ {
+  "note": "02-cache-matrix-artifacts",
+  "q": "concurrency 의 cancel-in-progress 는 언제 쓰고 언제 끄나?",
+  "a": "PR/브랜치 CI 는 켜서 중복 실행 취소, 배포 잡은 꺼서 순서만 보장(큐)."
+ },
+ {
+  "note": "03-secrets-deploy",
+  "q": "OIDC 로 클라우드 인증하면 좋은 점은?",
+  "a": "장기 액세스 키를 시크릿에 보관하지 않고 워크플로 신원으로 단기 자격을 받는다. 신뢰 정책으로 저장소/브랜치를 제한."
+ }
+]

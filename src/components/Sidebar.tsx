@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { getSubject, subjects } from "@/lib/subjects";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
   const subject = getSubject(pathname.split("/")[1] ?? "");
   const isActive = (href: string) => (href === `/${subject?.id}` ? pathname === href : pathname.startsWith(href));
 
@@ -36,6 +38,18 @@ export function Sidebar() {
             </div>
           </Link>
 
+          <form
+            className="px-3 pt-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (q.trim()) {
+                router.push(`/search?q=${encodeURIComponent(q.trim())}`);
+                setOpen(false);
+              }
+            }}
+          >
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="검색…  (노트·실험)" className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs outline-none focus:border-muted" />
+          </form>
           <nav className="flex-1 space-y-0.5 px-3 py-3">
             {subject ? (
               <>
@@ -91,6 +105,17 @@ export function Sidebar() {
             )}
           </nav>
 
+          <div className="flex gap-1 border-t border-border px-3 py-2 text-[11px]">
+            {[
+              { href: "/glossary", label: "용어집" },
+              { href: "/graph", label: "링크 그래프" },
+              { href: "/search", label: "검색" },
+            ].map((l) => (
+              <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className={`rounded px-2 py-1 ${pathname.startsWith(l.href) ? "bg-accent-soft text-foreground" : "text-muted hover:bg-surface-2 hover:text-foreground"}`}>
+                {l.label}
+              </Link>
+            ))}
+          </div>
           {subject && (
             <div className="border-t border-border px-5 py-3 text-[11px] leading-relaxed text-muted">
               {subject.setup.map((s) => (

@@ -98,3 +98,9 @@ groups:
 - [ ] Graph 탭에서 `rate(redis_commands_processed_total[1m])` 실행 후 Redis 벤치마크를 돌려 그래프 변화 보기
 - [ ] `study_progress_read_total` 을 조회해 노트를 읽음 처리하면 값이 바뀌는지 확인
 - [ ] `topk(5, rate(redis_commands_total[1m]))` 로 가장 많이 호출된 명령 보기
+
+## 관련 노트
+
+- [계측과 exporter](/observability/notes/03-instrumentation-exporters)
+- [Grafana 와 알림](/observability/notes/04-grafana-alerting)
+- [Redis 운영 명령 (INFO 읽기)](/redis/notes/14-ops-commands)

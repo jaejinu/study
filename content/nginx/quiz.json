@@ -1,0 +1,32 @@
+[
+ {
+  "note": "01-nginx-overview",
+  "q": "location 매칭 우선순위는?",
+  "a": "= 정확 일치 → ^~ 접두어 → 정규식(파일 순서) → 가장 긴 접두어."
+ },
+ {
+  "note": "01-nginx-overview",
+  "q": "설정을 바꾼 뒤 reload 전에 꼭 할 일은?",
+  "a": "nginx -t 로 문법 검증. 잘못된 설정으로 reload 하면 기존 워커가 유지되지만 검증이 안전하다."
+ },
+ {
+  "note": "02-reverse-proxy-lb",
+  "q": "proxy_pass http://app/ 와 http://app 의 차이는?",
+  "a": "끝 슬래시가 있으면 location 접두어가 치환되어 /api/users → /users, 없으면 경로가 그대로 전달된다."
+ },
+ {
+  "note": "02-reverse-proxy-lb",
+  "q": "앱이 실제 클라이언트 IP 와 https 여부를 알게 하려면?",
+  "a": "X-Real-IP / X-Forwarded-For / X-Forwarded-Proto / Host 헤더를 proxy_set_header 로 전달하고 앱에서 trust proxy."
+ },
+ {
+  "note": "03-cache-tls-ratelimit",
+  "q": "proxy_cache_lock on 이 막는 문제는?",
+  "a": "같은 키의 동시 미스가 모두 업스트림으로 가는 stampede. 한 요청만 가고 나머지는 기다린다."
+ },
+ {
+  "note": "03-cache-tls-ratelimit",
+  "q": "add_header 의 흔한 함정은?",
+  "a": "하위 블록에 add_header 가 하나라도 있으면 상위 블록의 add_header 를 상속하지 않는다."
+ }
+]

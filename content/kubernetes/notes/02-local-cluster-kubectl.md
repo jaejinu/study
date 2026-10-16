@@ -4,7 +4,7 @@ order: 2
 level: 기초
 summary: kind·minikube·Docker Desktop 비교, kubectl 의 기본 동사와 출력 형식, 컨텍스트·네임스페이스 다루기
 tags: [kind, minikube, kubectl, context, namespace]
-experiments: []
+experiments: [k8s-scale]
 ---
 
 ## 로컬 클러스터 선택지

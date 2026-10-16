@@ -106,3 +106,9 @@ access_log /var/log/nginx/access.json json;
 - [ ] `ab -n 200 -c 50 http://localhost:18080/` 로 limit_req 503/429 발생 확인 (`brew install httpd` 로 ab)
 - [ ] 로그 포맷을 JSON 으로 바꾸고 `docker compose logs nginx` 로 보기
 - [ ] 로컬 자체 서명 인증서(`mkcert`)로 443 종단 구성
+
+## 관련 노트
+
+- [Redis 레이트 리미팅](/redis/notes/10-rate-limiting) — 분산 환경의 한도
+- [Redis 캐싱 패턴 — stampede](/redis/notes/08-caching-patterns)
+- [HTTP 와 TLS](/linux-network/notes/04-http-tls)

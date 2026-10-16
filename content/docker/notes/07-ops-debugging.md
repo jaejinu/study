@@ -4,7 +4,7 @@ order: 7
 level: 심화
 summary: 디스크 정리, 로그·리소스 모니터링, 멈춘 컨테이너 안 들여다보기, 로깅 드라이버, 자주 겪는 문제
 tags: [prune, stats, logs, inspect, 디버깅, 트러블슈팅]
-experiments: []
+experiments: [docker-container-lifecycle]
 ---
 
 ## 디스크가 꽉 찼을 때

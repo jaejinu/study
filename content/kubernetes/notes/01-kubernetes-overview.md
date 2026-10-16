@@ -4,7 +4,7 @@ order: 1
 level: 기초
 summary: 컨테이너 오케스트레이션이 필요한 이유, 클러스터 아키텍처(컨트롤 플레인·노드), 선언적 모델과 컨트롤러 루프
 tags: [개요, 아키텍처, 컨트롤플레인, kubelet, 선언적]
-experiments: []
+experiments: [k8s-self-healing]
 ---
 
 ## Docker 다음에 필요한 것

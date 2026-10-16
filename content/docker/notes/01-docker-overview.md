@@ -4,7 +4,7 @@ order: 1
 level: 기초
 summary: 컨테이너가 VM 과 다른 점, 이미지·컨테이너·레지스트리의 관계, Docker 가 해결하는 문제
 tags: [개요, 컨테이너, 이미지, 레지스트리, VM]
-experiments: []
+experiments: [docker-container-lifecycle]
 ---
 
 ## 해결하려는 문제

@@ -1,0 +1,42 @@
+[
+ {
+  "note": "01-layers-tcpip",
+  "q": "curl http://example.com 이 거치는 단계를 순서대로?",
+  "a": "DNS 해석 → 라우팅/ARP → TCP 3-way 핸드셰이크 → (TLS) → HTTP 요청/응답 → FIN 종료."
+ },
+ {
+  "note": "02-ip-ports-sockets",
+  "q": "서버 포트 하나(80)로 수만 연결을 동시에 받을 수 있는 이유는?",
+  "a": "연결은 (로컬 IP:포트, 원격 IP:포트) 4-tuple 로 식별되어 원격 쪽이 다르면 구분된다."
+ },
+ {
+  "note": "02-ip-ports-sockets",
+  "q": "CLOSE_WAIT 가 쌓이면 무엇을 의심하나?",
+  "a": "상대는 끊었는데 내 앱이 소켓을 close 하지 않는 fd 누수 버그."
+ },
+ {
+  "note": "02-ip-ports-sockets",
+  "q": "TIME_WAIT 가 많을 때 근본 해결은?",
+  "a": "짧은 연결을 반복하지 말고 keepalive 로 연결을 재사용한다."
+ },
+ {
+  "note": "03-dns",
+  "q": "Kubernetes Pod 에서 외부 도메인 질의가 느린 흔한 이유는?",
+  "a": "resolv.conf 의 ndots:5 와 search 도메인 때문에 cluster.local 접미사를 붙인 질의를 여러 번 먼저 시도한다. FQDN(끝에 점) 사용."
+ },
+ {
+  "note": "04-http-tls",
+  "q": "HTTP/2 가 해결한 것과 못 해결한 HOL 은?",
+  "a": "응용 계층 HOL(한 연결에서 요청 다중화)은 해결, TCP 패킷 손실이 모든 스트림을 막는 전송 계층 HOL 은 HTTP/3(QUIC) 에서 해결."
+ },
+ {
+  "note": "04-http-tls",
+  "q": "중간 인증서를 서버가 보내지 않으면?",
+  "a": "일부 클라이언트만 체인 검증에 실패한다(캐시된 클라이언트는 성공). fullchain 을 배포해야 한다."
+ },
+ {
+  "note": "05-tools",
+  "q": "ECONNREFUSED 와 타임아웃의 차이는?",
+  "a": "거부는 포트에 아무도 안 들음(RST 응답). 타임아웃은 방화벽/보안그룹이 SYN 을 버림."
+ }
+]

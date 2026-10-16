@@ -4,7 +4,7 @@ order: 6
 level: 중급
 summary: 작은 베이스 이미지, 레이어 줄이기, 비루트 사용자, 비밀값 다루기, 취약점 스캔
 tags: [alpine, distroless, 보안, non-root, secrets, scan]
-experiments: []
+experiments: [docker-image-layers]
 ---
 
 ## 작게 만들기

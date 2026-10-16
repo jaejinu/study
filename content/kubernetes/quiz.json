@@ -1,0 +1,47 @@
+[
+ {
+  "note": "01-kubernetes-overview",
+  "q": "Deployment 의 Pod 을 삭제하면 다시 생기는 원리는?",
+  "a": "컨트롤러가 원하는 상태(replicas)와 현재 상태의 차이를 메우는 조정 루프 때문. ReplicaSet 이 새 Pod 을 만든다."
+ },
+ {
+  "note": "03-pod-deployment",
+  "q": "readinessProbe 와 livenessProbe 실패 시 각각 무슨 일이?",
+  "a": "readiness 실패: Service endpoints 에서 제외(재시작 없음). liveness 실패: 컨테이너 재시작."
+ },
+ {
+  "note": "03-pod-deployment",
+  "q": "CrashLoopBackOff 를 진단할 때 먼저 볼 명령은?",
+  "a": "kubectl describe pod (Events, Last State) 와 kubectl logs --previous."
+ },
+ {
+  "note": "04-service-ingress",
+  "q": "Pod IP 대신 Service 를 써야 하는 이유는?",
+  "a": "Pod 은 재생성되면 IP 가 바뀐다. Service 는 고정 ClusterIP 와 DNS 이름을 주고 Ready 인 Pod 으로만 보낸다."
+ },
+ {
+  "note": "04-service-ingress",
+  "q": "Ingress 리소스를 만들었는데 아무 일도 안 일어나는 흔한 이유는?",
+  "a": "Ingress Controller(nginx, traefik 등)가 설치되어 있지 않다. Ingress 는 규칙일 뿐이다."
+ },
+ {
+  "note": "05-configmap-secret",
+  "q": "ConfigMap 을 바꿨는데 환경 변수로 주입한 값이 안 바뀌는 이유는?",
+  "a": "환경 변수는 컨테이너 시작 시 고정된다. rollout restart 하거나 kustomize configMapGenerator 의 해시 이름으로 재배포."
+ },
+ {
+  "note": "06-storage-statefulset",
+  "q": "StatefulSet 의 Pod 을 지웠다 다시 만들면 데이터가 남는 이유는?",
+  "a": "volumeClaimTemplates 로 만든 PVC(data-redis-0)가 Pod 과 독립적으로 남고 같은 이름의 Pod 에 다시 붙는다."
+ },
+ {
+  "note": "07-deploy-resources",
+  "q": "requests 없이 배포하면 생기는 문제는?",
+  "a": "스케줄러가 부하를 몰라 한 노드에 몰아넣고, HPA 도 동작하지 않는다(requests 대비 사용률)."
+ },
+ {
+  "note": "08-ops-debugging",
+  "q": "셸이 없는 distroless 컨테이너를 디버깅하는 방법은?",
+  "a": "kubectl debug -it pod --image=netshoot --target=container 로 디버그 컨테이너를 같은 네임스페이스에 붙인다."
+ }
+]

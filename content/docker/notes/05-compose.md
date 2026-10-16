@@ -4,7 +4,7 @@ order: 5
 level: 중급
 summary: compose.yml 구조, 서비스·볼륨·네트워크 선언, 의존성과 헬스체크, 개발 환경 구성
 tags: [compose, yaml, depends_on, healthcheck, profiles]
-experiments: []
+experiments: [docker-network]
 ---
 
 ## 왜 Compose 인가
@@ -133,3 +133,8 @@ docker compose -f compose.yml -f compose.prod.yml up -d   # 여러 파일 병합
 - [ ] `docker compose ps` 에서 healthy 상태 확인
 - [ ] `docker compose down` 후 `up` 해도 데이터가 남는지, `down -v` 후엔 사라지는지 확인
 - [ ] `docker compose --profile app up -d --build` 로 앱(`web`)까지 띄우고 http://localhost:3200 접속 — `depends_on: condition: service_healthy` 로 Redis 가 healthy 된 뒤 앱이 뜬다
+
+## 관련 노트
+
+- [Kubernetes 란 무엇인가](/kubernetes/notes/01-kubernetes-overview) — Compose 다음 단계
+- [Kafka 개요](/kafka/notes/01-kafka-overview), [PostgreSQL 개요](/postgres/notes/01-postgres-overview) — 같은 compose 의 프로파일

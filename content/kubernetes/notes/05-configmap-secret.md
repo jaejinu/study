@@ -4,7 +4,7 @@ order: 5
 level: 중급
 summary: 설정을 이미지와 분리하는 두 오브젝트, 환경 변수 vs 파일 마운트, 변경 반영 방식, Secret 의 실제 보안 수준
 tags: [ConfigMap, Secret, 환경변수, 볼륨, kustomize]
-experiments: []
+experiments: [k8s-configmap-env-vs-file]
 ---
 
 ## 설정은 이미지 밖에

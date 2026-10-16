@@ -4,7 +4,7 @@ order: 3
 level: 기초
 summary: 레이어 구조와 빌드 캐시, Dockerfile 명령어, 멀티스테이지 빌드로 작고 안전한 이미지 만들기
 tags: [Dockerfile, 레이어, 캐시, 멀티스테이지, build]
-experiments: []
+experiments: [docker-image-layers]
 ---
 
 ## 이미지는 레이어의 스택

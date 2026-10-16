@@ -1,0 +1,42 @@
+[
+ {
+  "note": "01-postgres-overview",
+  "q": "PostgreSQL 에서 커넥션 풀러(PgBouncer)가 중요한 이유는?",
+  "a": "커넥션마다 백엔드 프로세스를 fork 하므로 수천 커넥션은 메모리·CPU 부담이 크다."
+ },
+ {
+  "note": "02-indexes-explain",
+  "q": "인덱스가 있는데 Seq Scan 을 고르는 대표적 이유 두 가지는?",
+  "a": "조건의 선택도가 낮아(결과가 테이블의 큰 비율) 랜덤 I/O 보다 전체 읽기가 싸거나, 통계가 낡았거나(ANALYZE), 함수/타입 불일치로 인덱스를 못 쓴다."
+ },
+ {
+  "note": "02-indexes-explain",
+  "q": "복합 인덱스 (a, b) 가 WHERE b = ? 에 쓰이지 않는 이유는?",
+  "a": "B-tree 는 왼쪽 접두어부터 정렬되어 있어 a 없이 b 만으로는 탐색할 수 없다."
+ },
+ {
+  "note": "03-mvcc-isolation",
+  "q": "READ COMMITTED 에서 같은 행을 두 번 읽을 때 값이 달라질 수 있는 이유는?",
+  "a": "문장마다 새 스냅샷을 잡아 사이에 커밋된 변경이 보인다(non-repeatable read). REPEATABLE READ 는 트랜잭션 스냅샷을 유지."
+ },
+ {
+  "note": "03-mvcc-isolation",
+  "q": "오래 열린 idle in transaction 세션이 위험한 이유는?",
+  "a": "그 스냅샷이 필요한 dead tuple 을 VACUUM 이 지우지 못해 테이블이 부푼다(bloat)."
+ },
+ {
+  "note": "04-locks-deadlocks",
+  "q": "데드락을 예방하는 가장 기본적인 규칙은?",
+  "a": "모든 트랜잭션이 같은 순서(예: id 오름차순)로 행을 잠근다. 트랜잭션은 짧게."
+ },
+ {
+  "note": "04-locks-deadlocks",
+  "q": "FOR UPDATE SKIP LOCKED 가 작업 큐에 유용한 이유는?",
+  "a": "잠긴 행을 건너뛰어 여러 워커가 서로 다른 작업을 동시에 집고, 트랜잭션 동안 '처리 중' 이 자동 표시된다."
+ },
+ {
+  "note": "05-operations",
+  "q": "pg_dump 와 PITR 의 차이는?",
+  "a": "pg_dump 는 특정 시점 논리 백업. PITR 은 베이스 백업 + WAL 아카이브로 임의 시점(예: 실수 직전)으로 복구한다."
+ }
+]

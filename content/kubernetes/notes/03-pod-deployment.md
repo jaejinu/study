@@ -4,7 +4,7 @@ order: 3
 level: 기초
 summary: Pod 의 구조와 생명주기, 왜 Pod 을 직접 만들지 않는지, Deployment 의 롤링 업데이트와 롤백
 tags: [Pod, ReplicaSet, Deployment, rollout, probe]
-experiments: []
+experiments: [k8s-self-healing, k8s-scale, k8s-rolling-update, k8s-broken-image]
 ---
 
 ## Pod

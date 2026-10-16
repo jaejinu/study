@@ -91,3 +91,9 @@ location /ws/ {
 - [ ] 앱에서 `X-Forwarded-For` 를 로그로 찍어 프록시 경유 시 값 확인
 - [ ] `pnpm dev` 를 끄고 접속해 502 와 `error_log` 메시지 보기
 - [ ] 업스트림을 두 개(3000, 3001)로 두고 `least_conn` 으로 분산되는지 로그로 확인
+
+## 관련 노트
+
+- [Nginx 개요와 location 매칭](/nginx/notes/01-nginx-overview)
+- [Kubernetes Service 와 Ingress](/kubernetes/notes/04-service-ingress) — Ingress Controller 가 곧 Nginx
+- [Docker 볼륨과 네트워크](/docker/notes/04-volumes-networks) — host.docker.internal

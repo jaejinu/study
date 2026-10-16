@@ -78,3 +78,9 @@ study_progress_lab_total{subject}  gauge   성공한 실험 수
 - [ ] Prometheus 에서 `redis_commands_total` 의 라벨(cmd)을 보고 Redis 콘솔에서 명령을 치면 어떤 라벨이 늘어나는지 확인
 - [ ] `/api/metrics` 에 메트릭 하나(예: 실험 실행 횟수 counter) 추가해 Grafana 패널 만들기
 - [ ] node_exporter 를 compose 에 추가하고 호스트 CPU 를 그려 보기
+
+## 관련 노트
+
+- [Prometheus 와 PromQL](/observability/notes/02-prometheus-promql)
+- [Nginx 로그와 stub_status](/nginx/notes/03-cache-tls-ratelimit)
+- [PostgreSQL 운영·모니터링](/postgres/notes/05-operations)

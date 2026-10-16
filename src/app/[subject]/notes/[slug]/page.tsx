@@ -6,6 +6,8 @@ import { experiments } from "@/experiments";
 import { getNote, listNotes } from "@/lib/notes";
 import { getNoteChecks, isRead } from "@/lib/progress";
 import { ReadToggle } from "@/components/ProgressControls";
+import { Flashcards } from "@/components/Flashcards";
+import { loadQuiz } from "@/lib/quiz";
 import { getSubject } from "@/lib/subjects";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +24,8 @@ export default async function NotePage({ params }: Props) {
   const { subject: id, slug } = await params;
   const subject = getSubject(id);
   if (!subject) notFound();
-  const [note, all, read, checked] = await Promise.all([getNote(subject.id, slug), listNotes(subject.id), isRead(subject.id, slug), getNoteChecks(subject.id, slug)]);
+  const [note, all, read, checked, quiz] = await Promise.all([getNote(subject.id, slug), listNotes(subject.id), isRead(subject.id, slug), getNoteChecks(subject.id, slug), loadQuiz(subject.id)]);
+  const cards = quiz.filter((c) => c.note === slug);
   if (!note) notFound();
   const idx = all.findIndex((n) => n.slug === slug);
   const prev = all[idx - 1];
@@ -47,6 +50,15 @@ export default async function NotePage({ params }: Props) {
         <div className="mt-6">
           <Markdown content={note.content} checklist={{ subject: subject.id, slug, checked }} />
         </div>
+
+        {cards.length > 0 && (
+          <section className="mt-10">
+            <h2 className="mb-2 text-sm font-semibold">
+              복습 퀴즈 <span className="text-muted">({cards.length}장)</span>
+            </h2>
+            <Flashcards cards={cards} subject={subject.id} />
+          </section>
+        )}
 
         <div className="mt-8 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3">
           <span className="text-sm text-muted">이 노트를 다 읽었다면</span>

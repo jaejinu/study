@@ -108,3 +108,8 @@ jobs:
 - [ ] `timeout-minutes` 추가
 - [ ] 매트릭스로 Node 20/22 에서 테스트
 - [ ] 업로드된 `vitest-report` 아티팩트를 `gh run download` 로 받기
+
+## 관련 노트
+
+- [워크플로 기본](/github-actions/notes/01-workflow-basics)
+- [Docker 이미지 최적화 — 레이어 캐시](/docker/notes/06-optimization-security)
