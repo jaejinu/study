@@ -32,6 +32,18 @@ function build() {
     labelNames: ["subject", "level"] as const,
     registers: [registry],
   });
+  const quizAnswers = new client.Counter({
+    name: "study_quiz_answers_total",
+    help: "퀴즈 답 수 (맞음/틀림)",
+    labelNames: ["subject", "result"] as const,
+    registers: [registry],
+  });
+  const studySeconds = new client.Counter({
+    name: "study_time_seconds_total",
+    help: "노트를 읽은 누적 시간 (초)",
+    labelNames: ["subject"] as const,
+    registers: [registry],
+  });
   const consoleCommands = new client.Counter({
     name: "study_console_commands_total",
     help: "콘솔 명령 수 (명령·결과)",
@@ -76,7 +88,7 @@ function build() {
     labelNames: ["alertname", "severity", "status"] as const,
     registers: [registry],
   });
-  return { registry, experimentRuns, experimentDuration, noteViews, consoleCommands, actionDuration, llmTokens, llmCost, llmLatency, llmToolCalls, alertsReceived };
+  return { registry, experimentRuns, experimentDuration, noteViews, quizAnswers, studySeconds, consoleCommands, actionDuration, llmTokens, llmCost, llmLatency, llmToolCalls, alertsReceived };
 }
 
 export const metrics = globalThis.__studyMetrics ?? (globalThis.__studyMetrics = build());

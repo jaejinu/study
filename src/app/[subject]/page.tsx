@@ -13,6 +13,8 @@ import { hasLab, listLab } from "@/lab/registry";
 import { EnvStatusCard } from "@/components/EnvStatusCard";
 import { getProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
+import { loadQuiz } from "@/lib/quiz";
+import { cardKey, fmtDuration, getQuizStats, getSubjectStudySeconds, summarizeReview } from "@/lib/study";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +29,9 @@ export default async function SubjectHome({ params }: Props) {
   const { subject: id } = await params;
   const subject = getSubject(id);
   if (!subject) notFound();
-  const [notes, report, progress] = await Promise.all([listNotes(subject.id), subject.id === "redis" ? readLastReport() : null, getProgress(subject.id)]);
+  const [notes, report, progress, quiz, stats, studySeconds] = await Promise.all([listNotes(subject.id), subject.id === "redis" ? readLastReport() : null, getProgress(subject.id), loadQuiz(subject.id), getQuizStats(subject.id), getSubjectStudySeconds(subject.id)]);
   const readCount = notes.filter((n) => progress.read.includes(n.slug)).length;
+  const review = summarizeReview(quiz.map((c) => cardKey(c.note, c.q)), stats);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -58,6 +61,14 @@ export default async function SubjectHome({ params }: Props) {
         </div>
         <div className="mb-3">
           <ProgressBar done={readCount} total={notes.length} />
+          <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted">
+            {studySeconds > 0 && <span>⏱ 학습 시간 {fmtDuration(studySeconds)}</span>}
+            {review.total > 0 && (
+              <Link href={`/${subject.id}/quiz`} className={review.due > 0 ? "text-warn hover:underline" : "hover:underline"}>
+                ? 퀴즈 {review.total}장 · 복습 기한 지남 {review.due} · 안정 {review.stable}
+              </Link>
+            )}
+          </div>
         </div>
         <ol className="grid gap-2 sm:grid-cols-2">
           {notes.map((n, idx) => (

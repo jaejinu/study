@@ -4,18 +4,29 @@ import { listNotes } from "@/lib/notes";
 import { listLab } from "@/lab/registry";
 import { getProgress } from "@/lib/progress";
 import { subjects } from "@/lib/subjects";
+import { loadQuiz } from "@/lib/quiz";
+import { cardKey, getQuizStats, getWeeklyStudy, summarizeReview } from "@/lib/study";
+import { WeeklyStudyCard } from "@/components/WeeklyStudy";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const counts = await Promise.all(
-    subjects.map(async (s) => ({
-      id: s.id,
-      notes: (await listNotes(s.id)).length,
-      read: (await getProgress(s.id)).read.length,
-      experiments: s.id === "redis" ? experiments.length : listLab(s.id).length,
-    })),
-  );
+  const [counts, weekly] = await Promise.all([
+    Promise.all(
+      subjects.map(async (s) => {
+        const [notes, progress, quiz, stats] = await Promise.all([listNotes(s.id), getProgress(s.id), loadQuiz(s.id), getQuizStats(s.id)]);
+        return {
+          id: s.id,
+          notes: notes.length,
+          read: progress.read.length,
+          experiments: s.id === "redis" ? experiments.length : listLab(s.id).length,
+          due: summarizeReview(quiz.map((c) => cardKey(c.note, c.q)), stats).due,
+        };
+      }),
+    ),
+    getWeeklyStudy(),
+  ]);
+  const dueBySubject = Object.fromEntries(counts.map((c) => [c.id, c.due]));
   return (
     <div className="mx-auto max-w-5xl pt-10 md:pt-16">
       <div className="mb-10 text-center">
@@ -49,11 +60,15 @@ export default async function Home() {
                     실험 <span className="font-mono text-foreground">{c.experiments}</span>개
                   </span>
                 )}
+                {c.due > 0 && <span className="text-warn">복습 {c.due}장</span>}
                 <span className="ml-auto text-info group-hover:underline">시작하기 →</span>
               </div>
             </Link>
           );
         })}
+      </div>
+      <div className="mt-8">
+        <WeeklyStudyCard weekly={weekly} dueBySubject={dueBySubject} />
       </div>
       <div className="mt-8 flex justify-center gap-3 text-sm">
         <Link href="/assistant" className="rounded-md border border-accent/40 bg-accent-soft px-3 py-1.5 hover:border-accent">🤖 AI 도우미</Link>
