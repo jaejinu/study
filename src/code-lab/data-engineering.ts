@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { DuckDBInstance, type DuckDBConnection } from "@duckdb/node-api";
+import type { DuckDBConnection } from "@duckdb/node-api";
 import { Kafka, logLevel } from "kafkajs";
 import { Client } from "pg";
 import { KAFKA_BROKERS } from "./kafka";
@@ -15,6 +15,9 @@ import type { CodeExperiment } from "./types";
  */
 
 async function duck(): Promise<{ c: DuckDBConnection; q: <T = Record<string, unknown>>(sql: string) => Promise<T[]>; close: () => void }> {
+  // 네이티브 라이브러리(libduckdb)는 실험을 실제로 돌릴 때만 불러온다.
+  // 모듈 맨 위에서 불러오면 실험 레지스트리를 거치는 모든 페이지가 libduckdb 없는 환경(서버리스 배포)에서 함께 죽는다
+  const { DuckDBInstance } = await import("@duckdb/node-api");
   const db = await DuckDBInstance.create(":memory:");
   const c = await db.connect();
   const q = async <T,>(sql: string) => (await c.runAndReadAll(sql)).getRowObjectsJson() as unknown as T[];
