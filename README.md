@@ -176,7 +176,7 @@ Redis 를 멈추거나 설정을 바꾸는 실험은 주입 직전에 `src/lib/d
 
 ## 읽기 전용 공개판
 
-https://jaejinu-study.vercel.app 에 올라가 있다. Vercel 프로젝트 `jaejinu-study` 가 이 GitHub 저장소에 연결되어 main 푸시는 운영, 다른 브랜치·PR 은 미리보기로 배포된다. 프로젝트 환경 변수에 `STUDY_READ_ONLY=1` 이 운영·미리보기 모두 들어 있고, Redis·AI 키는 넣지 않는다.
+https://jaejinu-study.vercel.app 에 올라가 있다. Vercel 프로젝트 `jaejinu-study` 가 이 GitHub 저장소에 연결되어 main 푸시는 운영, 다른 브랜치·PR 은 미리보기로 배포된다. 프로젝트 환경 변수에 `STUDY_READ_ONLY=1` 이 운영·미리보기 모두 들어 있고, Redis·AI 키는 넣지 않는다. 서버 함수는 `vercel.json` 의 `regions: ["icn1"]` 로 서울에서 돈다.
 
 이 사이트는 로컬 개인용이라 서버 액션이 Redis 에 쓰고, 실험실은 docker·kubectl·셸 명령을 실행하고, 콘솔은 임의 Redis 명령을 받는다. 그대로 인터넷에 올리지 말고 **읽기 전용 모드**로 올린다.
 
