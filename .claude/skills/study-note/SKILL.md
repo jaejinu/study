@@ -1,0 +1,61 @@
+---
+name: study-note
+description: 학습 사이트에 노트(또는 새 주제·챕터)를 쓰거나 고칠 때 쓴다. frontmatter 규칙, 기초→중급→심화 구성, 다이어그램, 퀴즈·용어집·실험 연결, 검색 색인까지 한 번에 맞춘다. "노트 써줘", "이 주제 추가", "챕터 나눠서", "퀴즈도" 같은 요청에 쓴다.
+---
+
+# 학습 노트 쓰기
+
+사용자는 레퍼런스가 아니라 **깊이 있는 교재 + 직접 돌려 보는 실험**을 원한다. "예시와 함께, 디테일하고 딥하게, 아끼지 말고 꽉꽉". 관심 분야는 **모니터링·로그·AI·설계 기법/아키텍처** — 어느 주제든 이 관점의 절을 하나 이상 넣는다.
+
+## 1. 위치와 frontmatter
+
+`content/<주제 id>/notes/<NN>-<slug>.md` (NN = 두 자리 순서, slug 는 영문 소문자·하이픈)
+
+```yaml
+---
+title: "Executor·CompletableFuture — 스레드 풀 크기, 거부 정책"   # ': ' 가 들어가면 반드시 따옴표
+chapter: "3부 · 동시성"        # 노트가 10편 넘는 주제는 부(chapter)로 나눈다
+order: 12                     # 같은 주제 안에서 겹치면 안 된다
+level: 심화                    # 기초 | 중급 | 심화
+summary: "무엇을 왜 배우는지 + 핵심 수치·결론까지 한 문단"  # 검색·카드에 그대로 보인다
+tags: [Java, 스레드 풀, 백프레셔]
+experiments: [java-virtual-threads]   # 실제 실험 id만 (다른 주제 실험도 가능)
+prereq: [java/11-jmm-happens-before]  # 선택
+---
+```
+
+노트 로더는 YAML 오류를 **삼키고 노트를 숨긴다** — 그래서 `check-content` 훅과 `tests/content.test.ts` 가 유일한 안전망이다.
+
+## 2. 본문 구성 (이 순서를 기본으로)
+
+1. **왜 필요한가** — 문제 상황부터. 한 문단 + 짧은 코드나 명령.
+2. **동작 원리** — 단계·표·다이어그램. 숫자(지연, 크기, 비율)를 구체적으로.
+3. **예시 코드/명령** — 실행 가능한 형태, 출력 예까지.
+4. **함정과 장애 사례** — "이렇게 하면 이렇게 터진다".
+5. **관측** — 어떤 메트릭·로그·트레이스로 보이는가 (Prometheus 쿼리, 로그 필드, 대시보드 패널).
+6. **심화** — 내부 구현, 트레이드오프, 대안 비교 표.
+7. **`## 예시로 보기 — 이 프로젝트에서`** — 이 저장소(`src/…`, `docker-compose.yml`, `k8s/…`)에서 실제로 어디에 해당하는지.
+8. **`## 정리`** — 5~8줄 요점.
+9. **`## 실습 체크리스트`** — `- [ ]` 로 직접 해 볼 일 (실험 페이지 링크 포함).
+
+링크는 `[제목](/<주제>/notes/<slug>)`, 실험은 `[제목](/<주제>/lab/<id>)`. 고립 노트가 없도록 앞뒤 노트·다른 주제 노트로 2개 이상 연결한다.
+
+## 3. 다이어그램
+
+`public/diagrams/<이름>.svg` — 다크 배경 `#0d1117`, 글자 `#e6edf3`, 강조 초록 계열. 본문에서 `![설명](/diagrams/<이름>.svg)`. 흐름·계층·시퀀스처럼 글로 길어지는 것만 그린다.
+
+## 4. 함께 갱신할 것 (빠뜨리면 CI 실패하거나 링크 그래프에 고립)
+
+- **퀴즈** `content/<주제>/quiz.json` — 노트당 3~5장 `{ "note": "<slug>", "q": "...", "a": "..." }`. 답은 "왜"까지 한두 문장.
+- **용어집** `content/glossary.json` — `{ "term", "subject", "def", "link" }`. term 은 전역 유일 — 겹치면 `happens-before (JMM)` 처럼 구분.
+- **실험** frontmatter `experiments` — 없으면 `study-lab` 스킬로 만든다.
+- **새 주제**라면 `src/lib/subjects.ts` (id·track·학습 경로·선수 주제). id 가 `src/app` 의 전역 라우트(search, glossary, graph, assistant, review …)와 겹치면 안 된다. 실험이 있으면 `src/lab/registry.ts` 의 SHELL/CODE 집합에도 추가.
+
+## 5. 검증
+
+```bash
+pnpm vitest run tests/content.test.ts      # frontmatter·링크·실험 id·퀴즈·용어집
+pnpm search:up && pnpm search:index         # 하이브리드 검색 색인(증분). 꺼져 있으면 키워드 검색으로 폴백
+```
+
+여러 편을 쓸 땐 부(chapter) 단위로 에이전트를 나눠도 된다. 그때 각 에이전트는 git 금지·용어집은 JSON 으로 보고만 하고, 메인이 병합·검증·커밋한다 (`study-verify`).

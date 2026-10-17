@@ -227,7 +227,7 @@ pnpm exec vitest run tests/read-only.test.ts                                    
 
 `.github/workflows/e2e.yml` 은 앱을 빌드해 띄운 뒤 Playwright + axe 로 주요 화면 10개를 데스크톱·iPhone 13 크기에서 검사한다(열림, 가로 넘침, WCAG 2.1 AA 위반, 모바일 메뉴, 터치 영역). 로컬은 떠 있는 서버를 대상으로 `pnpm e2e`.
 
-Dependabot 이 npm·GitHub Actions·Docker 이미지를 매주 확인한다. 콘텐츠 무결성 검사는 학습 경로(모든 주제가 정확히 한 번)·주제 선수 관계(존재·순환 없음)·노트 `prereq`·`chapter` 와 iCloud 충돌 사본(`이름 2.md`)도 잡는다.
+Dependabot 이 npm·GitHub Actions·Docker 이미지를 매주 확인한다. 런타임은 Node 22 LTS(CI·Dockerfile)로 고정이라 `@types/node` 와 `node` 이미지의 메이저 업데이트는 무시한다 — Node 메이저는 다음 LTS 로 사람이 직접 올린다. 콘텐츠 무결성 검사는 학습 경로(모든 주제가 정확히 한 번)·주제 선수 관계(존재·순환 없음)·노트 `prereq`·`chapter` 와 iCloud 충돌 사본(`이름 2.md`)도 잡는다.
 
 ## 노트·실험 추가하기
 
@@ -240,6 +240,30 @@ Dependabot 이 npm·GitHub Actions·Docker 이미지를 매주 확인한다. 콘
   - 레지스트리: `src/lab/registry.ts`
   - 노트의 `experiments` 에는 다른 주제의 실험 id 도 적을 수 있다.
 - **장애 주입**: `armUnpause` · `armRestart` · `armRedisConfigRestore` 를 주입 직전에 호출하고 `finally` 에서 `disarm()`.
+
+## Claude Code 설정 (skills · hooks)
+
+`.claude/` 아래 프로젝트 설정이 저장소에 들어 있어 이 폴더에서 Claude Code 를 열면 자동으로 적용된다. (워크트리·`settings.local.json` 은 git 제외)
+
+**Skills** — 요청에 맞으면 Claude 가 알아서 꺼내 쓰고, `/study-note` 처럼 직접 부를 수도 있다.
+
+| 스킬 | 언제 | 담긴 것 |
+|---|---|---|
+| `study-note` | 노트·주제·챕터 쓰기 | frontmatter 규칙, 기초→심화 본문 구성, 다이어그램 스타일, 퀴즈·용어집·실험·검색 색인까지 함께 갱신 |
+| `study-lab` | 실험 추가·수정 | Redis/셸/코드 실험 구조, `ctx.check` 단언, 데드맨 스위치, 포트 규칙, 헤드리스 PASS 조건 |
+| `study-verify` | 커밋 전 | main 워크트리 규칙, tsc·vitest·eslint, 깨끗한 복사본 검증, CI 확인 |
+| `study-deploy-check` | 배포 후 | Vercel 배포 상태, 읽기 전용 스모크 테스트(200·403·404), 자주 난 배포 문제 |
+
+**Hooks** (`.claude/settings.json` → `.claude/hooks/*.mjs`, 의존성 없이 node 로 돈다)
+
+| 훅 | 시점 | 하는 일 |
+|---|---|---|
+| `session-start.mjs` | 세션 시작 | 현재 브랜치·변경 파일 수, main 이 아니면 커밋 금지 안내, iCloud 폴더면 경고 |
+| `guard-bash.mjs` | Bash 실행 전 | main 이 아닌 브랜치에서 `git commit`·`push` **차단**. `compose down -v`·`docker volume rm`·`FLUSHALL`·`rm -r content|backups`·강제 푸시는 **확인 요청** (학습 기록 보호) |
+| `check-content.mjs post` | Edit·Write 직후 | 방금 쓴 노트의 frontmatter(YAML·필수 필드·level)·노트 링크·다이어그램, 퀴즈·용어집 JSON 을 즉시 검사 |
+| `check-content.mjs stop` | 응답을 마치기 전 | git 이 보기에 바뀐 `content/` 파일 전부를 같은 기준으로 검사 (Bash 로 쓴 파일까지). 실패하면 고칠 때까지 끝내지 않는다 |
+
+훅은 `tests/content.test.ts` 의 빠른 부분집합이다. 최종 판단은 언제나 `pnpm test`.
 
 ## 구조
 
@@ -265,6 +289,11 @@ observability/             Prometheus·알림 규칙·Alertmanager·Loki·Alloy�
 nginx/                     리버스 프록시 · TLS 설정
 ```
 
-## 주의: iCloud 동기화 폴더
+## 저장소 위치
 
-이 저장소가 `~/Documents` 처럼 iCloud 로 동기화되는 폴더에 있으면, 동기화 충돌로 `이름 2.md`·`이름 2.json` 같은 사본이 생긴다. 빈 퀴즈 사본이 원본을 가리거나 `.next` 캐시가 꼬일 수 있다. CI 가 소스 안의 사본은 잡지만, 동기화되지 않는 폴더(예: `~/dev`)로 옮기는 것이 가장 확실하다.
+저장소는 `~/dev/study` 에 둔다 (2026-10-17 `~/Documents/dev/redis/study` 에서 옮김). `~/Documents`·`~/Desktop` 은 iCloud 로 동기화돼 `이름 2.md` 같은 충돌 사본이 생기고 `.next` 캐시가 꼬였다. 동기화되는 폴더에 다시 두지 않는다 — CI 와 Claude Code 세션 시작 훅이 둘 다 경고한다.
+
+| 폴더 | 브랜치 | 쓰는 쪽 |
+|---|---|---|
+| `~/dev/study` | `design/*` 등 작업 브랜치 | Codex |
+| `~/dev/study/.claude/worktrees/main` | `main` | Claude Code — 커밋·푸시는 여기서만 |

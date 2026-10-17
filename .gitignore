@@ -59,8 +59,11 @@ logs/
 .terraform.lock.hcl
 /infra/local/10-cluster/*-config
 
-# Claude Code 워크트리
-/.claude/
+# Claude Code — 워크트리·개인 설정은 제외, 프로젝트 skills·hooks·settings.json 은 공유
+/.claude/*
+!/.claude/settings.json
+!/.claude/hooks/
+!/.claude/skills/
 
 # 학습 기록 백업 (개인 데이터)
 /backups/
