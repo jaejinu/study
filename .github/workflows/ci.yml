@@ -19,8 +19,8 @@ jobs:
           --health-timeout 3s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -32,7 +32,7 @@ jobs:
         run: pnpm test:report
         env:
           REDIS_URL: redis://127.0.0.1:6379
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: vitest-report
@@ -44,7 +44,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # 워크플로 정적 검사 — 식 타입·needs 그래프·스크립트 인젝션 (GitHub Actions 노트 01·05)
       - uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2.2.0
       # 의존성 취약점·비밀 정보 — 수정 가능한 CRITICAL/HIGH 가 있으면 실패 (보안 노트 05)
@@ -73,7 +73,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # 설정·규칙 문법 + SLO 번레이트 알림 단위 테스트 (관측성 노트 11) — 로컬은 pnpm obs:check
       - name: promtool check config · test rules
         run: |
@@ -84,10 +84,10 @@ jobs:
     name: docker build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Build (push 없음)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: false

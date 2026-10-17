@@ -8,9 +8,17 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # 런타임은 Node 22 LTS (CI · Dockerfile 일치) — 타입만 앞서가면 존재하지 않는 API 를 쓰게 된다
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly, day: monday }
   - package-ecosystem: docker
     directory: /
     schedule: { interval: weekly, day: monday }
+    ignore:
+      # 홀수 메이저(25 등)는 LTS 가 아니다 — Node 메이저 업그레이드는 사람이 LTS 로 직접 올린다
+      - dependency-name: node
+        update-types: [version-update:semver-major]
