@@ -13,9 +13,15 @@ let stream: fs.WriteStream | null = null;
 
 function fileStream(): fs.WriteStream | null {
   if (stream) return stream;
+  // 서버리스(Vercel)는 파일 시스템이 읽기 전용이고 수집기(Alloy)도 없다 — stdout 만 쓴다
+  if (process.env.VERCEL) return null;
   try {
     fs.mkdirSync(path.dirname(LOG_FILE), { recursive: true });
     stream = fs.createWriteStream(LOG_FILE, { flags: "a" });
+    // 쓰기 오류(디스크 가득·권한)가 처리되지 않은 'error' 이벤트로 프로세스를 죽이지 않게
+    stream.on("error", () => {
+      stream = null;
+    });
     return stream;
   } catch {
     return null;
