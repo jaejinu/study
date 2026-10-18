@@ -174,6 +174,28 @@ rdb_last_bgsave_status:ok
 aof_delayed_fsync:0
 ```
 
+## 실전에서는 어디에 쓰이나
+
+> 영속성 설정은 "Redis 가 재시작되면 무엇을 잃어도 되나" 에 대한 답이다. 캐시면 끄고, 잃으면 곤란한 데이터면 AOF 를 켜고 백업·복구 리허설까지 한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 페이지 캐시 | fork 부하 없이 최대 처리량 | RDB·AOF 모두 끄고, 비면 DB 에서 다시 채움 | — |
+| 게임 매칭 대기열·세션 | 재시작 후 대부분 복구 | AOF `everysec` + RDB 백업 | 원본은 DB, Redis 는 파생 데이터 |
+| 결제 연동 멱등 키 | 재시도 창 동안 중복 방지 기록 유지 | AOF `everysec` + 레플리카 | DB 유니크 제약 (정확성이 필요하면) |
+| 사내 플랫폼 백업 | 마스터에 fork 부하 없이 백업 | 레플리카에서 `BGSAVE` → 파일 보관 | 관리형 서비스 스냅샷 |
+| 대용량 인스턴스 운영 | fork 지연·메모리 2배 사고 방지 | THP 끄기, `vm.overcommit_memory=1`, 메모리 절반 이하 사용 | 인스턴스 쪼개기(샤딩) |
+
+**이럴 땐 안 맞는다**
+- 확인 응답한 쓰기를 절대 잃으면 안 되는 원장 — `always` 는 매우 느리고 복제는 비동기다. PostgreSQL 의 WAL·그룹 커밋에 맡긴다.
+- maxmemory 를 컨테이너 한도와 같게 둔 상태의 BGSAVE — COW 로 OOMKilled. 한도의 60~75% 로 둔다.
+
+**누가 매일 만나나** — SRE·DBA 가 백업·복구 리허설과 `rdb_last_bgsave_status` 알림을 다룰 때, 플랫폼 엔지니어가 노드 커널 설정(THP, overcommit)을 표준화할 때.
+
+**면접·실무 단골 질문**
+- Q. RDB 와 AOF 를 같이 켜면 재시작 때 무엇을 읽나 → AOF 우선(더 완전), Redis 7 은 base RDB + 증분 AOF.
+- Q. BGSAVE 중 메모리가 왜 늘어나나 → fork 뒤 copy-on-write, 쓰기가 많을수록 페이지가 복사된다.
+
 ## 실습 체크리스트
 
 - [ ] `INFO persistence` 에서 `rdb_last_cow_size`, `aof_delayed_fsync`, `rdb_last_bgsave_status` 를 읽고 의미 말하기

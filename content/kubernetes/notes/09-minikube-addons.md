@@ -152,6 +152,26 @@ minikube logs --profile study
 minikube node add --profile study                  # 멀티노드
 ```
 
+## 실전에서는 어디에 쓰이나
+
+> 이 실습의 애드온(Ingress Controller, metrics-server)은 운영 클러스터라면 거의 반드시 깔려 있는 기본 부품이다. 실무에서는 "HPA 가 왜 안 늘어나지", "Ingress 경로가 왜 안 맞지" 라는 질문으로 다시 만난다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 신규 서비스 오토스케일 설정 | HPA 가 `<unknown>` 으로 멈춤 | metrics-server 동작과 requests 설정 확인 | 고정 복제본 |
+| 미디어 인코딩 같은 비동기 워커 | 일이 없으면 0, 쌓이면 N | KEDA ScaledObject(Redis 리스트·Kafka LAG), `minReplicaCount: 0` | CPU HPA — 큐 적체를 못 본다 |
+| 트래픽이 짧게 출렁이는 API | 늘었다 줄었다 반복(flapping) | `behavior` 의 안정화 창·스케일 정책 | 최소 복제본을 넉넉히 |
+| 사내 교육·핸즈온 | 애드온이 갖춰진 실습 환경을 빠르게 | `minikube addons enable ingress metrics-server dashboard` | kind + 직접 설치 |
+
+**이럴 땐 안 맞는다**
+- `kubectl top` 으로 지난 추세 보기 → metrics-server 는 현재값만 있고 저장하지 않는다. 추세는 Prometheus.
+- minikube 를 CI 클러스터로 → 상대적으로 무겁고 느리다. CI 는 kind.
+
+**누가 매일 만나나** — 백엔드는 부하 테스트 중 HPA 가 반응하지 않을 때, 플랫폼 팀은 클러스터 기본 애드온 구성과 KEDA 도입을 정할 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. HPA 는 복제본 수를 어떻게 정하나? → ceil(현재 복제본 × 현재 사용률 ÷ 목표 사용률). 사용률은 requests 대비이고, 스케일 다운은 안정화 창(기본 5분) 뒤에 한다.
+
 ## 실습 체크리스트
 
 - [ ] `pnpm k8s:minikube` 후 두 컨텍스트 사이를 전환하며 대시보드 카드가 바뀌는지 확인

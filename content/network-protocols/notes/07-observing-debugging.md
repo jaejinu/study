@@ -165,6 +165,28 @@ kubectl debug -it pod/web-xxx --image=nicolaka/netshoot --target=web   # 쿠버�
 
 > 이어서 읽기: [HTTP/1.1 → 2 → 3](/network-protocols/notes/01-http1-http2-http3) · [손실·지연과 처리량](/network-protocols/notes/05-loss-latency-throughput) · [Linux 네트워크 05 — 도구](/linux-network/notes/05-tools) · [서비스 메시 05 — 메시 관측](/service-mesh/notes/05-observability)
 
+## 실전에서는 어디에 쓰이나
+
+> 장애 대응과 성능 튜닝에서 "네트워크가 느리다" 를 구간·계층별 숫자로 바꿔야 하는 순간에 이 도구들이 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 온콜 장애 대응 | 앱 문제인지 네트워크 문제인지 가르기 | `curl -w` 로 DNS·TCP·TLS·TTFB·전송 분해 | 감으로 추측 — 팀 간 논쟁만 길어짐 |
+| 쿠버네티스 distroless Pod | 셸·도구 없는 컨테이너의 네트워크 확인 | `kubectl debug --target`, 노드에서 `nsenter -n` | 디버그 이미지로 재배포 — 재현 조건이 사라짐 |
+| 인프라 모니터링 대시보드 | 네트워크 이상을 앱 지연보다 먼저 감지 | node_exporter 의 재전송·`ListenOverflows` 패널 | 앱 지연 지표만 — 원인 계층을 모름 |
+| 핀테크 외부 기관 연동 | 간헐적 끊김·RST 를 보낸 쪽 찾기 | tcpdump SYN·RST 필터, Wireshark TCP 분석 | 앱 로그만 — 연결 수준 사건이 안 보임 |
+| 대규모 서비스 상시 관측 | 패킷 저장 없이 재전송·RTT 추적 | eBPF `tcpretrans`·`tcprtt`·`tcplife` | tcpdump 상시 수집 — 저장·CPU 부담 |
+
+**이럴 땐 안 맞는다**
+- 운영 환경에 `SSLKEYLOGFILE` 을 켜 두는 것 — 세션 비밀이 그대로 남는다. 재현 환경에서만 쓴다.
+- 처음부터 tcpdump 를 여는 것 — 대부분 서버 처리 구간이 원인이다. `curl -w` 로 범위를 먼저 좁힌다.
+
+**누가 매일 만나나** — SRE·온콜 엔지니어가 장애 티켓의 첫 30분에, 백엔드가 "우리 서버는 빨랐다" 를 숫자로 증명할 때, 모니터링 담당이 재전송률 알림을 설계할 때.
+
+**면접·실무 단골 질문**
+- Q. "API 가 느리다" 는 신고를 받으면 무엇부터? → DNS → TCP → TLS → 서버 처리 → 전송 순서로 구간을 나눠 가장 긴 구간을 찾는다.
+- Q. connection refused 와 connection timeout 의 차이는? → refused 는 리스너가 없어 RST 가 온 것, timeout 은 방화벽 등이 SYN 을 버려 응답이 없는 것.
+
 ## 실습 체크리스트
 
 - [ ] 느린 API 하나를 `curl -w` 로 5구간으로 쪼개고, 가장 긴 구간의 원인을 추론

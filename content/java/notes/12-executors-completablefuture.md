@@ -174,6 +174,29 @@ ThreadPoolTaskExecutor ioExecutor() {
 
 `@Async` 의 기본 실행기는 버전에 따라 스레드를 무한히 만들 수 있으니 반드시 직접 정의한다. 실행기의 활성 스레드·큐 크기·거부 수를 Micrometer 로 메트릭에 내보내 대시보드에 둔다 → [관측성: 계측](/observability/notes/03-instrumentation-exporters).
 
+## 실전에서는 어디에 쓰이나
+
+> 스레드 풀과 비동기 조합은 "외부 호출 여러 개를 모아 한 응답을 만드는" API, 알림 발송 같은 백그라운드 처리, 주기 작업에 쓰인다. 큐 크기와 거부 정책을 정하지 않으면 하류 장애가 서버 장애로 번진다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 상품 상세 조합 API | 가격·재고·리뷰 서비스를 병렬 호출 | `CompletableFuture.allOf` + 전용 I/O 실행기 + `orTimeout`·`exceptionally` 폴백 | 가상 스레드, 리액티브(WebFlux) |
+| 알림·이메일 발송 | 응답 시간에서 발송 시간을 떼어 내기 | 유한 큐 `ThreadPoolExecutor` 를 `@Async` 전용 실행기로 | 메시지 큐(Kafka 등)로 넘김 |
+| 트래픽이 몰리는 이벤트 API | 과부하 때 서버 전체가 느려짐 | 유한 큐 + `AbortPolicy` → 503(부하 차단), 또는 `CallerRunsPolicy` 백프레셔 | 게이트웨이 레이트 리밋 |
+| 배달·모빌리티 위치 갱신 | 최신 값만 의미 있는 작업 | `DiscardOldestPolicy` | 최신 값만 덮어쓰는 저장소 키 |
+| 정산·리포트 주기 실행 | 정해진 간격의 작업 | `newScheduledThreadPool`, Spring `@Scheduled` | 배치 스케줄러, k8s CronJob |
+
+**이럴 땐 안 맞는다**
+- `newFixedThreadPool`·`newCachedThreadPool` 을 그대로 운영: 무한 큐·무한 스레드라 하류 장애가 메모리 폭발로 번진다 → 큐 크기와 거부 정책을 명시한 `ThreadPoolExecutor`.
+- 재시작돼도 잃으면 안 되는 작업: 메모리 큐라 프로세스가 죽으면 사라진다 → 영속 큐(Kafka, DB outbox).
+- I/O 작업에 실행기 없는 `supplyAsync`: 공용 ForkJoinPool 이 막힌다 → 전용 실행기를 넘긴다.
+
+**누가 매일 만나나** — 백엔드 개발자가 외부 API 호출을 병렬화하거나 `@Async` 를 붙일 때, SRE 가 실행기의 활성 스레드·큐 크기·거부 수 메트릭과 스레드 덤프의 풀 이름을 볼 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. ThreadPoolExecutor 에 작업이 들어가는 순서는? → 코어 스레드 → 큐 → 최대 스레드 → 거부. 무한 큐면 최대 스레드는 영영 쓰이지 않는다.
+- Q. I/O 위주 작업의 풀 크기는 어떻게 정하나? → 코어 × (1 + 대기/계산), 리틀의 법칙으로 필요한 동시성을 구하고, 하류(DB 커넥션 풀) 한계 이하로 맞춘다.
+
 ## 정리
 
 - 스레드는 실행기로 재사용한다. 편의 팩토리는 무한 큐·무한 스레드 함정이 있으니 운영에선 `ThreadPoolExecutor` 를 명시.

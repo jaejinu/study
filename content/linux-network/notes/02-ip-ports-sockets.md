@@ -166,6 +166,28 @@ netstat -an -p tcp | awk '$4 ~ /\.6379$/ || $5 ~ /\.6379$/ {print $6}' | sort | 
 | 재전송 비율 | `TcpRetransSegs / TcpOutSegs` | 손실·혼잡 |
 | 소켓 수 / fd 한도 | `/proc/<pid>/fd` 수 vs `ulimit -n` | `EMFILE` 직전 |
 
+## 실전에서는 어디에 쓰이나
+
+> 연결이 많거나 짧은 연결이 반복되는 서비스에서 "포트가 없다", "가끔 끊긴다", "accept 를 못 따라간다" 같은 문제로 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| API 게이트웨이·리버스 프록시 | 업스트림으로 짧은 연결 반복 → 임시 포트 고갈 | 업스트림 keepalive 풀, 필요 시 `tcp_tw_reuse` | 포트 범위만 확대 — 근본 해결 아님 |
+| 커머스 이벤트 오픈 | 트래픽 급증 시 accept 큐 넘침 | `somaxconn`·backlog 상향, `ListenOverflows` 알림 | 워커만 증설 — 큐 상한 그대로 |
+| 클라우드 LB 뒤 마이크로서비스 | 간헐적 `ECONNRESET` | 풀 idle timeout 을 LB 보다 짧게, TCP keepalive | 에러마다 재시도 — 원인 남음 |
+| 장기 실행 서버 | CLOSE_WAIT 누적과 fd 고갈 | `ss` 상태 집계, close 누락 수정, `ulimit -n` 확인 | 주기적 재시작 — 누수 은폐 |
+| 실시간 게임·채팅 서버 | 작은 메시지의 40ms 지연 | `TCP_NODELAY` 로 Nagle 끄기 | 기본 설정 — Nagle + delayed ACK |
+
+**이럴 땐 안 맞는다**
+- `tcp_tw_recycle` 같은 옛 튜닝 — NAT 뒤 클라이언트를 깨뜨려 커널에서 제거됐다. 연결 재사용이 답이다.
+- TIME_WAIT 자체를 없애려는 것 — 먼저 끊는 쪽에서는 정상 상태다. 문제는 고갈될 만큼 짧은 연결을 만드는 구조다.
+
+**누가 매일 만나나** — 백엔드가 HTTP 클라이언트·DB 커넥션 풀 설정을 정할 때, SRE 가 `EADDRNOTAVAIL`·`EMFILE` 장애를 받을 때.
+
+**면접·실무 단골 질문**
+- Q. TIME_WAIT 와 CLOSE_WAIT 가 많은 것은 각각 무엇을 뜻하나? → 내가 먼저 끊는 짧은 연결이 많음(정상이나 포트 고갈 위험) 대 상대가 끊었는데 내 앱이 close 를 안 함(버그).
+- Q. `ECONNREFUSED` 와 `ECONNRESET` 의 차이는? → 리스너 없는 포트로 SYN 을 보내 RST 를 받음 대 맺어진 연결을 상대나 중간 장비가 RST 로 끊음.
+
 ## 실습 체크리스트
 
 - [ ] `lsof -iTCP -sTCP:LISTEN` 으로 Redis·dev 서버·Docker 가 듣는 포트 확인 (실험실)

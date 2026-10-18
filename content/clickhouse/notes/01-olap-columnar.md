@@ -127,6 +127,31 @@ ClickHouse 는 행이 26배 많은데도 읽은 바이트가 더 적다. `level`
 | [06 압축·코덱](/clickhouse/notes/06-compression-codecs) | 열마다 다른 압축 | ch-codecs-compression |
 | [07 분산·복제·운영](/clickhouse/notes/07-distributed-replication-ops) | 클러스터와 관측 | — |
 
+## 실전에서는 어디에 쓰이나 — ClickHouse 지도
+
+> ClickHouse 는 대개 "업무 DB 옆에 붙는 두 번째 저장소" 로 들어온다. 원천 데이터는 PostgreSQL·Kafka 에 두고, 넓게 읽고 몇 열만 집계하는 질문만 따로 받아 초 단위로 답한다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| SaaS 제품 분석(퍼널·리텐션 대시보드) | 테넌트·이벤트를 앞에 둔 정렬 키로 고객사별 집계 | [정렬 키·스킵 인덱스](/clickhouse/notes/03-partition-sortkey-skip-index) |
+| 사내 관측 플랫폼(로그·트레이스 장기 보관) | 고정 열 + Map 스키마, OTel exporter 적재 | [로그·트레이스 분석](/clickhouse/notes/05-log-trace-analytics) |
+| 광고·과금 집계(노출·클릭 카운트) | MV 로 분 단위 사전 집계 | [머티리얼라이즈드 뷰](/clickhouse/notes/04-materialized-views-aggregation) |
+| 커머스 주문 분석(CDC 로 받은 최신 상태) | ReplacingMergeTree + `FINAL`·`argMax` | [MergeTree](/clickhouse/notes/02-mergetree-engine) |
+| IoT·게임 서버 메트릭 장기 보관 | Delta·Gorilla 코덱, TTL 재압축 | [압축·코덱](/clickhouse/notes/06-compression-codecs) |
+| 단일 노드를 넘는 이벤트 수집 | ReplicatedMergeTree + Distributed + Keeper | [분산·복제·운영](/clickhouse/notes/07-distributed-replication-ops) |
+
+**회사 규모에 따라**
+- 스타트업: 대개 아직 필요 없다. PG 로 분석하다 대시보드가 느려지면 단일 노드(또는 관리형) 하나를 붙인다.
+- 성장기: CDC·Kafka 로 업무 데이터를 흘려 제품 분석·로그 분석을 한곳에 모으고, MV 로 대시보드를 가속한다.
+- 대규모 조직: 데이터 플랫폼 팀이 샤드·레플리카 클러스터를 운영하고, 설정 프로필·쿼터로 여러 팀의 질의를 격리한다.
+
+**이럴 땐 안 맞는다**
+- 주문 상태처럼 행 단위 갱신이 잦은 업무 데이터 → PostgreSQL. 열 저장은 한 행 고치기가 비싸다.
+- 수백만 행 이하 → PG 인덱스와 집계로 충분하다. 시스템 하나 더 운영하는 비용이 더 크다.
+- 노트북에서 Parquet 몇 개를 한 번 분석 → 서버 없는 DuckDB.
+
+**누가 매일 만나나** — 데이터 엔지니어는 적재 파이프라인과 테이블 설계(ORDER BY·파티션)를, SRE·플랫폼 엔지니어는 로그 백엔드 운영과 파트 수·복제 지연 경보를 매일 본다. 백엔드 개발자는 "통계 API 가 너무 느리다" 는 요청을 받을 때 처음 만난다.
+
 ## 실습 체크리스트
 
 - [ ] `pnpm clickhouse:up` 후 `curl 'http://127.0.0.1:18123/?user=study&password=study' --data-binary 'SELECT version()'` 로 접속 확인

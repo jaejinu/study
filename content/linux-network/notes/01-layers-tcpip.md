@@ -147,6 +147,30 @@ curl -s -o /dev/null -w 'dns=%{time_namelookup} tcp=%{time_connect} tls=%{time_a
 - MTU 문제는 "작은 요청은 되고 큰 응답만 실패" 로 나타난다. `ping -D -s <크기>`(macOS) / `ping -M do -s`(Linux)로 경계를 찾는다.
 - 계층별 오류 카운터(`nstat` 의 `IpInDiscards`, `TcpRetransSegs`, `ethtool -S` 의 drop)를 메트릭으로 수집하면 "네트워크가 느리다" 를 어느 층의 문제인지로 바꿀 수 있다 — [시스템 수준 성능](/performance/notes/06-system-level).
 
+## 실전에서는 어디에 쓰이나 — 리눅스 네트워크 지도
+
+> 리눅스 네트워크 기초는 "연결이 안 된다·느리다·가끔 끊긴다" 를 계층별로 쪼개 원인을 찾는 언어다. 백엔드든 인프라든 장애 대응의 출발점이 된다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| VPN·오버레이 뒤에서 작은 요청은 되고 큰 응답만 실패 | 캡슐화, MTU·MSS, PMTU 발견 | [계층 모델과 패킷의 여행](/linux-network/notes/01-layers-tcpip) |
+| 짧은 연결이 많은 프록시의 포트 고갈, 간헐적 reset | 소켓 4-tuple, TIME_WAIT, accept 큐, RST | [포트·소켓·TCP 상태](/linux-network/notes/02-ip-ports-sockets) |
+| 쿠버네티스 Pod 의 외부 호출 지연, 서버 이전 | TTL, ndots, 부정 캐시, CoreDNS | [DNS](/linux-network/notes/03-dns) |
+| 클라우드 LB 뒤 간헐적 502, 인증서 장애 | keep-alive 타임아웃, TLS 핸드셰이크·체인, 캐시 헤더 | [HTTP 와 TLS](/linux-network/notes/04-http-tls) |
+| 컨테이너에서 "거부" 와 "타임아웃" 가르기 | 증상별 도구, tcpdump, NAT·iptables | [진단 도구와 컨테이너 네트워킹](/linux-network/notes/05-tools) |
+| 패킷이 많은 서버, Service 수천 개 클러스터 | NAPI·softirq, conntrack, eBPF | [커널 네트워크 스택](/linux-network/notes/06-kernel-stack-ebpf-performance) |
+
+**회사 규모에 따라**
+- 스타트업: 매니지드 LB·DNS·인증서를 쓰고 개발자가 `curl -w`·`dig`·`ss` 로 직접 원인을 찾는다. 대부분 타임아웃 설정·bind 주소·보안 그룹 문제다.
+- 성장기: 쿠버네티스·프록시로 계층이 늘면서 DNS ndots, conntrack, keep-alive 불일치 같은 "가끔 생기는" 장애가 늘고, 노드 네트워크 메트릭을 대시보드에 올린다.
+- 대규모 조직: 네트워크·플랫폼 팀이 커널 파라미터 표준, eBPF 데이터패스, 노드 로컬 DNS 캐시를 운영하고, 앱 팀은 커넥션 풀·타임아웃 규칙을 지킨다.
+
+**이럴 땐 안 맞는다**
+- 측정 없이 블로그의 sysctl 튜닝 값을 복사하는 것 — 증상 숫자부터 잰다. `tcp_tw_recycle` 처럼 제거된 옵션도 있다.
+- 앱 처리 지연을 네트워크 탓으로 돌리는 것 — `curl -w` 로 구간부터 나눈다.
+
+**누가 매일 만나나** — 백엔드는 "Connection refused·reset" 에러 로그를 받을 때, SRE·플랫폼 엔지니어는 노드·Pod 네트워크 장애와 DNS·LB 설정을 다룰 때, 보안 담당은 방화벽과 노출 포트를 점검할 때 이 주제를 만난다.
+
 ## 실습 체크리스트
 
 - [ ] `traceroute example.com` 으로 홉 수와 RTT 증가 보기

@@ -187,6 +187,28 @@ true false true true         # 같은 URL 은 같은 객체 · 다른 URL 은 �
 - **순환 참조를 동적 import 로 끊기.** `src/code-lab/ai-agents.ts` 는 `@/lib/assistant/tools`·`@/lib/search` 를 **`run()` 안에서** `await import()` 한다. 이 모듈들이 실험 레지스트리(`@/code-lab`)를 다시 import 하기 때문이다 — 정적 import 로 바꾸면 `code-lab/index.ts → ai-agents.ts → tools.ts → lab/registry.ts → code-lab/index.ts` 순환이 생겨, 레지스트리가 초기화되기 전에 접근하는 TDZ 에러가 난다. `src/shell-lab/platform-engineering.ts` 도 같은 이유로 레지스트리를 동적으로 부른다.
 - **ESM 앱, 혼재된 의존성.** 이 앱의 코드는 ESM(TS → 번들)이지만 의존성 중에는 CJS 가 많다(ioredis, pg). 번들러와 Node 가 그 사이를 이어 준다. 실험 스크립트(`scripts/run-code-lab.mts`)는 `.mts` 라 tsx 가 ESM 으로 실행한다.
 
+## 실전에서는 어디에 쓰이나
+
+> 모듈 시스템은 라이브러리 배포, CJS→ESM 전환, 번들러 설정에서 등장한다. "로컬에선 되는데 빌드 후 깨진다" 의 원인인 경우가 많다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 사내 공용 npm 패키지 | CJS·ESM 사용자 모두 지원, 내부 경로 숨김 | `exports` 조건부 내보내기 | ESM 전용으로 배포 |
+| 레거시 Node 서비스 현대화 | CJS 코드에서 ESM 전용 패키지 사용 | `await import()`, Node 22 의 `require(esm)` | 패키지 버전 고정 |
+| Next.js 같은 번들 서버 | 네이티브 애드온(.node) 번들 실패 | `serverExternalPackages` 로 번들 제외 | 순수 JS 대안 패키지 |
+| 플러그인 구조의 도구 | 실행 시 정해지는 모듈 로딩 | 동적 `import()` | 빌드 시 레지스트리 생성 |
+| 큰 모노레포 | 순환 참조로 TDZ 에러·undefined | 공통 부분 분리, 동적 import 로 지연 | 의존성 방향 린트 규칙 |
+
+**이럴 땐 안 맞는다**
+- 같은 패키지를 `import`·`require` 로 섞어 쓰기 — 듀얼 패키지로 싱글턴이 두 개가 된다. 한쪽으로 통일한다.
+- 운영 코드에서 `require.cache` 를 지워 다시 읽기 — 이전 인스턴스 참조가 남아 누수가 된다. 프로세스 재시작.
+
+**누가 매일 만나나** — 프론트·풀스택 개발자가 번들러·TypeScript 설정을 만질 때, 라이브러리 작성자가 패키지를 배포할 때, 플랫폼 팀이 Node 메이저 업그레이드를 진행할 때.
+
+**면접·실무 단골 질문**
+- Q. CJS 와 ESM 의 근본 차이 → 동기 로딩·값 복사 vs 실행 전 정적 분석·live binding.
+- Q. 패키지 업데이트 후 내부 파일 import 가 깨지는 이유 → `exports` 캡슐화, `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+
 ## 실습 체크리스트
 
 - [ ] 같은 코드를 `.cjs`/`.mjs` 로 만들어 `__dirname`·`import.meta.dirname`·최상위 await 차이 확인

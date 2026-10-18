@@ -144,6 +144,27 @@ QoS 와 축출 순서의 운영 관점은 [Kubernetes 스케줄링·오토스케
 
 그리고 제한 없이 띄운 **study-redis** 의 cgroup 은 `cpu.max = max 100000`, `memory.max = max` — 무제한이다. Redis 가 VM 메모리를 다 쓸 때까지 아무도 막지 않는다. 운영에서는 컨테이너 한도와 Redis 의 `maxmemory`(한도의 70~80%, fork 여유 고려)를 함께 둔다([Redis 메모리·성능](/redis/notes/12-memory-performance)).
 
+## 실전에서는 어디에 쓰이나
+
+> 쿠버네티스 위의 서비스가 "평균 CPU 는 낮은데 p99 가 튄다" 거나 "Pod 가 OOMKilled 로 재시작된다" 면, 거의 항상 이 노트의 cgroup `cpu.max`·`memory.max` 가 원인 후보에 오른다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| JVM·Go 로 된 결제 API | CPU limit 스로틀로 p99 급증 | 스로틀 비율 알림, `GOMAXPROCS`·`ActiveProcessorCount` 를 limit 에 맞춤 | CPU limit 제거하고 requests 로 몫만 보장 |
+| 여러 팀이 노드를 공유하는 사내 플랫폼 | 이웃 Pod 의 CPU 독점 | requests(`cpu.weight`)로 경쟁 시 몫 보장, QoS 등급 설계 | 팀별 전용 노드 풀 |
+| 실시간 게임 서버·저지연 트레이딩 | 마이그레이션·캐시 식음으로 지연 흔들림 | CPU Manager static·`cpuset` 으로 코어 고정 | 큰 전용 인스턴스 |
+| 배치·ML 학습 작업과 온라인 서비스 혼재 | 배치가 메모리를 다 먹어 서비스 OOM | 배치에 `memory.high` 로 느려지게, 서비스는 Guaranteed QoS | 배치를 별도 클러스터로 |
+
+**이럴 땐 안 맞는다**
+- 지연 민감 서비스에 빡빡한 CPU limit — 평균이 아니라 순간 버스트가 스로틀된다. requests 만 두거나 limit 을 넉넉히 준다.
+- 페이지 캐시가 큰 컨테이너의 메모리 limit 을 RSS 만 보고 정하기 — 한도에는 캐시도 포함된다. 회수가 잦아 I/O 가 느려질 수 있다.
+
+**누가 매일 만나나** — 백엔드 개발자는 매니페스트의 requests/limits 를 정할 때, SRE 는 `container_cpu_cfs_throttled_periods_total` 알림과 `OOMKilled` 이벤트를 볼 때, FinOps·플랫폼 엔지니어는 requests 대비 실사용으로 노드 비용을 맞출 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. CPU requests 와 limits 는 커널에서 무엇이 되나? → requests 는 `cpu.weight`(경쟁 시 비율, 스로틀 없음), limits 는 `cpu.max`(주기당 쿼터, 넘으면 주기 끝까지 정지).
+- Q. exit 137 의 의미는? → 128 + SIGKILL(9). 컨테이너면 대개 cgroup `memory.max` 초과로 OOM 킬러가 죽인 것이다. `memory.events` 의 `oom_kill` 로 확인한다.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `os-cgroup-limits` 를 돌려 스로틀 비율과 실제 사용률을 기록하고, `--cpus=1.5` 로 바꾸면 어떻게 될지 예측한 뒤 직접 확인하기

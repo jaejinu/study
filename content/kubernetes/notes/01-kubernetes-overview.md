@@ -91,6 +91,32 @@ status:                    # 현재 상태 (시스템이 쓴다)
 
 **레이블(label)** 이 모든 연결의 접착제다. Service 는 `selector: {app: web}` 로 Pod 을 찾고, Deployment 도 같은 방식으로 자기 Pod 을 관리한다.
 
+## 실전에서는 어디에 쓰이나 — Kubernetes 지도
+
+> Kubernetes 는 "컨테이너를 어디에, 몇 개, 어떤 설정으로 띄우고, 죽으면 되살린다" 를 선언으로 맡기는 플랫폼 계층이다. 실무에서는 앱 팀이 매니페스트를 내고, 플랫폼 팀이 클러스터와 그 위의 공통 도구(배포·관측·보안)를 운영하는 분업으로 나타난다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 커머스 API 서버 수십 개를 무중단 배포 | Deployment 롤링 업데이트·readinessProbe·롤백 | [Pod, ReplicaSet, Deployment](/kubernetes/notes/03-pod-deployment) |
+| 마이크로서비스 간 호출과 외부 도메인 노출 | Service DNS, Ingress·Gateway API | [Service 와 Ingress](/kubernetes/notes/04-service-ingress) |
+| 같은 이미지를 dev/stage/prod 에 다른 설정으로 | ConfigMap·Secret, Kustomize overlay | [ConfigMap 과 Secret](/kubernetes/notes/05-configmap-secret) |
+| 사내 플랫폼에서 Postgres·Redis 를 셀프서비스로 | StatefulSet·PVC, Operator | [CRD 와 Operator](/kubernetes/notes/11-operators-crds) |
+| 세일·이벤트 때 트래픽 급증 | requests 기반 HPA, KEDA, 노드 오토스케일 | [스케줄링·오토스케일링](/kubernetes/notes/14-scheduling-autoscaling-deep) |
+| 장애 대응 중 "Pod 이 왜 안 뜨지" | describe → events → logs --previous 순서 | [운영과 디버깅](/kubernetes/notes/08-ops-debugging) |
+| 클러스터·워크로드 모니터링과 알림 | kube-prometheus-stack, ServiceMonitor, Loki | [Kubernetes 관측](/kubernetes/notes/10-monitoring-stack) |
+| 여러 팀·여러 클러스터 배포를 git 으로 통제 | ArgoCD, Argo Rollouts 카나리 | [GitOps 와 점진적 배포](/kubernetes/notes/13-gitops-progressive-delivery) |
+
+**회사 규모에 따라**
+- 스타트업: 클러스터를 직접 만들지 않고 관리형(EKS·GKE·AKS)을 쓰거나, 서비스가 몇 개뿐이면 Kubernetes 없이 PaaS·서버리스로 간다.
+- 성장기: 관리형 클러스터 하나에 Helm/Kustomize, kube-prometheus-stack, ArgoCD 를 얹고 네임스페이스로 팀·환경을 나눈다.
+- 대규모 조직: 플랫폼 팀이 리전·환경별 클러스터 여러 개를 운영하고, CRD·Operator 로 "서비스 하나 = 리소스 하나" 같은 내부 플랫폼을 만들어 앱 팀에 제공한다.
+
+**이럴 땐 안 맞는다**
+- 서비스 1~3개에 전담 운영 인력이 없다 → 클러스터 업그레이드·네트워크·보안 부담이 이득보다 크다. 관리형 컨테이너 서비스(ECS·Cloud Run)나 PaaS 가 낫다.
+- 가끔 튀는 이벤트 처리 몇 개뿐이다 → 서버리스 함수가 더 싸고 단순하다.
+
+**누가 매일 만나나** — 백엔드 개발자는 배포가 실패할 때 `kubectl describe`·`logs` 를 친다. 플랫폼·SRE 엔지니어는 클러스터 업그레이드, 노드 풀, 배포·관측 도구를 운영한다. ML 엔지니어는 GPU 노드에 학습·추론 워크로드를 올릴 때 만난다.
+
 ## 이 노트 시리즈의 실습
 
 로컬에서 **kind**(Kubernetes in Docker) 로 1노드 클러스터를 만들고, 이 프로젝트의 Redis 를 배포하며 오브젝트를 하나씩 익힌다.
@@ -104,4 +130,3 @@ kubectl get nodes
 대시보드의 클러스터 점검 카드가 노드와 Pod 상태를 보여 준다.
 
 > 이어서 읽기: [로컬 클러스터와 kubectl](/kubernetes/notes/02-local-cluster-kubectl) — 바로 다음: 로컬 클러스터와 kubectl · [Docker 란 무엇인가](/docker/notes/01-docker-overview) — 컨테이너 기초가 필요하면
-

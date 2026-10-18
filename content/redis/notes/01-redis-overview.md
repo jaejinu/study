@@ -195,6 +195,33 @@ set
 
 이 지표들을 Prometheus 로 모으는 방법은 [관측성 — 계측과 익스포터](/observability/notes/03-instrumentation-exporters)에, 대시보드는 이 사이트 Grafana(13000)의 `study-redis` 에 있다.
 
+## 실전에서는 어디에 쓰이나 — Redis 지도
+
+> 실무에서 Redis 는 대개 "DB 앞의 빠른 보조 저장소" 다. 원본은 RDBMS 에 두고, 자주 읽히거나 짧게 살거나 원자적으로 세야 하는 데이터를 맡는다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 커머스 상품 상세·목록 캐시 | Cache-aside, TTL 지터, 스탬피드 방지 | [캐싱 패턴과 함정](/redis/notes/08-caching-patterns) |
+| 웹·앱 로그인 세션 공유 | Hash + 슬라이딩 TTL, 역인덱스 Set | [실전 설계 레시피](/redis/notes/18-design-recipes) |
+| 공개 API·AI 서비스 호출 한도 | Lua 고정 윈도우, 토큰 버킷 | [레이트 리미팅](/redis/notes/10-rate-limiting) |
+| 모바일 게임 실시간 랭킹 | Sorted Set, 동점 처리 | [자료구조 다섯 가지와 그 이상](/redis/notes/02-data-types) |
+| 선착순 쿠폰·재고 차감 | 원자 명령, Lua 조건부 차감 | [원자성 — MULTI/EXEC, WATCH, Lua](/redis/notes/05-transactions-lua) |
+| 여러 Pod 의 배치 중복 실행 방지 | 토큰 락, 펜싱 토큰 | [분산 락](/redis/notes/09-distributed-lock) |
+| 백그라운드 작업 큐·소규모 이벤트 전달 | List 신뢰 큐, Stream 컨슈머 그룹 | [메시징 — List, Pub/Sub, Stream](/redis/notes/07-pubsub-streams) |
+| RAG·추천의 벡터 검색 | Redis 8 Query Engine 의 VECTOR 인덱스 | [Redis 8 내장 모듈](/redis/notes/15-redis8-modules) |
+
+**회사 규모에 따라**
+- 스타트업: 관리형 Redis 한 대(또는 앱 옆 컨테이너)에 캐시·세션·레이트리밋을 함께 둔다. 영속성은 끄거나 기본값으로 둔다.
+- 성장기: 복제 + Sentinel(또는 관리형 HA)로 장애 조치를 붙이고, 원본성 데이터와 캐시를 인스턴스로 나눠 축출 정책을 분리한다.
+- 대규모 조직: Cluster 로 샤딩하고 플랫폼 팀이 Redis 를 공용 서비스로 제공한다. 키 네임스페이스·ACL·용량 할당·big/hot key 감시가 운영 업무가 된다.
+
+**이럴 땐 안 맞는다**
+- 잃으면 안 되는 원장·주문의 원본 — 비동기 복제와 `everysec` 때문에 마지막 수 ms~1초가 사라질 수 있다. PostgreSQL 같은 RDBMS 에 둔다.
+- 데이터가 RAM 보다 크거나, 오래 보존하며 재처리하는 이벤트 로그 — 디스크 기반 KV, Kafka.
+- 복잡한 조인·임의 집계·전문 검색 — RDBMS, ClickHouse, OpenSearch.
+
+**누가 매일 만나나** — 백엔드 개발자는 캐시 키·TTL·원자 연산을 설계할 때, SRE·플랫폼 엔지니어는 `used_memory`·`evicted_keys`·지연 알림이 울릴 때, ML 엔지니어는 피처·벡터 저장소로 붙일 때 만난다.
+
 ## 실습 체크리스트
 
 - [ ] `redis-cli --latency` 와 `--intrinsic-latency 5` 를 실행해 두 값의 차이를 설명하기

@@ -139,6 +139,26 @@ pnpm k8s:web:port                      # http://localhost:3200 — 클러스터 
 
 > 이어서 읽기: [WAL·체크포인트·복구 — 죽었다 깨어나도 커밋은 남는다](/db-internals/notes/04-wal-checkpoint-recovery) — DB 가 디스크에 기대하는 것: WAL·fsync · [파일시스템과 I/O — write() 에서 디스크 섹터까지](/os-internals/notes/04-filesystem-io) — 파일시스템·페이지 캐시·fsync 비용
 
+## 실전에서는 어디에 쓰이나
+
+> 컨테이너 디스크는 사라지므로 데이터가 남아야 하는 워크로드는 PVC 와 StatefulSet 을 쓴다. 실무에서는 "이 DB 를 클러스터 안에 둘 것인가, 관리형으로 뺄 것인가" 라는 결정과 함께 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 사내 개발 플랫폼 | 브랜치·스테이징마다 Postgres·Redis 를 빠르게 | StatefulSet + volumeClaimTemplates, 또는 DB Operator | 환경마다 관리형 DB — 느리고 비싸다 |
+| Kafka·Elasticsearch 자체 운영(데이터 플랫폼) | 브로커마다 고정 ID 와 고정 디스크 | 순번 이름 + Pod 별 PVC + Headless Service | 관리형 메시지·검색 서비스 |
+| 미디어 변환 워커 | 처리 중 임시 파일 | `emptyDir`(필요하면 `medium: Memory`) | PVC — 임시 데이터엔 과하다 |
+| 관측 스택 | Prometheus·Loki 데이터가 재시작에도 남게 | StatefulSet + PVC, 장기 보관은 오브젝트 스토리지 | 노드 로컬 디스크 — 노드 장애 시 유실 |
+
+**이럴 땐 안 맞는다**
+- DB 운영 경험 없는 팀이 핵심 운영 DB 를 StatefulSet 으로 → 백업·failover·업그레이드를 직접 책임진다. 관리형 DB 가 대개 낫다.
+- 여러 Pod 이 같은 파일을 동시에 쓰기 → 블록 디스크는 RWO 다. 오브젝트 스토리지(S3 류)나 RWX 파일시스템을 쓴다.
+
+**누가 매일 만나나** — 플랫폼·SRE 는 PVC 가 Pending 인 이유(StorageClass, 존 불일치)와 디스크 사용률 알림을 다룬다. 데이터 엔지니어는 Kafka·Spark 같은 상태 있는 시스템을 클러스터에 올릴 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. StatefulSet 은 Deployment 와 무엇이 다른가? → 고정 이름·Pod 별 PVC·순서 있는 생성/삭제. Pod·StatefulSet 을 지워도 PVC 는 남는다.
+
 ## 실습 체크리스트
 
 - [ ] `kubectl get pvc,pv` 로 동적 프로비저닝 결과 확인

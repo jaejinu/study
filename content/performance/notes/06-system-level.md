@@ -99,6 +99,28 @@ macOS 에서는 `top -o cpu`, `vm_stat`, `nettop`, `iostat`(옵션 다름), Dock
 
 > 이어서 읽기: [CPU 스케줄러와 cgroup — 누가 언제 CPU 를 얻고, 컨테이너 제한은 어떻게 동작하나](/os-internals/notes/03-scheduler-cgroups) — CPU 스로틀링을 커널 수준에서 · [심화 — Nginx 내부 동작, 성능 튜닝, HTTP/3, OpenResty](/nginx/notes/04-internals-performance-openresty) — 워커·이벤트 루프 튜닝의 실제 예
 
+## 실전에서는 어디에 쓰이나
+
+> 앱 코드도 쿼리도 멀쩡한데 느릴 때, 특히 컨테이너·쿠버네티스로 옮긴 뒤 p99 가 튈 때 이 노트의 OS·cgroup 관점이 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 쿠버네티스 위 API 서비스 | 평균 CPU 는 낮은데 p99 폭발 | `container_cpu_cfs_throttled_periods_total` 확인, CPU limit 상향 또는 제거 | 스레드 수를 쿼터에 맞춤(`GOMAXPROCS` 등) |
+| JVM·Node 컨테이너 | 메모리 limit 초과 OOM kill | 힙 상한을 limit 의 ~75%, 메모리 requests = limits | 노드 메모리 증설 |
+| DB·메시지 브로커 서버 | 커밋 지연 증가 | `iostat` 의 await·큐 깊이로 디스크 포화 확인, fsync 가 하한임을 인지 | 더 빠른 디스크 |
+| 마이크로서비스 간 호출 | 간헐 40ms 지연, 연결 폭주 | `TCP_NODELAY`, keep-alive 풀, listen 백로그·TIME_WAIT 확인 | 서비스 메시의 커넥션 풀 |
+| 사내 멀티테넌트 클러스터 | 이웃 Pod 때문에 느려짐 | 실측 기반 requests, 지연 민감 서비스는 Guaranteed QoS | 전용 노드풀 |
+
+**이럴 땐 안 맞는다**
+- 커널 매개변수 튜닝부터 시작 → 대부분의 병목은 앱·쿼리에 있다. RED·트레이스로 앱 계층을 먼저 배제하고 내려온다.
+- 배치 작업의 CPU 100% 를 장애로 보는 것 → 런큐가 쌓이지 않으면 정상이다.
+
+**누가 매일 만나나** — 플랫폼 엔지니어가 Pod requests/limits 기본값을 정할 때, 온콜 SRE 가 "노드는 한가한데 서비스는 느리다" 를 조사하며 스로틀 비율을 볼 때.
+
+**면접·실무 단골 질문**
+- Q. CPU limit 이 왜 지연을 만드나? → CFS 쿼터라서 주기 안에 쿼터를 다 쓰면 남은 시간 동안 강제 정지된다.
+- Q. 리눅스 메모리 used 가 높으면 위험한가? → 대부분 회수 가능한 페이지 캐시다. `available` 과 스왑·major fault 를 본다.
+
 ## 실습 체크리스트
 
 - [ ] `--cpus=0.5` Redis 에 `redis-benchmark` 를 돌리고 `cpu.stat` 의 `nr_throttled` 와 처리량 변화를 기록한다

@@ -213,6 +213,31 @@ API 성능은 대부분 **왕복 횟수**에서 결정된다. 실험 `api-grpc-u
 
 `POST /api/alerts` 의 중복 처리 같은 질문을 스스로 던지는 것이 API 설계 감각이다.
 
+## 실전에서는 어디에 쓰이나 — API 설계 지도
+
+> API 설계는 "서로 다른 팀·회사·앱 버전이 같은 약속에 기대어 돌아가게" 만드는 일이다. 실무에서는 새 엔드포인트를 만들 때보다, 이미 공개한 API 를 깨지 않고 바꾸거나 장애 때 재시도가 이중 처리를 만드는 순간에 더 크게 등장한다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 결제·주문 생성 API | POST 멱등 키, 상태 코드, Problem Details | 이 노트 |
+| 모바일 앱·파트너용 공개 API | OpenAPI 계약, SDK 생성, 계약 테스트 | [OpenAPI·계약 우선](/api-design/notes/02-openapi-contract-first) |
+| 마이크로서비스 내부 호출 | Protobuf 필드 번호, HTTP/2 다중화, 스트리밍 | [Protobuf·gRPC](/api-design/notes/03-protobuf-grpc) |
+| 호출 체인이 긴 백엔드의 장애 대응 | 데드라인 전파, 재시도 예산, 백프레셔 | [에러·재시도·데드라인](/api-design/notes/04-errors-retries-deadlines) |
+| 웹·앱 화면마다 다른 데이터 요구 | GraphQL·BFF, DataLoader, 복잡도 제한 | [GraphQL 비교](/api-design/notes/05-graphql-comparison) |
+| 외부 공개·LLM 처럼 비싼 API 의 앞단 | 게이트웨이 인증, 토큰 버킷 레이트리밋 | [게이트웨이·인증·레이트리밋](/api-design/notes/06-gateway-auth-ratelimit) |
+| 수년 운영되는 플랫폼 API | 하위 호환, `buf breaking`, Deprecation·Sunset | [버전·진화·거버넌스](/api-design/notes/07-versioning-evolution-governance) |
+
+**회사 규모에 따라**
+- 스타트업: 웹 프런트와 백엔드 한 팀이 REST 하나로 시작한다. 코드 우선으로 스펙을 생성하고, 상태 코드·페이지네이션 원칙만 지켜도 나중 비용이 크게 준다.
+- 성장기: 모바일 옛 버전·파트너가 생기면서 계약 우선, 멱등 키, 버전 정책이 필요해지고 내부 호출이 gRPC 로 갈라진다.
+- 대규모 조직: API 카탈로그·스타일 가이드·린터·설계 리뷰로 수십 개 팀의 API 를 일관되게 묶는 거버넌스가 별도 역할이 된다.
+
+**이럴 땐 안 맞는다**
+- 한 프로세스 안의 모듈 경계 → 네트워크 API 로 쪼개면 왕복·실패 모드만 늘어난다. 함수·모듈 인터페이스로 충분하다.
+- 대량 데이터 이동·이벤트 전파 → 요청-응답 REST 보다 배치 파일(S3·Parquet)이나 메시지 브로커가 맞다.
+
+**누가 매일 만나나** — 백엔드 개발자는 엔드포인트·상태 코드·페이지네이션을 정할 때 매일, 프런트·모바일 개발자는 그 API 를 쓰다 중복 결제나 페이지 누락 버그를 만날 때, 플랫폼 팀은 게이트웨이·스타일 가이드를 운영할 때 만난다. 결제 API 의 `Idempotency-Key` 헤더는 Stripe 공개 API 문서로 널리 알려진 형태다.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `api-idempotency-key` 를 돌리고, 키 없이 10번 보냈을 때 결제가 10건이 되는 것을 확인하기

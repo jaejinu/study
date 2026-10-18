@@ -132,6 +132,27 @@ kubectl rollout undo deploy/web -n study
 kubectl delete deploy web -n study
 ```
 
+## 실전에서는 어디에 쓰이나
+
+> Deployment 는 무상태 웹·API 서버를 배포하는 기본 단위다. 실무에서 이 노트를 다시 펴는 순간은 대부분 "새 버전 배포" 와 "Pod 이 안 뜬다" 두 가지다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 주문 API | 배포 중에도 요청 실패 없이 | `maxUnavailable: 0` + readinessProbe, 문제 시 `rollout undo` | Blue/Green 통째 전환 — 리소스 2배 |
+| 핀테크 결제 게이트웨이(JVM) | 느리게 뜨는 앱이 liveness 에 걸려 재시작 루프 | startupProbe 로 기동 시간 확보, liveness 는 보수적으로 | 앱이 warm-up 뒤에만 readiness 성공 |
+| 모바일 게임 API 서버 | 프로세스가 죽어도 사람 없이 복구 | ReplicaSet 이 복제본 수 유지(자가 치유) | VM + systemd 재시작 — 노드 장애엔 무력 |
+| SaaS 앱에 공통 기능 붙이기 | 앱 코드 수정 없이 프록시·로그 전송 | 같은 Pod 에 사이드카 컨테이너(네트워크·볼륨 공유) | 노드마다 DaemonSet 수집기 |
+
+**이럴 땐 안 맞는다**
+- DB·Redis 처럼 상태가 있는 앱 → Pod 이름과 디스크가 매번 바뀐다. StatefulSet 이나 Operator·관리형 서비스를 쓴다.
+- 한 번 돌고 끝나는 배치 → Deployment 는 끝난 컨테이너를 다시 띄운다. Job·CronJob 을 쓴다.
+
+**누가 매일 만나나** — 백엔드 개발자는 배포 후 `rollout status` 를 지켜보다 CrashLoopBackOff 면 `logs --previous` 를 연다. SRE 는 probe 설정이 일시 부하에 재시작 폭풍을 만들지 않는지 리뷰한다.
+
+**면접·실무 단골 질문**
+- Q. readiness 와 liveness 의 차이는? → readiness 실패는 트래픽에서 빼기만, liveness 실패는 재시작. liveness 에 외부 의존성(DB) 확인을 넣으면 DB 장애가 전 Pod 재시작으로 번진다.
+- Q. 롤링 업데이트 중 무엇을 조심하나? → 두 버전이 동시에 돈다. API·DB 스키마를 하위 호환으로 바꿔야 한다.
+
 ## 실습 체크리스트
 
 - [ ] Pod 을 직접 만들고 지우면 다시 안 생기는 것 확인

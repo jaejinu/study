@@ -190,6 +190,29 @@ Map<Long, List<OrderItem>> byOrder = items.stream().collect(groupingBy(OrderItem
 
 [성능: 데이터 접근 병목](/performance/notes/05-data-access-bottlenecks)의 N+1 해결이 정확히 이 모양이다.
 
+## 실전에서는 어디에 쓰이나
+
+> 람다·스트림은 "조회해서 걸러 묶어 응답한다" 는 거의 모든 백엔드 코드에 쓰인다. 운영 사고는 주로 병렬 스트림, `toMap` 중복 키, Optional 오용에서 나온다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 주문 관리 화면 | 주문을 상태별로 묶어 건수·금액 집계 | `groupingBy(상태, counting())`, `toMap` 은 병합 함수 명시 | SQL `GROUP BY` 로 DB 에서 집계 |
+| 서비스 계층의 N+1 해결 | 연관 데이터를 한 번에 조회해 붙이기 | ID 목록 `map` → IN 조회 → `toMap(id, identity())` 로 매핑 | JPA fetch join, 배치 크기 설정 |
+| 데이터 배치의 대량 통계 계산 | CPU 집약 계산 가속 | 배열·`IntStream.range` 소스에 측정 후 `parallel()`(전용 풀) | 명시적 `ExecutorService`, Spark 같은 분산 처리 |
+| 웹 요청 중 여러 외부 API 호출 | 호출을 동시에 보내 응답 시간 단축 | 병렬 스트림 대신 전용 Executor·가상 스레드 | `CompletableFuture` 조합 |
+| 리포지토리 조회 메서드 | "없을 수 있음" 을 반환 타입에 표현 | `Optional<User> findById`, `orElseThrow` | null 반환 + 문서화 |
+
+**이럴 땐 안 맞는다**
+- 웹 서버 요청 경로에서 블로킹 I/O 를 병렬 스트림으로: 공용 ForkJoinPool 이 막혀 다른 요청까지 멈춘다 → 전용 Executor·가상 스레드.
+- checked 예외·중간 `break`·여러 값 동시 갱신이 얽힌 로직: 반복문이 더 읽기 쉽다.
+- 필드·매개변수에 Optional: 설계 의도와 다르다 → 반환 타입에만 쓴다.
+
+**누가 매일 만나나** — 백엔드 개발자가 코드 리뷰에서 매일 만나고, 운영 중 `IllegalStateException: Duplicate key` 나 "가끔 원소가 사라짐" 을 볼 때 이 노트로 돌아온다.
+
+**면접·실무 단골 질문**
+- Q. 스트림의 지연 평가란? → 최종 연산 전엔 아무것도 실행되지 않고, 원소가 한 개씩 파이프라인 전체를 통과하며, `findFirst` 같은 연산은 중간에 멈춘다(단락).
+- Q. 웹 서버에서 병렬 스트림을 조심해야 하는 이유는? → JVM 전체가 공용 ForkJoinPool 을 공유해 블로킹 하나가 다른 요청을 막고, 공유 가변 상태는 깨진다.
+
 ## 정리
 
 - 람다는 `invokedynamic` 으로 연결되고, 캡처 없는 람다는 객체를 만들지 않는다.

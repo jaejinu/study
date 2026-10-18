@@ -255,6 +255,28 @@ curl -s -o /dev/null -w 'dns=%{time_namelookup}s connect=%{time_connect}s total=
 4. 장애 조치용 레코드의 TTL 을 30초로 두는 대가는? — 권한 서버 질의량 증가(비용), 캐시 미스 증가로 사용자 지연 증가.
 5. egress default-deny NetworkPolicy 를 건 뒤 "연결 실패" 가 났다. 왜 DNS 부터 의심하나? — 이름 해석이 kube-dns 53/UDP·TCP 로의 egress 이므로 같이 막히고, 앱에는 연결 실패처럼 보인다.
 
+## 실전에서는 어디에 쓰이나
+
+> 서비스 주소를 바꾸거나, 컨테이너·쿠버네티스에서 이름 해석이 느리거나 실패할 때 DNS 가 원인이자 도구로 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 서버·DB 이전, 블루/그린 전환 | 전환 시간 단축 | 이전 전 TTL 낮추기, 옛 서버 유지, 권한 서버 직접 확인 | 당일 레코드만 변경 — 옛 TTL 만큼 꼬리 |
+| 외부 API 를 많이 부르는 쿠버네티스 서비스 | ndots:5 search 반복으로 지연·질의 폭증 | FQDN 끝 점, `ndots:2`, NodeLocal DNSCache | 그대로 — NXDOMAIN 폭증 |
+| 핀테크 DB 장애 조치 | 장애 조치 후에도 옛 DB 로 붙는 연결 | 짧은 TTL + 커넥션 풀 최대 수명 | TTL 만 낮춤 — 장수 연결은 옛 IP 유지 |
+| 사내 플랫폼 CoreDNS 운영 | DNS 장애 조기 감지 | SERVFAIL·NXDOMAIN 비율, p99 지연, conntrack 포화 알림 | 앱 에러로 뒤늦게 인지 |
+| egress 차단 NetworkPolicy 도입 | 정책 후 "연결 실패" 처럼 보이는 해석 실패 | kube-dns 로의 53 UDP·TCP egress 허용 | 앱 연결 문제로 오진 |
+
+**이럴 땐 안 맞는다**
+- DNS 라운드로빈을 로드밸런서처럼 쓰는 것 — 헬스체크가 없어 죽은 IP 도 계속 준다. LB 를 둔다.
+- TTL 0 으로 즉시 반영을 기대하는 것 — 리졸버 최소 TTL 과 앱·브라우저 캐시가 얹힌다.
+
+**누가 매일 만나나** — SRE·플랫폼 엔지니어가 이전 작업과 CoreDNS 를 운영할 때, 백엔드가 `ENOTFOUND`·`EAI_AGAIN` 재시도 정책을 정할 때.
+
+**면접·실무 단골 질문**
+- Q. `EAI_AGAIN` 과 `ENOTFOUND` 를 다르게 다뤄야 하는 이유는? → 전자는 SERVFAIL·타임아웃 같은 일시 장애라 백오프 재시도, 후자는 이름이 없는 설정 오류라 재시도해도 같다.
+- Q. DNS 지연이 정확히 5초 단위로 생기는 이유는? → glibc 리졸버의 `timeout:5` — UDP 질의가 유실되면 5초 뒤 재시도한다.
+
 ## 실습 체크리스트
 
 - [ ] `dig example.com` 의 TTL 을 보고 몇 초 뒤 다시 질의해 TTL 이 줄어드는지 (리졸버 캐시) 확인

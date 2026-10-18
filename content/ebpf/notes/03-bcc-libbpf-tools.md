@@ -173,6 +173,28 @@ Redis 의 전형이다: epoll 대기가 시간의 대부분(유휴), write/read 
 1. `profile -F 99 -p <node>` → JIT 프레임이 `[unknown]`. `node --perf-basic-prof` 로 재시작.
 2. 유저 스택에 `JSON.stringify` 가 상위. [성능 04](/performance/notes/04-node-web-server-performance) 의 이벤트 루프 지연과 대조한다.
 
+## 실전에서는 어디에 쓰이나
+
+> 60초 점검에서 "iowait 가 높다", "런큐가 길다" 를 본 다음 "왜" 로 넘어갈 때 검증된 표준 도구로 등장한다. 운영 서버에 컴파일러 없이 깔 수 있는 libbpf-tools 가 현장의 기본이다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 핀테크 원장 DB 서버 | 커밋 지연 꼬리(p99)의 출처 | `biolatency -D` 로 디스크별 분포, `biosnoop` 으로 느린 I/O 의 주인 | `iostat` 평균은 꼬리를 숨긴다 |
+| 미디어 트랜스코딩 워커 | CPU limit 스로틀·코어 부족 판단 | `runqlat` 로 런큐 대기 분포 | load average 는 간접 지표 |
+| 커머스 API ↔ 캐시·DB | 커넥션 풀 미사용·누수 진단 | `tcplife` 로 연결 수명·바이트, `tcpconnlat` 로 연결 지연 | `ss` 스냅샷 |
+| 사내 Kubernetes 플랫폼 | 같은 질문을 Pod 이름 단위로 | Inspektor Gadget DaemonSet + `kubectl gadget` | 노드에 SSH 해 호스트 PID 찾기 |
+| 검색·분석 서버 | 대량 스캔이 페이지 캐시를 밀어내는지 | `cachestat` 적중률 추이 | `free` 의 cached 는 적중률을 안 준다 |
+
+**이럴 땐 안 맞는다**
+- 도구 지도에 없는 질문(특정 앱 함수의 인자 분포 등) — 즉석이면 bpftrace, 상시면 직접 작성([07](/ebpf/notes/07-writing-your-own)).
+- BTF 가 없는 구형 커널에서 libbpf-tools — CO-RE 가 안 된다. BCC(커널 헤더 + LLVM)나 커널 업그레이드.
+
+**누가 매일 만나나** — SRE 와 DBA 가 성능 티켓을 받아 60초 체크리스트 다음 단계로 돌릴 때, 플랫폼 엔지니어가 노드 이미지·디버그 컨테이너에 어떤 도구를 넣어 둘지 정할 때.
+
+**면접·실무 단골 질문**
+- Q. "CPU 는 한가한데 요청이 느리다" 면? → on-CPU 가 아니라 off-CPU 문제다. `offcputime` 으로 디스크·락·네트워크 대기 스택을 본다.
+- Q. BCC 와 libbpf-tools 의 차이? → 실행 시 LLVM 컴파일 vs CO-RE 정적 바이너리. 운영에는 후자.
+
 ## 실습 체크리스트
 
 - [ ] 위 표의 질문 11개 중 이 프로젝트에서 지금 의미 있는 질문 3개를 고르고 어떤 도구인지 적기

@@ -217,6 +217,28 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.pas
 - kind 를 Calico/Cilium 으로 다시 만들고 `default-deny` + 허용 정책 → `kubectl exec web -- nc -zv kafka 9092` 가 막히는지.
 - ArgoCD 초기 비밀번호 Secret 삭제, 비밀번호 변경.
 
+## 실전에서는 어디에 쓰이나
+
+> Kubernetes 보안은 "여러 팀·서비스가 한 클러스터를 나눠 쓰기 시작할 때", 그리고 "Pod 하나가 뚫렸을 때 어디까지 번지나" 를 따질 때 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 여러 팀이 쓰는 사내 공용 클러스터 | 팀마다 자기 네임스페이스만 다루게 | 네임스페이스별 Role/RoleBinding, 사람은 `view`·`edit` 부터, OIDC 로그인 | 팀별 클러스터 — 격리는 강하지만 비용이 크다 |
+| CI/CD 배포 계정 | 배포 권한으로 시크릿·exec 까지 가능해지는 문제 | `deployments` patch 만 주는 전용 SA, 짧은 토큰 | 내장 `edit` — secrets·pods/exec 가 포함된다 |
+| 결제·개인정보를 다루는 서비스 | 침해된 Pod 의 DB·메타데이터 접근(측면 이동) | default-deny NetworkPolicy + 필요한 흐름만 허용, egress 제한 | 보안 그룹만 — Pod 단위로 세밀하게 못 막는다 |
+| 보안 인증을 받아야 하는 SaaS | 위험한 Pod 스펙(root·hostPath·privileged) 배포 차단 | PSS `restricted` 를 warn·audit → enforce 순으로, Kyverno 로 레지스트리·서명·limits 강제 | 배포 후 정기 점검 — 이미 떠 있다 |
+| 운영 클러스터 감사 대응 | 누가 언제 시크릿을 읽었고 exec 했는지 | API 감사 로그(secrets·pods/exec 는 RequestResponse) → 로그 수집·알림, kube-bench | 노드 접근 기록만 — API 수준 행위를 모른다 |
+
+**이럴 땐 안 맞는다**
+- NetworkPolicy 를 지원하지 않는 CNI 에서 정책만 작성 — 아무 일도 일어나지 않는다. Calico·Cilium 같은 지원 CNI 를 먼저 확인한다.
+- 규제·환경(prod/dev) 경계를 네임스페이스만으로 나누는 것 — 커널·컨트롤 플레인을 공유한다. 강한 경계가 필요하면 클러스터를 분리한다.
+
+**누가 매일 만나나** — 플랫폼 엔지니어는 RBAC·PSS·어드미션 정책을 관리할 때, 앱 개발자는 배포가 `violates PodSecurity` 로 거부될 때, 보안 엔지니어는 감사 로그 알림을 볼 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. 사실상 cluster-admin 과 같은 권한은 → secrets list/get, pods/exec, privileged Pod 생성, escalate·bind·impersonate 등.
+- Q. API 서버 요청이 거치는 순서 → 인증(401) → 인가 RBAC(403) → 어드미션(Mutating → 검증 → Validating) → etcd 저장.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `sec-k8s-rbac` 로 최소 권한 SA 와 403 확인

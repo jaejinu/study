@@ -126,6 +126,35 @@ nonvoluntary_ctxt_switches: 1966      # 빼앗김: 타임슬라이스 소진, �
 
 파이프라인 없이 요청이 하나씩 오면 Redis 는 처리 → `epoll_wait` 로 잠듦 → 깨어남을 반복한다. 16개씩 묶어 보내면 한 번 깨어 여러 개를 처리하니 스위치가 70분의 1 이 된다. [Redis 파이프라이닝](/redis/notes/06-pipelining)이 RTT 만이 아니라 **커널 작업까지** 줄이는 증거다.
 
+## 실전에서는 어디에 쓰이나 — 운영체제 내부 지도
+
+> 운영체제 지식은 기능을 만들 때보다 "평균은 괜찮은데 p99 가 튄다, 메모리가 꽉 찼다는데 OOM 은 안 난다, 컨테이너가 137 로 죽었다" 같은 설명하기 어려운 증상을 만났을 때 등장한다. 대시보드 숫자를 커널의 동작으로 번역하는 능력이다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 트래픽 많은 API 서버의 지연이 간헐적으로 튐 | 컨텍스트 스위치(voluntary vs nonvoluntary), 스레드 수 | 이 노트 |
+| Redis·DB 의 BGSAVE·스냅샷 중 메모리 급증, "used" 메모리 오해 | copy-on-write, 페이지 캐시, Dirty, OOM 킬러 | [가상 메모리와 페이지 캐시](/os-internals/notes/02-virtual-memory-page-cache) |
+| 쿠버네티스 Pod 가 CPU 20% 인데 느림, `OOMKilled` | CFS 스로틀, cgroup `cpu.max`·`memory.max`, QoS | [스케줄러와 cgroup](/os-internals/notes/03-scheduler-cgroups) |
+| 결제·주문 DB 의 커밋 지연, 지웠는데 디스크가 안 줄어듦 | fsync 의미, 저널링, 열린 삭제 파일, overlayfs | [파일시스템과 I/O](/os-internals/notes/04-filesystem-io) |
+| 연결 수만 개를 받는 게이트웨이·캐시 서버 설계 | 시스템 콜 비용, epoll 이벤트 루프, 배치·파이프라인 | [시스템 콜과 인터럽트](/os-internals/notes/05-syscalls-interrupts) |
+| 큰 메모리 서버에서 Redis·JVM 지연 스파이크 | NUMA, THP, sysctl 튜닝 절차 | [NUMA·huge page·튜닝](/os-internals/notes/06-numa-hugepages-tuning) |
+| 멀티 테넌트 플랫폼의 컨테이너 격리 수준 결정 | capability·seccomp·특권 컨테이너·VM 격리 | [컨테이너는 결국 프로세스](/os-internals/notes/07-containers-are-processes) |
+
+**회사 규모에 따라**
+- 스타트업: 관리형 서비스와 기본값으로 버티고, OS 지식은 장애 때 `top`·`free`·exit 137 을 올바르게 읽는 데 주로 쓴다.
+- 성장기: 쿠버네티스 requests/limits, Redis·DB 의 메모리 여유, 스로틀 알림처럼 "기본값을 의식적으로 정하는" 단계가 된다.
+- 대규모 조직: 노드 이미지의 sysctl·THP·CPU 고정을 플랫폼 팀이 표준으로 관리하고, 성능·커널 전담 엔지니어가 eBPF·perf 로 커널 수준 회귀를 추적한다.
+
+**이럴 땐 안 맞는다**
+- 병목이 쿼리·알고리즘·네트워크 왕복에 있는 경우 — 커널 노브를 만지기 전에 애플리케이션 프로파일과 쿼리 계획부터 본다.
+- 서버리스·완전 관리형 런타임 — 커널 설정을 바꿀 수 없다. 대신 메모리 크기·동시성 설정으로 같은 효과를 낸다.
+
+**누가 매일 만나나** — SRE·인프라 엔지니어는 장애 분석에서 로드 애버리지·PSI·스로틀 지표를 읽을 때, 백엔드 개발자는 스레드 풀 크기·이벤트 루프 블로킹을 정할 때, 플랫폼 엔지니어는 컨테이너 런타임 기본 보안 설정을 정할 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. 프로세스와 스레드의 차이는? → 커널에선 둘 다 task 다. 차이는 주소 공간·fd 표를 공유하느냐이고, 스레드도 각자 스케줄된다.
+- Q. 컨테이너가 `docker stop` 에 10초 걸린다면? → PID 1 이 SIGTERM 핸들러가 없는 셸일 가능성. `exec` 로 앱을 PID 1 로 두거나 `--init`(tini)을 쓴다.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `os-context-switch` 를 돌려 "CPU 고정" 과 "자유" 의 차이가 이 Mac 에서 몇 배인지 기록하기

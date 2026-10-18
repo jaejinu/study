@@ -147,6 +147,28 @@ spec:
 
 > 이어서 읽기: [Kubernetes 비용 — requests 는 예약이고, 노드가 청구서다](/finops/notes/03-kubernetes-cost) — requests 가 곧 비용 — 배분과 유휴 비용 · [CPU 스케줄러와 cgroup — 누가 언제 CPU 를 얻고, 컨테이너 제한은 어떻게 동작하나](/os-internals/notes/03-scheduler-cgroups) — limits 의 실체: cgroup cpu.max 와 스로틀링
 
+## 실전에서는 어디에 쓰이나
+
+> 매니페스트를 환경별로 관리하고, 자원을 얼마나 예약하고, 언제 늘릴지를 정하는 노트다. 실무에서는 배포 도구 선택, OOMKill·CPU 스로틀링, 그리고 클라우드 비용 문제로 나타난다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 대형 커머스 세일 | 트래픽 급증에 자동 증설 | HPA(requests 대비 CPU 70%) + 노드 오토스케일 | 최대치로 미리 띄우기 — 평소 비용 낭비 |
+| SaaS 멀티 환경 | dev/prod 차이를 YAML 복사 없이 | Kustomize base + overlay(복제본·태그·리소스) | 환경별 Helm values 파일 |
+| 플랫폼 팀의 오픈소스 설치 | Prometheus·ingress-nginx 를 검증된 설정으로 | 공개 Helm 차트 + values 오버라이드 | 매니페스트 직접 작성·유지 |
+| 여러 팀이 쓰는 사내 클러스터 | 한 팀의 자원 독식 방지 | 네임스페이스 ResourceQuota + LimitRange 기본값 | 팀마다 클러스터 — 격리는 강하나 비용·운영 부담 |
+| 지연에 민감한 API | CPU limit 스로틀링으로 p99 가 튐 | CPU 는 requests 만 두고 limit 제거, 메모리 limit 은 유지 | requests == limits 로 Guaranteed |
+
+**이럴 땐 안 맞는다**
+- 큐 적체에 반응해야 하는 워커를 CPU HPA 로 → 대기 중엔 CPU 가 낮아 늘지 않는다. KEDA 나 커스텀 메트릭을 쓴다.
+- JVM·Node 앱을 메모리 기준 HPA 로 → 메모리를 반납하지 않아 줄지 않는다.
+
+**누가 매일 만나나** — 백엔드는 OOMKilled 를 보고 메모리 limit 을 조정한다. 플랫폼 팀은 requests 가 실사용과 맞는지 보고 쿼터를 정한다 — requests 가 곧 노드 비용이라 [FinOps](/finops/notes/03-kubernetes-cost) 와 바로 연결된다.
+
+**면접·실무 단골 질문**
+- Q. requests 와 limits 의 차이는? → requests 는 스케줄링·예약 기준(HPA 사용률의 분모), limits 는 상한(CPU 는 스로틀, 메모리는 OOMKill).
+- Q. Helm 과 Kustomize 는 언제? → 남이 만든 복잡한 소프트웨어는 Helm, 우리 앱의 환경 차이는 Kustomize.
+
 ## 실습 체크리스트
 
 - [ ] `kubectl kustomize k8s` 로 렌더링 결과와 ConfigMap 해시 이름 확인

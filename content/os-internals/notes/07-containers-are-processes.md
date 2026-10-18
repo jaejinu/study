@@ -142,6 +142,27 @@ docker run --rm --privileged --pid=host nicolaka/netshoot nsenter -t $P -n ss -t
 
 > 이어서 읽기: [Docker 란 무엇인가](/docker/notes/01-docker-overview) — Docker 가 이 커널 기능들을 감싸는 방식
 
+## 실전에서는 어디에 쓰이나
+
+> 컨테이너의 보안 경계를 정하거나 뚫어야 할 때 — Pod 보안 정책을 정할 때, 관측 에이전트에 권한을 줄 때, 셸 없는 이미지를 디버깅할 때, 남의 코드를 돌리는 서비스를 설계할 때 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 사내 쿠버네티스 플랫폼의 보안 기본값 | 탈취된 컨테이너의 권한 최소화 | `drop: [ALL]`, 비루트, `allowPrivilegeEscalation: false`, 기본 seccomp | 이미지 스캔만(런타임 경계 없음) |
+| CI 러너·코드 실행 서비스(교육·AI 에이전트 샌드박스) | 신뢰할 수 없는 코드가 커널을 공유하는 위험 | gVisor 나 Firecracker·Kata 같은 VM 격리 | rootless 컨테이너 + 엄격한 seccomp |
+| 관측·보안 에이전트(eBPF·CNI·CSI) | 노드 전체를 봐야 하는 DaemonSet | 특권은 이 DaemonSet 에만, 가능하면 `CAP_BPF`·`CAP_PERFMON` 으로 축소 | 노드에 직접 설치하는 에이전트 |
+| distroless 이미지를 쓰는 SaaS 장애 디버깅 | 셸이 없는 컨테이너 안 조사 | `kubectl debug --target`, 노드에서 `nsenter` | 디버그용 이미지 별도 빌드 |
+
+**이럴 땐 안 맞는다**
+- 일반 애플리케이션 Pod 에 `--privileged` — 사실상 호스트 root 다. 필요한 capability 만 추가하고, 정책(PSS restricted)으로 막는다.
+- 멀티 테넌트에서 "컨테이너니까 격리됐다" 고 가정 — 커널 하나를 공유한다. 테넌트 경계는 VM 격리나 노드 분리로 둔다.
+
+**누가 매일 만나나** — 보안 엔지니어는 Pod 보안 표준과 런타임 탐지 규칙을 정할 때, 플랫폼 엔지니어는 에이전트 DaemonSet 권한을 리뷰할 때, SRE 는 `kubectl debug`·`nsenter` 로 장애 중 컨테이너 안을 볼 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. 컨테이너와 VM 의 차이는? → 컨테이너는 네임스페이스·cgroup·capability·seccomp 를 건 프로세스로 커널을 공유한다. VM 은 자기 커널을 갖는다.
+- Q. capability 와 seccomp 의 차이는? → capability 는 root 권한을 쪼갠 "무엇을 할 수 있나", seccomp 는 "어떤 시스템 콜을 부를 수 있나" 다.
+
 ## 실습 체크리스트
 
 - [ ] study-redis 의 `/proc/<호스트PID>/status` 에서 Uid·CapEff·Seccomp·NoNewPrivs 를 읽고, 같은 값을 `docker run --rm alpine` 과 `--privileged` 컨테이너와 비교하기

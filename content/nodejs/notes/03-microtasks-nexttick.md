@@ -180,6 +180,28 @@ $ node pred.mjs   →  1 8 3 5 6 4 7 2        # ESM 은 Promise(3,5)가 nextTick
 - **SSE 스트림의 `for await`.** `src/app/api/ask/route.ts` 의 `for await (const chunk of res)` 는 청크마다 마이크로태스크로 이어지고, 청크가 아직 안 왔으면 진짜로 I/O 를 기다린다(소켓 데이터 = poll 단계). 그래서 스트리밍 중에도 다른 요청이 처리된다.
 - **데드맨 스위치의 `disarm`.** `process.kill(-pid)` 는 동기 호출이라 마이크로태스크와 무관하게 즉시 실행된다. 반대로 `finally` 블록 안의 `await exec("docker", ["unpause", …])` 는 자식 프로세스 종료(이벤트)를 기다리는 진짜 비동기다.
 
+## 실전에서는 어디에 쓰이나
+
+> 마이크로태스크 규칙은 "await 를 넣었는데 왜 다른 일이 안 끼어드나", "동시 요청에서만 값이 틀린다", "번들 후 순서가 바뀌었다" 같은 버그에서 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 핀테크 포인트·잔액 처리 | `await` 사이 끼어들기로 갱신 유실 | 읽기-쓰기를 직렬화(뮤텍스 Promise)하거나 원자 연산으로 | DB 트랜잭션, Redis Lua |
+| 대용량 데이터 처리 API | `await` 만으로는 I/O 에 양보가 안 됨 | 청크 사이 `setImmediate` 로 양보 | 워커 스레드 |
+| SDK·라이브러리 개발 | 때로 동기·때로 비동기인 콜백(Zalgo) | `queueMicrotask` 로 항상 비동기 | Promise 반환 API |
+| 재시도 루프·스트림 직접 구현 | nextTick·Promise 재귀로 루프 기아 | 재귀 지점을 매크로태스크로 | 표준 스트림·라이브러리 |
+| CJS → ESM 전환 프로젝트 | 확장자만 바꿨는데 실행 순서 변화 | nextTick·Promise 상대 순서에 의존하지 않게 수정 | — |
+
+**이럴 땐 안 맞는다**
+- 긴 CPU 작업 중간의 `await Promise.resolve()` 로 "양보" — 마이크로태스크라 타이머·I/O 가 못 끼어든다. `setImmediate` 나 워커.
+- 새 코드에서 `process.nextTick` — 브라우저와 공유할 수 없고 기아 위험이 있다. `queueMicrotask`.
+
+**누가 매일 만나나** — 백엔드 개발자가 동시 요청에서만 재현되는 데이터 꼬임을 디버깅할 때, 라이브러리 작성자가 이벤트 발행 시점을 설계할 때.
+
+**면접·실무 단골 질문**
+- Q. 단일 스레드인데 경합이 생기나 → 데이터 경합은 없지만 `await` 경계에서 논리적 경합(race condition)은 생긴다.
+- Q. nextTick 과 Promise 중 무엇이 먼저 → CommonJS 는 nextTick, ESM 최상위는 Promise. 순서에 의존하지 않는다.
+
 ## 실습 체크리스트
 
 - [ ] 위 "손으로 예측" 코드를 `.cjs` 와 `.mjs` 로 각각 돌려 순서 차이 확인

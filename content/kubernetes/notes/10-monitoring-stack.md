@@ -163,6 +163,27 @@ sum by (pod) (rate({namespace="study"}[1m]))                     # Pod 별 로�
 
 > 이어서 읽기: [minikube 와 애드온 — Ingress·metrics-server·HPA 실습](/kubernetes/notes/09-minikube-addons) — metrics-server·ingress 애드온으로 빠르게 켜기
 
+## 실전에서는 어디에 쓰이나
+
+> Kubernetes 를 운영한다는 건 사실상 이 스택(kube-prometheus-stack + 로그 수집)을 함께 운영한다는 뜻이다. 장애를 먼저 아는 쪽이 사용자가 아니라 알림이 되게 만드는 곳이다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 수십 개 앱 팀을 지원하는 플랫폼 팀 | 앱 팀이 스스로 수집 대상 추가 | 각 네임스페이스에 ServiceMonitor·PrometheusRule 커밋 | 중앙 `prometheus.yml` PR — 플랫폼 팀이 병목 |
+| 커머스 배포 직후 | 재시작 급증·복제본 부족을 사용자보다 먼저 | `kube_pod_container_status_restarts_total`, 기본 규칙 KubeDeploymentReplicasMismatch | 고객 문의로 인지 |
+| 로그 폭주로 노드 디스크가 차는 상황 | DiskPressure 축출 전에 경고 | node-exporter `node_filesystem_avail_bytes` 비율 알림 | 클라우드 콘솔 지표 |
+| 메모리 누수 의심 Pod | 언제부터 얼마나 늘었나 | cAdvisor `container_memory_working_set_bytes` 추세를 limit 과 비교 | `kubectl top` — 현재값뿐 |
+| 리전별 클러스터를 둔 SaaS | 여러 클러스터를 한 화면에 | 클러스터별 Prometheus → 중앙 Mimir·Thanos, Grafana 하나 | 관리형 관측 SaaS — 데이터량 비례 비용 |
+
+**이럴 땐 안 맞는다**
+- 작은 팀이 기본 규칙 100+ 개를 그대로 켜기 → 알림 피로로 진짜 알림을 놓친다. 증상 기반으로 추리고 나머지는 대시보드로.
+- `kube_pod_labels` 같은 고카디널리티 메트릭을 그대로 수집 → Prometheus 메모리가 터진다. relabel 로 드롭한다.
+
+**누가 매일 만나나** — SRE 는 Alertmanager 라우팅·억제와 규칙 튜닝, 앱 팀은 ServiceMonitor 커밋, 온콜은 알림이 오면 Grafana 네임스페이스 대시보드부터 연다.
+
+**면접·실무 단골 질문**
+- Q. ServiceMonitor 를 만들었는데 Targets 에 안 보인다면? → Prometheus 의 serviceMonitorSelector 레이블, Service 셀렉터, endpoints 의 포트 '이름' 불일치 순으로 본다.
+
 ## 실습 체크리스트
 
 - [ ] `pnpm k8s:monitoring` 후 Prometheus Targets 에서 `study/redis`, `study/web` 이 UP 인지 확인

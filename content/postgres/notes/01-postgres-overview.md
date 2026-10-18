@@ -216,6 +216,31 @@ study=# SHOW wal_level; SHOW shared_buffers; SELECT extname, extversion FROM pg_
 - 캐시 히트율 99% 미만이 지속되면 working set 이 메모리를 넘었거나, 큰 Seq Scan 이 캐시를 쓸어내고 있다.
 - 체크포인트 빈도(`pg_stat_bgwriter`/`pg_stat_checkpointer`의 requested 비율)가 높으면 `max_wal_size` 가 작다.
 
+## 실전에서는 어디에 쓰이나 — PostgreSQL 지도
+
+> PostgreSQL 은 대부분의 서비스에서 주문·결제·계정처럼 틀리면 안 되는 데이터를 지키는 "진실의 원천" OLTP 데이터베이스다. 확장(JSONB·전문 검색·pgvector·PostGIS)으로 부가 저장소 몇 개의 역할까지 흡수할 수 있다는 점이 실무에서 자주 고르는 이유다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 목록·상세 API 가 갑자기 느려졌을 때 | EXPLAIN 으로 인덱스·스캔 방식 확인 | [인덱스와 실행 계획](/postgres/notes/02-indexes-explain) |
+| 핀테크 잔액·이체 | 격리 수준, 조건부 UPDATE 재검사 | [MVCC 와 트랜잭션 격리](/postgres/notes/03-mvcc-isolation) |
+| 커머스 재고 차감·사내 작업 큐 | `FOR UPDATE`, `SKIP LOCKED`, 무중단 마이그레이션 | [잠금과 데드락](/postgres/notes/04-locks-deadlocks) |
+| 사내 플랫폼의 DB 운영 | PITR 백업, 스트리밍 복제, PgBouncer, 느린 쿼리 | [운영](/postgres/notes/05-operations) |
+| 로그·감사·IoT 시계열 | 범위 파티셔닝, 오래된 파티션 DROP, 샤딩 | [파티셔닝과 확장](/postgres/notes/06-partitioning-scale) |
+| 관리자 리포트·피드 페이지네이션 | 조인 선택, 윈도우 함수, 키셋 페이지네이션 | [쿼리 최적화 심화](/postgres/notes/07-query-optimization-deep) |
+| AI 서비스 RAG·멀티테넌트 SaaS | pgvector 하이브리드 검색, RLS 테넌트 격리 | [JSONB·전문검색·pgvector](/postgres/notes/08-jsonb-fulltext-pgvector) |
+
+**회사 규모에 따라** — 스타트업은 관리형 PostgreSQL 한 대(+스탠바이)에 큐(SKIP LOCKED)·검색(FTS)·벡터(pgvector)까지 몰아 넣어 운영할 시스템 수를 줄인다.
+성장기에는 커넥션이 먼저 터져 PgBouncer 를 붙이고, 읽기 복제본·캐시·파티셔닝으로 단일 primary 의 수명을 늘리며 `pg_stat_statements` 로 느린 쿼리를 상시 관리한다.
+대규모 조직은 도메인별로 DB 를 나누고, 쓰기 한계를 넘는 곳만 샤딩하며, 검색·분석은 CDC 로 전용 저장소에 넘기고 마이그레이션 규칙(`lock_timeout`)과 복원 훈련을 플랫폼 표준으로 강제한다.
+
+**이럴 땐 안 맞는다**
+- 수 TB 를 훑는 분석 쿼리 → 행 저장이라 느리다. ClickHouse·BigQuery 같은 열 저장 OLAP 로 넘긴다.
+- 초당 수십만 건의 단순 키 조회·카운터 → 커넥션·WAL 비용이 크다. Redis 같은 인메모리 저장소를 앞에 둔다.
+- 단일 리더의 쓰기 한계를 넘는 다중 리전 쓰기 → 샤딩 설계나 분산 SQL 이 필요하다.
+
+**누가 매일 만나나** — 백엔드 개발자는 ORM 이 만든 쿼리가 느려졌을 때 EXPLAIN 을 열고, SRE·DBA 는 "too many connections"·복제 지연·디스크 경보를 받을 때 `pg_stat_activity` 의 대기 이벤트부터 본다.
+
 ## 실습 체크리스트
 
 - [ ] `pg_stat_activity` 로 백그라운드 프로세스 종류와 내 커넥션의 pid 확인

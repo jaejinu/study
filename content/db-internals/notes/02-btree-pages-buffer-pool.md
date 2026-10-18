@@ -183,6 +183,28 @@ docker exec -it study-postgres psql -U study -c "select * from bt_metap('pg_clas
 
 > 이어서 읽기: [PostgreSQL 아키텍처 한눈에](/postgres/notes/01-postgres-overview) — PostgreSQL 프로세스·메모리 구조
 
+## 실전에서는 어디에 쓰이나
+
+> 테이블의 PK 를 고르고, 인덱스가 왜 커졌는지, 캐시 적중률이 왜 떨어졌는지 설명해야 할 때 B-tree 페이지와 버퍼 풀이 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 주문 테이블 | 전역 유일 ID 와 삽입 성능을 동시에 | UUID v7·ULID 처럼 시간이 앞에 오는 키로 오른쪽 끝 삽입 유지 | UUID v4 는 분할 폭풍·FPI 증가, 시퀀스는 샤드 간 유일성을 따로 챙겨야 한다 |
+| MySQL 기반 SaaS | 보조 인덱스가 너무 커짐 | InnoDB 는 PK 가 모든 보조 인덱스에 복사되므로 작은 단조 증가 PK + 별도 공개 ID 열 | PostgreSQL 힙 구조는 PK 크기 영향이 작다 |
+| 핀테크 잔액·한도 테이블 | 잦은 UPDATE 마다 인덱스 갱신 | 테이블 fillfactor 70~90 으로 HOT 갱신 유도, 인덱스 열은 갱신하지 않게 | 이력을 추가 전용 테이블로 분리 |
+| 사내 리포트 배치 | 큰 스캔이 운영 쿼리 캐시를 밀어냄 | 링 버퍼·스캔 저항 교체 정책 확인, `pg_buffercache` 로 점유 측정 | 리포트를 복제본·분석 저장소로 |
+| 게임 랭킹 조회 | 정렬된 상위 N | `(score DESC, id)` B-tree 로 `order by … limit` 을 리프 순회로 | 메모리 정렬 집합(Redis ZSET) |
+
+**이럴 땐 안 맞는다**
+- 쓰기가 압도적인 이벤트·로그 적재 — 제자리 갱신과 페이지 단위 쓰기가 병목이다. LSM 계열이나 추가 전용 저장소([03](/db-internals/notes/03-lsm-tree-compaction)).
+- `like '%중간%'`, 배열 포함, 다차원 근접 질의 — 정렬 순서로는 못 푼다. GIN·GiST 같은 다른 구조([05](/db-internals/notes/05-index-structures)).
+
+**누가 매일 만나나** — 백엔드 개발자가 마이그레이션에서 PK 타입과 인덱스를 정할 때, DBA 가 "인덱스가 테이블보다 크다" 거나 버퍼 적중률 하락의 원인을 찾을 때.
+
+**면접·실무 단골 질문**
+- Q. UUID v4 를 PK 로 쓰면 왜 느려지나? → 모든 리프가 분할 후보가 되고 작업 집합이 인덱스 전체로 커지며, 체크포인트 뒤 full page write 가 늘어난다.
+- Q. 클러스터드 인덱스와 힙 + 보조 인덱스의 차이? → InnoDB 는 행이 PK 리프에 있어 보조 인덱스가 PK 로 재탐색하고, PostgreSQL 은 ctid 로 힙을 직접 가리킨다.
+
 ## 실습 체크리스트
 
 - [ ] 실험을 돌리고 순차·무작위·fillfactor 50 세 인덱스의 리프 수·채움률을 설명하기

@@ -171,6 +171,32 @@ server {
 
 > 이어서 읽기: [L4/L7 로드밸런싱 — HTTP/2 의 연결 쏠림](/network-protocols/notes/06-load-balancing-cdn) · [관측과 디버깅 — 버전과 연결 재사용 확인](/network-protocols/notes/07-observing-debugging) · [Linux 네트워크 04 — HTTP 와 TLS 기초](/linux-network/notes/04-http-tls)
 
+## 실전에서는 어디에 쓰이나 — 네트워크 프로토콜 지도
+
+> 웹·앱의 체감 속도, 서버 간 RPC 의 효율, 장거리 전송의 처리량은 대부분 "어느 프로토콜이 몇 RTT 를 쓰고 손실에 어떻게 반응하나" 로 정해진다. 이 주제는 그 원인을 계층별로 짚는 지도다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 작은 리소스 수백 개를 받는 웹 페이지 | HTTP/2 다중화로 요청 왕복 절약, 큰 데이터에선 연결 하나의 한계 | [HTTP/1.1 → 2 → 3](/network-protocols/notes/01-http1-http2-http3) |
+| 이동 중에 쓰는 모바일 앱·영상 통화 | QUIC 의 스트림 독립과 연결 이전 | [QUIC](/network-protocols/notes/02-quic) |
+| 로그인·결제 화면의 첫 바이트 지연 | TLS 1.3 1-RTT, 세션 재개, 0-RTT 재전송 위험 | [TLS 1.3 핸드셰이크](/network-protocols/notes/03-tls13-handshake) |
+| 대륙 간 영상·대용량 다운로드 | 슬로 스타트, CUBIC·BBR 선택 | [혼잡 제어](/network-protocols/notes/04-congestion-control) |
+| 리전 간 백업·복제가 회선보다 훨씬 느림 | BDP·소켓 버퍼·Mathis 상한, 버퍼블로트 | [손실·지연·대역폭](/network-protocols/notes/05-loss-latency-throughput) |
+| 쿠버네티스 gRPC 서비스에서 Pod 하나만 과열 | L4 연결 단위 분산의 쏠림과 L7 요청 단위 분산 | [L4/L7 로드밸런싱 · CDN](/network-protocols/notes/06-load-balancing-cdn) |
+| 전 세계 사용자 대상 정적 자원·API | 애니캐스트, CDN 엣지, 엣지-원본 연결 재사용 | [L4/L7 로드밸런싱 · CDN](/network-protocols/notes/06-load-balancing-cdn) |
+| "API 가 느리다" 장애 대응 | `curl -w` 구간 분해, `ss -ti`, tcpdump, qlog | [관측과 디버깅](/network-protocols/notes/07-observing-debugging) |
+
+**회사 규모에 따라**
+- 스타트업: 매니지드 LB·CDN 이 HTTP/2·3 과 TLS 1.3 을 기본으로 켜 준다. 직접 할 일은 연결 재사용과 `curl -w` 로 구간을 나눠 보는 습관 정도다.
+- 성장기: 쿠버네티스·gRPC 를 들이면서 HTTP/2 연결 쏠림, 배포 중 드레이닝, 리전 간 복제 처리량 같은 문제를 처음 만난다.
+- 대규모 조직: 자체 L4 LB(XDP·Maglev 계열), 혼잡 제어 알고리즘 선택, QUIC 직접 운영처럼 프로토콜 자체를 다루는 전담 네트워크·플랫폼 팀이 생긴다.
+
+**이럴 땐 안 맞는다**
+- 느린 원인이 서버 처리(TTFB)인데 프로토콜 버전부터 바꾸는 것 — 먼저 `curl -w` 로 구간을 나눈다. 대부분은 앱·DB 쪽이다.
+- UDP 가 막힌 사내망·폐쇄망 대상 서비스에서 HTTP/3 만 믿는 것 — HTTP/2 폴백을 항상 함께 연다.
+
+**누가 매일 만나나** — 백엔드는 커넥션 풀·keep-alive·타임아웃을 정할 때, SRE·플랫폼 엔지니어는 LB·Ingress·CDN 설정과 "어느 구간이 느린가" 를 가리는 장애 분석에서 이 주제를 만난다.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `netp-h1-vs-h2` 를 돌리고 1KB 와 20KB 에서 승자가 바뀌는 이유를 설명

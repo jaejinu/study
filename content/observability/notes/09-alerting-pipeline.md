@@ -160,6 +160,28 @@ sum by (alertname) (increase(study_alerts_received_total{status="firing"}[7d])) 
 
 > 다음: [SLO 대시보드와 번레이트 패널](/observability/notes/11-slo-dashboard-burn-rate)
 
+## 실전에서는 어디에 쓰이나
+
+> 장애가 사람에게 닿는 경로(규칙 → Alertmanager → 채널 → 온콜)는 그 자체로 하나의 시스템이다. 이 경로가 느리거나 시끄럽거나 장애 중인 의존성에 기대면, 관측 데이터가 아무리 좋아도 대응이 늦는다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 클라우드 존 장애로 알림 수백 건 | 온콜이 폭주에 묻히지 않게 | `group_by` 로 묶고 inhibit 로 원인 알림만 남김 | 알림마다 개별 통지 |
+| 핀테크 결제 장애 | critical 만 즉시 깨우기 | severity 라우팅: critical → PagerDuty(`group_wait: 0s`), warning → 팀 채널 | 모든 알림을 한 채널로 |
+| 정기 점검·마이그레이션 창 | 예정된 다운타임에 안 깨우기 | `amtool silence add ... --duration` | 규칙 주석 처리 — 되돌리기를 잊는다 |
+| 알림 수신 웹훅·자동 조치 | 장애 난 의존성 때문에 알림이 사라짐 | 메모리 버퍼에 먼저, 의존 저장은 짧은 타임아웃 best-effort | 장애 의존성과 무관한 외부 채널 |
+| 모니터링 서버 자체 다운 | "조용함 = 정상" 착각 방지 | 항상 firing 인 Watchdog → 외부 dead man's switch | 없음 — 아무도 모른다 |
+
+**이럴 땐 안 맞는다**
+- `for` 를 몇 초로 짧게 → 일시 스파이크마다 깨운다. 감지 지연과 오탐 사이에서 정한다.
+- 웹훅 자동 조치(재시작)를 상한 없이 → 재시작 폭주로 장애를 키운다. 멱등하게, 시간당 횟수 제한을 둔다.
+
+**누가 매일 만나나** — 온콜은 page 를 받아 런북대로 조치하고, SRE 는 MTTA·MTTR·조치 없이 닫힌 알림 비율로 주간 리뷰를 한다.
+
+**면접·실무 단골 질문**
+- Q. 알림이 안 왔다면 어디부터 보나? → Watchdog 도착 여부 → `prometheus_notifications_errors_total` → Alertmanager 라우트 매처 → 수신자 URL 순.
+- Q. 그룹화·억제·침묵의 차이는? → 여러 알림을 한 통으로 / 원인 알림이 있으면 결과 알림 숨김 / 정해진 시간 동안 특정 알림을 끔.
+
 ## 실습 체크리스트
 
 - [ ] 관측성 대시보드에 Watchdog(info) 가 도착해 있는지 확인

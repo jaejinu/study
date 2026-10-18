@@ -183,6 +183,28 @@ jobs:
       - uses: gitleaks/gitleaks-action@<sha> # v2
 ```
 
+## 실전에서는 어디에 쓰이나
+
+> 러너와 CI 보안은 "CI 가 사내망 DB 에 접근해야 한다" 거나 "의존한 서드파티 액션이 탈취됐다" 는 소식을 들을 때 등장한다. CI 는 코드 실행 권한과 배포 자격 증명이 만나는 곳이다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 사내망 자원을 쓰는 통합 테스트 | VPC 안 DB·레지스트리 접근 | 쿠버네티스 ARC 에페메럴 러너 + NetworkPolicy | GitHub-hosted + 터널 — 노출 면이 커진다 |
+| ML·모바일 빌드 | GPU·arm64·Mac 하드웨어 | 레이블로 지정한 self-hosted 또는 larger runner | 외부 빌드 서비스 |
+| 오픈소스 프로젝트 | 포크 PR 의 악성 코드 | `pull_request` 로 테스트, `pull_request_target` 은 메타데이터만, self-hosted 금지 | 메인테이너가 수동으로 검토 후 실행 |
+| 공급망 보안이 중요한 조직 | 서드파티 액션 태그 탈취(tj-actions 사례) | 액션 SHA 고정 + Dependabot, 조직 허용 목록 | 액션 대신 `run:` 스크립트 몇 줄 |
+| 클라우드 배포 파이프라인 | 장기 비밀 제거 | OIDC + `environment:production` 조건 신뢰 정책 | Vault 에서 잡 실행 시점에 비밀 발급 |
+
+**이럴 땐 안 맞는다**
+- 공개 저장소에 self-hosted 러너 → 포크 PR 코드가 내 인프라에서 실행된다. GitHub-hosted 를 쓴다.
+- 로그 마스킹을 시크릿 방어로 믿기 → base64·외부 전송으로 우회된다. 시크릿 자체를 줄인다(OIDC).
+
+**누가 매일 만나나** — 플랫폼 엔지니어가 러너 풀 용량·이미지 패치를 관리할 때, 보안 엔지니어가 워크플로 PR 에서 `permissions`·트리거·스크립트 인젝션을 리뷰할 때.
+
+**면접·실무 단골 질문**
+- Q. `pull_request_target` 이 위험한 이유? → 베이스 브랜치의 시크릿·쓰기 토큰으로 실행되는데 PR 코드를 체크아웃하면 공격자 코드가 그 권한으로 돈다.
+- Q. `run:` 에 `${{ github.event.pull_request.title }}` 을 넣으면? → 스크립트 인젝션. 환경 변수로 받아 `"$TITLE"` 로 쓴다.
+
 ## 실습 체크리스트
 
 - [ ] 이 저장소 CI 에 최상위 `permissions: { contents: read }` 를 넣고 모든 잡이 여전히 통과하는지 확인

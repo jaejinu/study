@@ -129,6 +129,29 @@ Netty·gRPC·Kafka 클라이언트·NIO 파일 채널은 GC 가 옮기지 않는
 - 이 사이트의 [Redis 메모리 노트](/redis/notes/12-memory-performance)가 `used_memory` 와 `used_memory_rss`(+ 단편화)를 구분하듯, 자바도 "힙 사용량" 과 "프로세스 RSS" 를 **둘 다** 대시보드에 둬야 한다. Prometheus 에선 `jvm_memory_used_bytes{area="heap"}` 와 `process_resident_memory_bytes`(또는 k8s 의 `container_memory_working_set_bytes`)를 같은 패널에.
 - Node.js 도 같다: `heapUsed` 는 V8 힙, `rss` 는 Buffer·네이티브 애드온까지([Node.js 10편: GC 와 힙](/nodejs/notes/10-gc-heap)).
 
+## 실전에서는 어디에 쓰이나
+
+> "`-Xmx` 는 512MB 인데 컨테이너가 OOMKilled 됐다" — 컨테이너에 자바를 올리는 팀이라면 한 번은 겪는다. 힙 밖 메모리를 알아야 메모리 한도·대시보드·장애 원인을 제대로 잡는다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 쿠버네티스 위 Spring Boot 서비스 | 힙은 여유인데 OOMKilled(137) | 힙 = 한도의 50~75%, 나머지는 메타스페이스·스레드·다이렉트·코드 캐시 몫 | 한도를 넉넉히(비용 증가) |
+| Netty·gRPC 게이트웨이, Kafka 클라이언트 | 다이렉트 버퍼가 쌓여 RSS 증가 | `-XX:MaxDirectMemorySize` 명시, Netty 풀 메트릭 확인 | 힙 버퍼 사용(복사 비용) |
+| 큰 힙을 쓰는 캐시·검색 서비스 | 힙을 32GB 넘기자 오히려 담을 수 있는 양 감소 | 32GB 미만 유지(압축 OOP), 넘길 거면 확 크게 | 오프힙 캐시, Redis 로 분리 |
+| 대량 데이터 처리 배치 | 박싱 컬렉션으로 메모리가 몇 배 | 원시 배열·원시 컬렉션, JOL 로 객체 크기 측정 | 스트리밍 처리로 한꺼번에 올리지 않기 |
+| 스레드가 많은 레거시 서버 | `unable to create native thread`, RSS 지속 증가 | 스레드 풀 상한, `MALLOC_ARENA_MAX=2`, 가상 스레드 | jemalloc |
+| 운영 대시보드 | 힙 문제인지 힙 밖 문제인지 구분 | `jvm_memory_used_bytes{area="heap"}` 와 `container_memory_working_set_bytes` 를 한 패널에, 필요 시 NMT | APM 의 메모리 뷰 |
+
+**이럴 땐 안 맞는다**
+- NMT 를 모든 운영 인스턴스에 상시 켜기: 오버헤드가 5~10% 다 → 조사 대상 인스턴스에서만 켠다.
+- reserved 를 실제 사용량으로 읽기: 주소 공간 예약일 뿐이다 → committed 와 RSS 를 본다.
+
+**누가 매일 만나나** — SRE·플랫폼 엔지니어가 OOMKilled 이벤트를 조사하고 리소스 한도를 정할 때, 백엔드 개발자가 메모리 한도를 바꾸는 PR 을 낼 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. 프로세스 메모리가 `-Xmx` 보다 큰 이유는? → 메타스페이스·코드 캐시·스레드 스택·GC 자료구조·다이렉트 버퍼·기타 네이티브 할당이 힙 밖에 있다.
+- Q. 힙을 32GB 이상으로 늘릴 때 주의할 점은? → 압축 OOP 가 꺼져 참조가 8바이트가 되므로, 늘린 만큼 담지 못하거나 오히려 줄 수 있다.
+
 ## 실습 체크리스트
 
 - [ ] `-XX:NativeMemoryTracking=summary` 로 내 앱을 띄우고 reserved 와 committed 의 차이가 가장 큰 영역 찾기

@@ -252,6 +252,28 @@ histogram_quantile(0.95, sum by (le) (rate(probe_http_duration_seconds_bucket{ph
 4. 인증서 교체 후 "내 브라우저에선 되는데 파트너 서버 연동이 실패" 한다. 첫 확인은? — `openssl s_client -showcerts` 로 중간 인증서가 체인에 포함됐는지.
 5. TLS 1.3 이 1.2 보다 빠른 이유를 RTT 로 설명하라. — ClientHello 에 key_share 를 미리 실어 1 RTT 에 키 합의를 끝내고, 재개 시 0-RTT 도 가능하다.
 
+## 실전에서는 어디에 쓰이나
+
+> 프록시·LB 뒤에서 HTTP 서비스를 운영하거나 HTTPS 인증서를 관리할 때, keep-alive·캐시 헤더·TLS 설정이 간헐적 장애와 지연의 원인으로 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 클라우드 LB 뒤 Node·Java 서비스 | 트래픽과 무관한 낮은 비율의 502 | 업스트림 keepAliveTimeout 을 LB 유휴 시간보다 길게 | 502 재시도 — 원인 남음 |
+| B2B 파트너 연동 API | 인증서 교체 후 일부 클라이언트만 실패 | `openssl s_client -showcerts` 로 중간 인증서 확인 | 브라우저 확인 — 문제가 안 보임 |
+| 미디어·커머스 정적 자원 | CDN·브라우저 캐시 효율 | `max-age`·`s-maxage`·`ETag`·`stale-while-revalidate` | `no-cache` 오용 — 매번 재검증 |
+| AI 채팅 서비스의 SSE 스트리밍 | 토큰이 끝나서야 한꺼번에 도착 | SSE 경로에서 프록시 버퍼링 끄기 | 기본 버퍼링 |
+| 모든 HTTPS 서비스 | 인증서 만료 장애 예방 | blackbox_exporter 로 만료 30·7일 전 알림 | 달력 메모 |
+
+**이럴 땐 안 맞는다**
+- HSTS 를 처음부터 긴 `max-age` + `includeSubDomains` + `preload` 로 거는 것 — 하위 도메인 하나라도 HTTPS 가 없으면 오래 접속 불가다. 짧게 시작해 늘린다.
+- 운영에서 `NODE_TLS_REJECT_UNAUTHORIZED=0` — 사설 CA 는 `NODE_EXTRA_CA_CERTS` 로 신뢰시킨다.
+
+**누가 매일 만나나** — 백엔드가 서버 타임아웃과 캐시 헤더를 정할 때, SRE·플랫폼 엔지니어가 LB·Ingress 의 TLS 설정과 인증서 만료 알림을 운영할 때.
+
+**면접·실무 단골 질문**
+- Q. 간헐적 502 의 대표 원인은? → 업스트림의 keep-alive 타임아웃이 LB 보다 짧아, 이미 닫힌 연결로 요청이 가는 경쟁.
+- Q. `no-cache` 와 `no-store` 의 차이는? → 저장하되 매번 재검증 대 저장 자체 금지.
+
 ## 실습 체크리스트
 
 - [ ] `curl -v` 로 요청/응답 헤더 읽기, `Connection: keep-alive` 와 `Content-Length` 확인 (실험실)

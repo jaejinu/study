@@ -148,6 +148,28 @@ cat /proc/net/softnet_stat                          # 열 2: 백로그 드롭, �
 - node_exporter 의 `node_netstat_*`, `node_softnet_*`, `node_network_*_drop_total` 을 수집해 "드롭이 어느 층에서" 를 대시보드로.
 - 커널 파라미터 변경은 sysctl 파일로 버전 관리하고, 변경 전후 벤치마크(같은 부하)를 남긴다. 튜닝 값을 복사해 오는 것은 측정 없이는 의미가 없다.
 
+## 실전에서는 어디에 쓰이나
+
+> 패킷·연결·Service 가 많은 서버에서 CPU·드롭·지연이 커널 네트워크 경로에서 생길 때, 그리고 eBPF 로 관측하거나 데이터패스를 바꿀 때 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 대규모 쿠버네티스 클러스터 | Service 수천 개의 iptables 선형 평가 비용 | IPVS 또는 eBPF 데이터패스(Cilium) | kube-proxy iptables 유지 |
+| NAT·포트 매핑이 많은 노드 | conntrack 포화로 새 연결이 조용히 버려짐 | `nf_conntrack_count` 알림, `nf_conntrack_max`·타임아웃 조정 | 증상만 보고 노드 교체 |
+| DDoS 방어·L4 로드밸런서 | sk_buff 생성 전에 패킷 처리 | XDP 로 조기 드롭·리다이렉트 | iptables·유저 공간 필터 — CPU 소모 |
+| 지연 민감 Redis·DB 서비스 | 컨테이너 네트워크 오버헤드 축소 | 호스트 네트워크, 같은 노드 배치, 라우팅 모드 CNI | VXLAN 오버레이 기본값 |
+| 운영 관측 | 패킷 저장 없이 연결·재전송 추적 | bcc `tcplife`·`tcpretrans`, bpftrace | tcpdump 상시 캡처 — 저장·CPU 부담 |
+
+**이럴 땐 안 맞는다**
+- 측정 없이 sysctl 값을 바꾸는 것 — 증상 숫자 → CPU 위치 → 큐·버퍼 순서로 좁힌 뒤 하나씩 바꾸고 전후를 잰다.
+- macOS 에서 eBPF 도구를 찾는 것 — 없다. 리눅스 호스트나 Docker Desktop VM 안에서 쓴다.
+
+**누가 매일 만나나** — SRE·플랫폼·네트워크 엔지니어가 노드 성능과 패킷 드롭을 분석할 때, 보안 담당이 eBPF 기반 런타임 감시(Falco·Tetragon)를 운영할 때.
+
+**면접·실무 단골 질문**
+- Q. Service 가 많아지면 kube-proxy(iptables)가 느려지는 이유는? → 규칙을 선형으로 평가하기 때문. IPVS(해시)나 eBPF 로 바꾼다.
+- Q. "네트워크가 느리다" 가 실제로는 수신 측 CPU 문제인 경우가 많은 이유는? → 데이터센터 안 네트워크 자체는 수십 µs 이고, p99 를 키우는 것은 softirq·스케줄링·GC·큐잉이다.
+
 ## 실습 체크리스트
 
 - [ ] Docker Desktop VM 에 들어가(`docker run --privileged --pid=host -it alpine nsenter -t 1 -m -u -n -i sh`) `ss -ti`, `nstat`, `/proc/interrupts` 보기

@@ -153,6 +153,28 @@ $ node --max-semi-space-size=64 semi.mjs
 - **서버 메트릭으로 GC 보기.** `/api/metrics` 의 `study_process_nodejs_gc_duration_seconds`(prom-client 기본 메트릭, kind=minor/major/incremental)와 `study_process_nodejs_heap_size_used_bytes` 를 Grafana 에 그리면 위 표의 "짧게 삶/오래 삶" 차이를 운영 중에 볼 수 있다.
 - **컨테이너 배포.** `k8s/web.yaml` 의 web Deployment 는 `limits: { memory: 512Mi }` 다. 이 노트의 규칙대로라면 `NODE_OPTIONS=--max-old-space-size=384` 를 함께 두는 편이 안전하다(현재는 기본값에 맡김 — 개선 여지).
 
+## 실전에서는 어디에 쓰이나
+
+> GC 와 힙 설정은 컨테이너에서 Node 를 돌리는 순간 등장한다. 종료 코드 134·137 과 주기적인 지연 스파이크가 대표 증상이다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| k8s 위 Node API | 로그 없는 OOMKilled(137) | `--max-old-space-size` 를 컨테이너 한도의 70~75% 로 | 메모리 한도 증설 |
+| SSR 서버 | 요청마다 만든 임시 객체로 GC 증가 | 핫 경로의 할당·객체 수명 줄이기 | 렌더 결과 캐시 |
+| 인메모리 캐시를 둔 서비스 | Old 공간이 계속 커짐 | LRU 상한·TTL | Redis 같은 외부 캐시 |
+| 지연 민감 API (p99 SLO) | Mark-Compact 멈춤이 꼬리 지연으로 | gc 메트릭(kind=major)과 지연 그래프 대조 | 인스턴스를 작게 여러 개 |
+| 숫자 데이터 처리 워커 | 원소마다 HeapNumber 객체 | TypedArray 로 연속 메모리 | 스트리밍 처리 |
+
+**이럴 땐 안 맞는다**
+- 감으로 `--max-semi-space-size` 같은 플래그 튜닝 — 본문 실측에서도 효과가 흔들렸다. 실부하의 p99·GC 시간을 재고 바꾼다.
+- 객체 풀링으로 GC 줄이기 — 오래 사는 객체가 늘어 대개 역효과다. 측정 후에만.
+
+**누가 매일 만나나** — SRE·플랫폼 엔지니어가 Node 컨테이너의 메모리 한도와 `NODE_OPTIONS` 를 정할 때, 백엔드 개발자가 OOM 재시작의 원인을 찾을 때.
+
+**면접·실무 단골 질문**
+- Q. 종료 코드 134 와 137 의 차이 → V8 힙 상한 도달 abort vs 커널의 OOM 킬(컨테이너 한도).
+- Q. 세대별 GC 를 쓰는 이유 → 대부분의 객체는 젊어서 죽고, Scavenge 비용은 살아남은 객체에만 비례한다.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `node-gc-heap` 을 돌려 두 패턴의 GC 횟수·시간·Old 크기 비교

@@ -129,6 +129,30 @@ access_log /var/log/nginx/access.json json;
 - `open_file_cache` 정적 파일 메타 캐시
 - `reset_timedout_connection on;`
 
+## 실전에서는 어디에 쓰이나
+
+> 트래픽이 늘거나 공개 API 가 남용되기 시작할 때, 그리고 HTTPS 를 붙여야 할 때 앱을 고치지 않고 앞단에서 가장 싸게 막는 수단이 캐시·레이트 리밋·TLS 종단이다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 정적 번들·상품 이미지 | 원본 서버 부하와 응답 지연 | `proxy_cache` + 해시가 든 URL 로 장기 캐시 | CDN, 객체 스토리지 직접 서빙 |
+| 뉴스·미디어 인기 페이지 | 만료 순간 동시 미스로 원본이 몰매(썬더링 허드) | `proxy_cache_lock on` + `use_stale updating` + `background_update` | CDN 요청 병합, Redis single-flight |
+| 로그인·OTP 엔드포인트 | 무차별 대입·크롤러 남용 | IP 별 `limit_req` + `nodelay` + `limit_req_status 429` | WAF, Redis 기반 전역 리미터 |
+| SaaS 파일 업로드 경로 | 순간 몰림을 거절 대신 완충 | `burst` 를 `nodelay` 없이 두어 줄 세우기 | 큐로 받아 비동기 처리 |
+| 공공·사내 서비스 HTTPS 전환 | 인증서 발급·갱신과 안전한 cipher | certbot 자동 갱신, HSTS, Mozilla intermediate 프로필 | Caddy·Traefik ACME, k8s cert-manager |
+| 운영 대시보드 | 느린 원인이 앱인지 네트워크인지 구분 | JSON 로그의 `$request_time` vs `$upstream_response_time` → Loki | APM 트레이스 |
+
+**이럴 땐 안 맞는다**
+- 로그인 사용자마다 다른 응답(장바구니·마이페이지)을 프록시 캐시: `Set-Cookie`·`private` 응답을 억지로 캐시하면 남의 정보가 보일 수 있다 → 앱 레벨 캐시(Redis)에서 사용자 키로 분리.
+- 여러 대에 걸친 정확한 한도(유료 API 쿼터): 노드 단위라 대수만큼 커진다 → Redis 기반 리미터나 API 게이트웨이.
+- 즉시 무효화가 필요한 콘텐츠: 오픈소스 Nginx 엔 PURGE 가 없다 → 버전이 든 키, 또는 purge 를 지원하는 CDN.
+
+**누가 매일 만나나** — SRE·플랫폼 엔지니어는 트래픽 급증 때 `X-Cache` 비율과 `limiting requests` 로그를 본다. 보안 담당은 인증서 만료 알림과 보안 헤더를 점검하고, 백엔드 개발자는 "왜 내 API 가 429/503 을 받지?" 를 조사할 때 이 설정에 닿는다.
+
+**면접·실무 단골 질문**
+- Q. `limit_req` 의 `burst` 와 `nodelay` 차이는? → 통과 수는 `1 + burst` 로 같고, `nodelay` 는 즉시 통과, 없으면 rate 간격으로 지연시킨다.
+- Q. 캐시 스탬피드를 Nginx 에서 어떻게 막나? → `proxy_cache_lock` 으로 원본엔 한 요청만, 대기까지 없애려면 `use_stale updating` + `background_update`.
+
 ## 실습 체크리스트
 
 - [ ] `/_next/static/` 자원을 두 번 받아 `X-Cache: HIT` 확인

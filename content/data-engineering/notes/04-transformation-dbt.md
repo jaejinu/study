@@ -308,6 +308,28 @@ jq -r '.results | sort_by(-.execution_time) | .[:5][] | [.unique_id, .execution_
 3. `dbt run` 대신 `dbt build` 를 쓰는 이유는? — 테스트 실패 시 하류를 건너뛰어 틀린 데이터의 전파를 막는다.
 4. 증분 모델 실행 시간이 어느 날부터 10배가 됐다. 무엇을 확인하나? — `is_incremental` 필터가 파티션 프루닝되는지, `{{ this }}` 서브쿼리, lookback 창 크기, 원천 데이터 급증.
 
+## 실전에서는 어디에 쓰이나
+
+> 분석 SQL 이 수백 개로 늘고 "매출" 정의가 대시보드마다 달라질 때, 변환 로직을 버전 관리·코드 리뷰·테스트·CI 아래 두려고 dbt 가 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 매출·주문 마트 | 지표 정의를 한 곳에 | staging → marts 계층, `ref` 의존, `dbt build` 로 테스트 실패 시 하류 중단 | BI 도구 안 계산 필드(정의가 흩어진다) |
+| SaaS 구독 분석 | 플랜·국가 변경 이력으로 당시 기준 집계 | snapshot(SCD2) `dbt_valid_from/to` 로 시점 조인 | 현재 상태만 보관(과거 재현 불가) |
+| 대용량 이벤트 사실 테이블 | 매일 전체 재빌드 비용 | incremental merge·microbatch + lookback 으로 늦은 데이터 흡수 | 매번 table 전체 재생성 |
+| 데이터 팀 PR 리뷰 | 변경 영향 확인을 빠르게 | Slim CI `state:modified+ --defer` | PR 마다 전체 빌드 |
+| 앱 팀과의 경계 | 원천 열 추가·타입 변경 감지 | 모델 계약(`contract: enforced`), `on_schema_change: fail` | 대시보드 오류로 사후 발견 |
+
+**이럴 땐 안 맞는다**
+- SQL 로 표현하기 어려운 변환(복잡한 파이썬 로직, ML 추론, 외부 API 호출) — dbt 는 엔진 안 SELECT 다. Spark·파이썬 작업으로.
+- 초 단위 신선도가 필요한 지표 — 배치 실행 단위다. 스트림 처리나 엔진의 MV.
+
+**누가 매일 만나나** — 분석 엔지니어·데이터 엔지니어가 모델을 추가하고 테스트 실패를 고칠 때, 분석가가 "이 열은 어디서 왔나" 를 dbt docs 계보로 찾을 때.
+
+**면접·실무 단골 질문**
+- Q. 증분 모델에서 늦게 온 데이터는 어떻게 처리하나? → lookback 창으로 겹쳐 읽고 `unique_key` merge 로 중복을 합친다(또는 microbatch 의 lookback).
+- Q. `append` 증분의 위험은? → 재실행하면 중복된다. merge·delete+insert·insert_overwrite 로 멱등하게 만든다.
+
 ## 실습 체크리스트
 
 - [ ] `pip install dbt-duckdb` 로 프로젝트를 만들고 Parquet 파일을 source 로 등록해 staging 모델 하나 만들기

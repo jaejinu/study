@@ -164,6 +164,28 @@ public final class InsufficientStockException extends DomainException {
 | 전역 처리 | `@RestControllerAdvice` + `@ExceptionHandler` 에서 한 번만 로그하고 Problem Details 로 응답 |
 | 자원 | `JdbcTemplate`·`RestClient` 가 연결을 닫아 주지만, 직접 연 `InputStream` 은 try-with-resources |
 
+## 실전에서는 어디에 쓰이나
+
+> 예외 설계는 운영 로그에서 원인을 찾을 수 있는지, 트랜잭션이 롤백되는지, 자원이 새는지를 정한다. 장애 대응 때 가장 먼저 읽는 것이 스택 트레이스와 `Caused by:` 체인이다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 주문 서비스(Spring) | checked 예외가 나도 롤백되지 않아 반쯤 저장된 주문 | unchecked 도메인 예외, 또는 `rollbackFor = Exception.class` | 결과 타입으로 실패 반환 후 명시적 처리 |
+| 공개 API 의 에러 응답 | 일관된 에러 형식, 로그는 한 번만 | `@RestControllerAdvice` 에서 로그 + Problem Details(RFC 9457) | 컨트롤러마다 try/catch |
+| 엑셀 업로드·대량 입력 검증 | 수천 건 실패마다 예외를 만드는 비용 | 예외 대신 검증 결과 객체에 누적 | 스택 추적 생략 예외(뜨거운 경로만) |
+| 파일·소켓·DB 연결을 직접 다루는 배치 | 예외 경로의 자원 누수 → 커넥션 고갈 | try-with-resources, close 예외는 suppressed 로 보존 | `JdbcTemplate` 같은 프레임워크 템플릿에 위임 |
+| 운영 로그의 "메시지 없는 NPE" | JIT 가 미리 만든 예외로 바꿔 스택 정보 손실 | `-XX:-OmitStackTraceInFastThrow` | 같은 예외의 첫 발생 로그 찾기 |
+
+**이럴 땐 안 맞는다**
+- 흐름 제어(없으면 예외 → 루프에서 수천 번): 스택 추적 비용이 크고 읽기 어렵다 → `Optional`·`contains` 로 먼저 확인.
+- 모든 계층에서 잡고 로그하고 다시 던지기: 같은 오류가 여러 번 찍혀 로그가 오염된다 → 최상위 핸들러 한 곳에서만 로그.
+
+**누가 매일 만나나** — 백엔드 개발자가 장애 로그의 `Caused by:` 를 따라 내려갈 때, SRE 가 Loki 에서 같은 에러가 다섯 번씩 찍힌 노이즈나 원인이 잘린 메시지를 볼 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. Spring `@Transactional` 은 어떤 예외에 롤백하나? → 기본은 unchecked(RuntimeException·Error)만. checked 예외는 커밋된다.
+- Q. try-with-resources 가 try/finally 보다 나은 점은? → 역순으로 닫고, 본문 예외를 우선하며, close 예외를 suppressed 로 보존해 원인이 덮이지 않는다.
+
 ## 정리
 
 - 프로그래밍 오류는 unchecked, 예상되는 업무 실패는 도메인 예외 또는 반환 타입. 빈 catch 금지, 원인(cause)은 항상 연결.

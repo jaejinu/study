@@ -72,6 +72,27 @@ study_progress_lab_total{subject}  gauge   성공한 실험 수
 - 트레이스: OpenTelemetry 자동 계측 + 컨텍스트 전파(W3C `traceparent` 헤더). 샘플링(1~10%)으로 비용 제어. 저장은 Tempo/Jaeger.
 - Grafana 에서 로그의 trace_id 클릭 → 트레이스, 트레이스에서 → 관련 로그/메트릭으로 이동하도록 데이터소스를 연결한다.
 
+## 실전에서는 어디에 쓰이나
+
+> 관측은 계측된 만큼만 보인다. 장애가 났는데 "그 지표가 없다" 를 막는 것이 exporter 와 앱 계측이고, 라벨을 잘못 설계하면 관측 시스템이 먼저 장애가 난다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 핀테크 백오피스 DB 지연 | 커넥션 고갈인지 복제 지연인지 | postgres_exporter 의 커넥션 수·복제 지연·dead tuple | DB 콘솔에서 수동 조회 |
+| Kafka 기반 주문 파이프라인 | 컨슈머가 밀리고 있나 | kafka_exporter 의 컨슈머 LAG 알림 | "주문 확인이 늦다" 는 고객 문의로 인지 |
+| Node.js API 전체 지연 | 이벤트 루프가 막혔나 | prom-client `collectDefaultMetrics` 의 이벤트 루프 지연 | 일이 터진 뒤 프로파일러 붙이기 |
+| 커머스 결제 퍼널 | 기술 지표는 정상인데 주문이 줄었다 | `checkout_completed_total` 같은 비즈니스 counter 를 대시보드에 | BI 리포트 — 하루 늦게 안다 |
+| 신규 서비스 계측 | 언어·벤더가 바뀌어도 계측 코드 유지 | OpenTelemetry SDK 자동 계측 + OTLP | 벤더 전용 에이전트 — 교체 비용 |
+
+**이럴 땐 안 맞는다**
+- 요청마다 값이 다른 것(user_id, 실제 URL, request_id)을 라벨로 → 시계열이 폭발해 Prometheus 메모리가 터진다. 라벨은 route 템플릿까지, 식별자는 로그·트레이스로.
+- 몇 초 만에 끝나는 배치 작업을 pull 로 → 스크레이프 전에 사라진다. Pushgateway 나 OTLP push 를 쓴다.
+
+**누가 매일 만나나** — 백엔드는 새 엔드포인트와 비즈니스 이벤트에 메트릭을 심는다. 플랫폼 팀은 DB·캐시·메시지 큐 exporter 를 표준 배포 단위로 깔아 둔다.
+
+**면접·실무 단골 질문**
+- Q. 라벨에 무엇을 넣으면 안 되나? → 값의 종류가 무한한 것. 라벨 조합 수 = 시계열 수 = 메모리와 비용.
+
 ## 실습 체크리스트
 
 - [ ] http://localhost:3000/api/metrics 를 열어 형식 읽기

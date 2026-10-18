@@ -190,6 +190,32 @@ docker info --format '{{.OSType}} {{.Architecture}} kernel={{.KernelVersion}} cg
 - 컨테이너 메트릭은 cgroup 파일에서 나온다. `docker stats` 의 MEM USAGE 는 페이지 캐시를 일부 포함하므로 앱 RSS 보다 크게 보일 수 있다.
 - 로그 드라이버 기본값은 `json-file` 이고 **크기 제한이 없다**. 오래 도는 컨테이너는 `--log-opt max-size=10m --log-opt max-file=3` 을 준다.
 
+## 실전에서는 어디에 쓰이나 — Docker 지도
+
+> Docker 는 "애플리케이션과 실행 환경을 하나의 불변 이미지로 묶어 어디서나 같은 방식으로 띄우는" 표준 포장 단위다. 개발 PC 에서 CI, 운영 클러스터까지 같은 이미지가 흘러간다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 신규 입사자가 하루 만에 로컬 개발 환경 구성 | DB·캐시·브로커를 `compose up` 한 번으로 | [Docker Compose — 여러 컨테이너를 한 파일로](/docker/notes/05-compose) |
+| 웹 서비스 배포 파이프라인(빌드 → 스테이징 → 운영) | 이미지 한 번 빌드해 태그·다이제스트로 승격 | [이미지와 Dockerfile](/docker/notes/03-images-dockerfile) |
+| 모노레포 CI 의 빌드 시간·캐시 비용 | BuildKit 캐시, 멀티 플랫폼 빌드 | [심화 — BuildKit, buildx, 멀티플랫폼, 캐시 전략](/docker/notes/09-buildkit-multiplatform) |
+| DB·메시지 브로커를 컨테이너로 운영 | 볼륨으로 데이터 보존, 네트워크 분리 | [볼륨과 네트워크](/docker/notes/04-volumes-networks) |
+| 새벽 장애: 컨테이너가 재시작 루프 | 종료 코드·로그·nsenter 로 원인 추적 | [운영 명령과 디버깅](/docker/notes/07-ops-debugging) |
+| 핀테크·공공의 보안 심사 | 비루트·capability 최소화·이미지 스캔 | [심화 — 컨테이너 보안 강화](/docker/notes/10-security-hardening) |
+| 컨테이너 메모리 제한과 JVM·Node 힙 튜닝 | cgroup 이 실제로 세는 것 | [심화 — 컨테이너의 실체: namespace, cgroup, overlayfs](/docker/notes/08-internals-namespaces-cgroups) |
+| 이미지 크기·풀 시간 줄이기 | 멀티스테이지, 작은 베이스 | [이미지 최적화와 보안](/docker/notes/06-optimization-security) |
+
+**회사 규모에 따라**
+- 스타트업: 단일 VM 이나 PaaS 에 이미지를 올리고 Compose 로 개발·소규모 운영까지 해결한다.
+- 성장기: CI 에서 이미지를 빌드·스캔·서명해 레지스트리에 쌓고, 운영은 Kubernetes·ECS 같은 오케스트레이터로 옮긴다.
+- 대규모 조직: 플랫폼 팀이 승인된 베이스 이미지·빌드 템플릿을 제공하고, 운영 노드에서는 Docker 데몬 대신 containerd 가 이미지를 실행한다.
+
+**이럴 땐 안 맞는다**
+- 다른 고객의 신뢰할 수 없는 코드를 돌리는 경우 — 커널을 공유하므로 gVisor·Firecracker 같은 더 강한 격리 경계를 쓴다.
+- 데스크톱 GUI 앱이나 커널 모듈처럼 호스트 커널·하드웨어에 강하게 묶인 소프트웨어 — 패키지 설치나 VM 이 낫다.
+
+**누가 매일 만나나** — 백엔드 개발자는 로컬 의존 서비스를 띄울 때, 플랫폼·SRE 는 CI 빌드 실패와 운영 컨테이너 재시작을 조사할 때 매일 만난다.
+
 ## 실습 체크리스트
 
 - [ ] `docker top` 과 `docker exec ... ps` 로 같은 프로세스의 PID 가 안팎에서 다른 것 확인

@@ -210,6 +210,28 @@ kafka-acls --list --topic orders
 
 실험 `sec-redis-acl` 을 돌려 보면 `default` 사용자가 `nopass` 라는 메모가 뜬다 — 그게 "지금" 열인 이유다.
 
+## 실전에서는 어디에 쓰이나
+
+> 데이터 스토어 하드닝은 "DB 를 다른 서버에서도 접속하게 열자", "앱 계정이 테이블 소유자다", "Kafka 토픽을 아무 서비스나 읽는다" 는 순간에 등장한다. 가장 값진 자산이 있는 곳이라 실수 하나의 피해가 가장 크다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 클라우드 VM 에 직접 띄운 Redis | 인터넷 스캔 봇의 `CONFIG SET dir` 공격 | 내부망 바인딩, `default off`, 앱 ACL 사용자에 `-@dangerous`, non-root 실행 | 관리형 Redis — 노출·패치를 맡길 수 있다 |
+| 여러 서비스가 쓰는 공용 캐시 | 세션 서비스가 결제 키까지 읽고 쓰는 문제 | ACL 키 패턴(`~session:*`)으로 서비스별 네임스페이스 강제 | 서비스별 인스턴스 분리 — 비용이 는다 |
+| 웹 서비스의 PostgreSQL | SQL 인젝션 한 번에 `drop table` | 파라미터 바인딩 + 앱 역할은 DML 만, 소유자는 마이그레이션 전용 | 앱이 슈퍼유저로 접속 — 피해 범위가 DB 전체 |
+| B2B SaaS·개인정보 서비스 | 코드가 where 를 빠뜨려도 남의 행이 안 보이게 | PostgreSQL RLS + `set local` 로 사용자·테넌트 지정 | 앱 코드 검사만 — 누락이 생긴다 |
+| 사내 이벤트 플랫폼(Kafka) | 아무 서비스나 토픽 생성·구독 | SASL_SSL + SCRAM/OIDC, 토픽·그룹 ACL, `allow.everyone.if.no.acl.found=false` | PLAINTEXT 내부망 신뢰 — 내부자·측면 이동에 무방비 |
+
+**이럴 땐 안 맞는다**
+- `127.0.0.1` 에만 묶인 로컬 학습·개발 환경에 운영 수준 TLS·ACL 을 전부 거는 것 — 수용한 위험으로 문서화하고, 외부에 여는 순간 적용한다.
+- `rename-command` 로 위험 명령을 숨기는 구식 방법에 기대는 것 — 복제·도구 호환이 깨지기 쉽다. ACL 카테고리로 막는다.
+
+**누가 매일 만나나** — DBA·데이터 플랫폼 엔지니어는 역할·ACL·pg_hba 를 관리할 때, 백엔드 개발자는 연결 문자열의 계정·`sslmode` 를 정하고 쿼리를 바인딩으로 쓸 때, 보안 담당은 `ACL LOG`·pgaudit 이상 징후를 볼 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. 인증 없는 Redis 가 왜 서버 장악으로 이어지나 → `CONFIG SET dir/dbfilename` + `SAVE` 로 cron·authorized_keys 위치에 파일을 쓸 수 있다.
+- Q. `sslmode=require` 면 충분한가 → 암호화만 하고 서버 인증서를 검증하지 않아 MITM 을 못 막는다. `verify-full` 을 쓴다.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `sec-redis-acl` 로 키 패턴·카테고리 제한과 `ACL LOG` 확인

@@ -195,6 +195,28 @@ docker run -d --init --name z2 alpine sh -c '...'  # tini 가 PID 1 이 되어 �
 - cAdvisor(kubelet 내장)가 cgroup 파일을 읽어 `container_memory_working_set_bytes`, `container_cpu_cfs_throttled_periods_total` 같은 메트릭을 낸다. 이 노트의 파일들이 그 메트릭의 원천이다 — [Kubernetes 모니터링 스택](/kubernetes/notes/10-monitoring-stack).
 - working_set = usage − 비활성 파일 캐시. Kubernetes 가 OOM·축출 판단에 쓰는 값이라 `docker stats` 와 숫자가 다를 수 있다.
 
+## 실전에서는 어디에 쓰이나
+
+> namespace·cgroup·overlayfs·런타임 계층은 "컨테이너 안과 밖의 숫자가 다르다", "제한을 줬는데 왜 느리거나 죽나" 를 설명해야 할 때 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| Kubernetes 위 JVM·Go 서비스 | 호스트 코어 수로 스레드를 만들어 스로틀링 | cgroup `cpu.max` 기준으로 `GOMAXPROCS`·JVM 컨테이너 지원 설정 | CPU limit 없이 requests 만 두기 |
+| 메모리 알림이 잦은 캐시 서버 | 사용량이 limit 근처인데 진짜 위험한지 판단 | `memory.stat` 의 anon/file 분리, `memory.events` 의 oom_kill | 무조건 limit 상향 — 비용만 는다 |
+| 사이드카 패턴(프록시·로그 수집기) | 앱과 같은 localhost 로 통신 | net namespace 공유(`--network=container:`, Pod) | 별도 서비스로 분리해 네트워크 호출 |
+| 서버리스·코드 실행 샌드박스 | 남의 코드를 커널 공유 없이 격리 | gVisor·Kata·Firecracker 같은 대체 런타임 | 일반 runc 컨테이너 — 신뢰된 코드에만 |
+| 장시간 도는 워커 컨테이너 | 좀비 누적으로 PID 한도 도달 | `--init`(tini) 또는 PID 1 에서 자식 수거 | 앱이 직접 `wait()` 구현 |
+
+**이럴 땐 안 맞는다**
+- 매일 운영을 `unshare`·`runc` 로 직접 하는 것 — 원리 이해와 디버깅용이다. 운영은 Docker·containerd 같은 상위 도구에 맡긴다.
+- 컨테이너 격리만으로 멀티테넌트 보안 경계를 삼는 것 — 커널 공유가 한계다. VM·microVM 경계를 더한다.
+
+**누가 매일 만나나** — SRE 와 플랫폼 엔지니어는 `container_cpu_cfs_throttled_periods_total`·working_set 메트릭을 해석할 때, 성능 담당 백엔드 개발자는 컨테이너 안 `nproc`·`free` 가 호스트 값을 보여 줄 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. 컨테이너와 VM 의 격리 차이 → 컨테이너는 namespace·cgroup 으로 격리된 프로세스, 커널은 호스트와 공유한다.
+- Q. Kubernetes Pod 안 컨테이너들이 localhost 로 통신하는 이유 → pause 컨테이너가 잡은 같은 net namespace 를 공유한다.
+
 ## 실습 체크리스트
 
 - [ ] `docker run --pid=host` 로 호스트 프로세스가 보이는 것과 기본 격리 비교

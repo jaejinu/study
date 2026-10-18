@@ -118,6 +118,26 @@ brew install k9s && k9s -n study
 - Operator 패턴과 CRD — 자신의 리소스 타입 정의하기
 - 서비스 메시(Istio, Linkerd), Gateway API, Cilium
 
+## 실전에서는 어디에 쓰이나
+
+> 장애 대응의 첫 10분은 대부분 이 노트의 순서(get → describe → events → logs --previous → exec/debug)다. 그다음 운영 안정성은 "누가 무엇을 할 수 있나"(RBAC)가 좌우한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| SaaS 배포 직후 장애 | 새 버전이 CrashLoopBackOff | `logs --previous`, `describe` 의 Last State·Exit Code | 먼저 `rollout undo` 로 복구하고 원인은 나중에 |
+| 사내 플랫폼 노드 패치 | 서비스 중단 없이 노드 교체 | `cordon` → `drain`(PDB 존중) → `uncordon` | 새 노드 풀을 만들고 옛 풀 삭제 |
+| 핀테크의 distroless 이미지 | 셸 없는 컨테이너 안에서 네트워크 확인 | `kubectl debug --image=nicolaka/netshoot --target` | 셸 있는 디버그 이미지 별도 배포 — 보안 정책과 충돌 |
+| 여러 팀·외주가 쓰는 클러스터 | 개발자에게 로그 읽기만 허용 | Role(pods, pods/log: get/list) + RoleBinding, `auth can-i` 검증 | 전원 cluster-admin — 사고 범위 무제한 |
+
+**이럴 땐 안 맞는다**
+- 여러 서비스에 걸친 장애를 `kubectl logs` 로 Pod 하나씩 → 중앙 로그·메트릭·트레이스로 범위부터 좁힌다 ([Kubernetes 에서의 관측](/observability/notes/07-kubernetes-observability)).
+- `--force --grace-period=0` 을 습관처럼 → StatefulSet 에서는 같은 정체성의 Pod 이 둘 뜰 수 있다. finalizer 와 노드 상태부터 본다.
+
+**누가 매일 만나나** — 알림을 받은 온콜 SRE·백엔드가 가장 먼저 치는 명령들이다. 보안·플랫폼 팀은 ServiceAccount 와 Role 바인딩을 정기적으로 리뷰한다.
+
+**면접·실무 단골 질문**
+- Q. CrashLoopBackOff 는 어떻게 조사하나? → `describe` 의 Last State(Exit Code 137 이면 OOM 의심) → `logs --previous` → command·설정·의존 서비스 순.
+
 ## 실습 체크리스트
 
 - [ ] 일부러 `image: redis:nope` 로 바꿔 ImagePullBackOff 를 만들고 `describe` → 고치기

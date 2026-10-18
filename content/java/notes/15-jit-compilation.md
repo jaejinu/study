@@ -123,6 +123,29 @@ Try increasing the code cache size using -XX:ReservedCodeCacheSize=
 - Node.js 의 V8 도 같은 구조다(Ignition 인터프리터 → Sparkplug/Maglev → TurboFan, 그리고 탈최적화). [성능 공학 노트 04](/performance/notes/04-node-web-server-performance)의 "같은 함수가 처음엔 느리다" 는 관찰과 같은 현상이며, 두 런타임 비교는 [Node.js 09편: V8 파이프라인](/nodejs/notes/09-v8-pipeline) 주제에서 이어진다.
 - 연속 프로파일러([관측성 노트 10](/observability/notes/10-continuous-profiling))로 자바 서비스를 보면, 배포 직후 몇 분은 `Interpreter`·`C2 CompilerThread` 프레임이 크게 보이다가 사라진다.
 
+## 실전에서는 어디에 쓰이나
+
+> JIT 는 "배포 직후 느리다", "트래픽 패턴이 바뀌자 잠깐 p99 가 튄다", "벤치마크 숫자가 이상하다" 의 배후다. 롤링 배포와 오토스케일이 잦은 컨테이너 환경에서 특히 자주 만난다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 롤링 배포가 잦은 커머스 API | 새 Pod 이 인터프리터 속도로 실트래픽을 받아 p99 급등 | readiness 전 워밍업 요청, LB slow start, 카나리 비율 천천히 | CDS·CRaC 로 시작 단축 |
+| 트래픽 급증 시 오토스케일 | 새 Pod 이 처음엔 느려 오히려 더 스케일 | 스케일 기준에 여유, 워밍업 시간을 고려한 안정화 창 | 이벤트 전 미리 확장 |
+| 서버리스 함수·CLI·짧은 배치 | 끝날 때까지 C2 에 도달하지 못함 | `-XX:TieredStopAtLevel=1`(C1 만) | GraalVM 네이티브 이미지 |
+| CPU limit 이 작은 k8s Pod | JIT 컴파일 스레드가 앱과 CPU 를 다툼 | CPU 한도에 여유, `-XX:CICompilerCount` 조정 | 기동 구간만 넉넉한 CPU |
+| 라이브러리·핫 패스 성능 비교 | `nanoTime` 측정이 죽은 코드 제거·OSR 로 왜곡 | JMH + `@Fork`·`@Warmup` | 운영 프로파일러로 실측 |
+| 며칠 지나면 점점 느려지는 대형 앱 | 코드 캐시가 가득 차 컴파일 중단 | `jcmd Compiler.codecache` 확인, `ReservedCodeCacheSize` 상향 | 런타임 클래스 생성 줄이기 |
+
+**이럴 땐 안 맞는다**
+- JIT 를 노려 코드를 비틀기(메서드 쪼개기·`final` 남발): 측정 없이는 효과가 없거나 반대다 → JMH 로 확인된 핫 패스만 손댄다.
+- 몇 초 안에 끝나는 작업에서 "JVM 은 결국 빨라진다" 를 기대하기: C2 에 닿기 전에 끝난다 → C1 만 쓰거나 네이티브 이미지.
+
+**누가 매일 만나나** — SRE·플랫폼 엔지니어가 배포 직후의 지연 스파이크를 해석하고 readiness·워밍업을 설계할 때, 성능 엔지니어가 벤치마크를 짤 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. 자바 서비스는 왜 배포 직후 느린가? → 인터프리터로 시작해 프로파일을 모은 뒤 C1 → C2 로 컴파일하기 때문이다. 클래스 로딩까지 겹친다.
+- Q. 탈최적화란? → C2 의 추측(늘 같은 구현 클래스, 안 타는 분기)이 깨지면 컴파일된 코드를 버리고 인터프리터로 돌아가는 것. 메가모픽 호출 지점이 흔한 원인이다.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `java-jit-warmup` 을 돌려 세 모드의 안정 상태 시간 비율을 확인

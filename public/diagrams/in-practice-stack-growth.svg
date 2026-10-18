@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 430" font-family="ui-sans-serif, system-ui, 'Apple SD Gothic Neo', sans-serif" font-size="12.5">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#3fb950"/></marker></defs>
+  <rect width="900" height="430" fill="#0d1117"/>
+  <text x="30" y="30" fill="#e6edf3" font-weight="600" font-size="15">회사 규모에 따라 스택이 자라는 방식 — 상자를 늘리는 이유가 바뀐다</text>
+
+  <g fill="#121821" stroke="#243040"><rect x="30" y="50" width="250" height="330" rx="10"/><rect x="325" y="50" width="250" height="330" rx="10"/></g>
+  <rect x="620" y="50" width="250" height="330" rx="10" fill="#12261a" stroke="#2ea043" stroke-width="1.5"/>
+  <g fill="none" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a)"><path d="M282 215 H321"/><path d="M577 215 H616"/></g>
+
+  <g font-weight="600" font-size="14"><text x="46" y="78" fill="#e6edf3">스타트업</text><text x="341" y="78" fill="#e6edf3">성장기</text><text x="636" y="78" fill="#3fb950">대규모</text></g>
+  <g fill="#8b98a9" font-size="11"><text x="46" y="96">개발자 몇 명 · 제품 찾는 중</text><text x="341" y="96">팀 여러 개 · 트래픽 급증</text><text x="636" y="96">조직 수십 개 · 멀티리전</text></g>
+
+  <g fill="#e6edf3" font-size="12">
+    <text x="46" y="128">• 모놀리스 1개 (Spring·Node)</text>
+    <text x="46" y="152">• 관리형 PostgreSQL 1대</text>
+    <text x="46" y="176">• Redis 1대 (캐시·세션)</text>
+    <text x="46" y="200">• 큐는 DB 테이블·Redis</text>
+    <text x="46" y="224">• PaaS·컨테이너 1종</text>
+    <text x="46" y="248">• 검색은 PG 전문 검색</text>
+    <text x="46" y="272">• 관측은 관리형 SaaS 하나</text>
+    <text x="46" y="296">• LLM 은 API 호출 + pgvector</text>
+
+    <text x="341" y="128">• 도메인별 서비스 몇 개</text>
+    <text x="341" y="152">• PG 읽기 복제 · 파티셔닝</text>
+    <text x="341" y="176">• Kafka + 아웃박스 (팀 간 이벤트)</text>
+    <text x="341" y="200">• Kubernetes + GitOps</text>
+    <text x="341" y="224">• OpenSearch (검색·로그)</text>
+    <text x="341" y="248">• Prometheus·Loki·Tempo</text>
+    <text x="341" y="272">• SLO·번레이트·온콜</text>
+    <text x="341" y="296">• Terraform 으로 인프라 코드화</text>
+
+    <text x="636" y="128">• 셀·리전 단위 격리</text>
+    <text x="636" y="152">• 샤딩·전용 저장소 여러 종</text>
+    <text x="636" y="176">• 스트림 처리 · 레이크하우스</text>
+    <text x="636" y="200">• 내부 개발자 플랫폼 (IDP)</text>
+    <text x="636" y="224">• 서비스 메시 · 점진 배포</text>
+    <text x="636" y="248">• ClickHouse 급 관측 백엔드</text>
+    <text x="636" y="272">• 카오스·게임데이 정례화</text>
+    <text x="636" y="296">• 모델 서빙·평가 CI·FinOps</text>
+  </g>
+
+  <g fill="#8b98a9" font-size="11">
+    <text x="46" y="336">늘리는 이유: 없음</text><text x="46" y="352">— 운영할 사람이 병목이다</text>
+    <text x="341" y="336">늘리는 이유: 팀이 서로 막는다</text><text x="341" y="352">— 배포·장애를 분리하려고</text>
+    <text x="636" y="336">늘리는 이유: 한 장애가 전부를 죽인다</text><text x="636" y="352">— 폭발 반경·비용을 줄이려고</text>
+  </g>
+  <text x="30" y="410" fill="#8b98a9" font-size="11.5">원칙: 상자는 "지금 아픈 문제" 가 있을 때만 늘린다. 상자 하나마다 백업·업그레이드·알림·온콜이 따라온다.</text>
+</svg>

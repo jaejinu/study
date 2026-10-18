@@ -158,6 +158,28 @@ Job 은 멱등해야 한다(재시도·중복 실행). 큐 소비형 워커는 D
 
 > 이어서 읽기: [Kubernetes 비용 — requests 는 예약이고, 노드가 청구서다](/finops/notes/03-kubernetes-cost) — 빈 패킹·right-sizing 의 비용 효과 · [CPU 스케줄러와 cgroup — 누가 언제 CPU 를 얻고, 컨테이너 제한은 어떻게 동작하나](/os-internals/notes/03-scheduler-cgroups) — CFS/EEVDF 와 cgroup 대역폭 제어
 
+## 실전에서는 어디에 쓰이나
+
+> "왜 Pending 인가", "왜 이 Pod 이 쫓겨났나", "노드가 왜 이렇게 많나" 의 답이 여기 있다. 가용성(분산 배치)과 비용(빈 패킹·스팟)이 같은 설정에서 동시에 걸린다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 핀테크 결제 API | 존 하나가 죽어도 서비스 유지, 과부하 때 먼저 살아남기 | 존 topologySpread + PDB + PriorityClass | 리전 이중화 — 비용 2배 |
+| AI 서비스 학습·추론 | 비싼 GPU 노드에 GPU 워크로드만 | GPU 노드 taint + toleration, nodeAffinity | GPU 전용 클러스터 분리 |
+| 데이터 팀 야간 배치 | 리포트·재색인을 겹치지 않게 | CronJob(`timeZone`, `concurrencyPolicy: Forbid`), Indexed Job | 외부 워크플로 엔진(Airflow) |
+| 비용 압박이 큰 SaaS | 노드 낭비 줄이기 | Karpenter consolidation, 무상태·배치는 스팟 노드로 | Cluster Autoscaler 노드 그룹 |
+| 커머스 주문 이벤트 워커 | Kafka LAG 에 따라 0↔N | KEDA kafka 트리거(파티션 수가 상한) | 상시 N개 — 유휴 비용 |
+
+**이럴 땐 안 맞는다**
+- HPA(CPU) 와 VPA(CPU) 를 같은 워크로드에 → 서로 싸운다. VPA 는 추천 모드나 메모리만.
+- 복제본 1 + PDB `minAvailable: 1` → drain 을 영원히 막는다. 복제본을 2 이상으로.
+- 상태 있는 DB 를 스팟 노드에 → 짧은 중단 예고로는 안전한 이전이 어렵다. 온디맨드 노드에 둔다.
+
+**누가 매일 만나나** — 플랫폼·SRE 는 FailedScheduling 이벤트와 노드 풀 구성을, ML 엔지니어는 GPU 스케줄링을, FinOps 담당은 requests 대비 실사용률(right-sizing)을 본다.
+
+**면접·실무 단골 질문**
+- Q. OOMKilled 와 Evicted 의 차이는? → 컨테이너가 자기 메모리 limit 을 넘음(exit 137) vs 노드 메모리 압박으로 kubelet 이 QoS 순서대로 Pod 을 축출.
+
 ## 실습 체크리스트
 
 - [ ] `requests.cpu: "100"` 처럼 불가능한 값으로 배포해 FailedScheduling 메시지 읽기

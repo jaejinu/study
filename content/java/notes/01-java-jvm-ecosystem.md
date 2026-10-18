@@ -167,6 +167,33 @@ docker run --rm -v "$PWD":/w -w /w eclipse-temurin:21-jdk java HashMapLab.java
 - Spring Boot 3 는 Java 17 이상을 요구한다. 8 → 17 이행은 `javax.*` → `jakarta.*` 패키지 이동이 가장 큰 일이다.
 - "어떤 배포판을 쓸까" 보다 "어디서 패치를 받고, 이미지를 언제 다시 빌드하나" 를 먼저 정한다.
 
+## 실전에서는 어디에 쓰이나 — Java 지도
+
+> 자바는 커머스·금융·사내 시스템의 백엔드 API 와, Kafka·Elasticsearch 처럼 JVM 위에서 도는 데이터 인프라의 공통 기반이다. 실무에서는 "코드를 어떻게 쓰나"(1~3부)와 "JVM 을 어떻게 운영하나"(4~6부)를 둘 다 알아야 장애를 끝까지 따라갈 수 있다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 레거시 서비스 버전 업그레이드(8 → 17 → 21) | 이 노트 — LTS·배포판, 클래스 파일 버전, `javax` → `jakarta` | 이 노트 |
+| 커머스·핀테크의 주문·결제 도메인 코드 | **1부 언어** — record·sealed 로 닫힌 상태 표현, 예외 설계 | [sealed·패턴 매칭](/java/notes/05-sealed-pattern-matching), [예외와 자원](/java/notes/06-exceptions-resources) |
+| 캐시·집계·랭킹 같은 메모리 자료구조 | **2부 컬렉션** — HashMap 계약과 리사이즈, TreeMap·PriorityQueue | [HashMap 내부](/java/notes/08-hashmap-internals), [정렬·TreeMap·PQ](/java/notes/09-sorting-treemap-pq) |
+| API 서버의 동시 요청·외부 API 병렬 호출·공유 카운터 | **3부 동시성** — 락·Atomic, 스레드 풀, CompletableFuture, 가상 스레드 | [락과 j.u.c](/java/notes/11-locks-juc), [가상 스레드](/java/notes/13-virtual-threads-structured) |
+| 배포 직후 느린 응답, 계측 에이전트 동작 원리 | **4부 JVM 내부** — 클래스 로딩·바이트코드, JIT 웜업, 메모리 영역 | [클래스 로딩과 바이트코드](/java/notes/14-classloading-bytecode), [JIT 컴파일](/java/notes/15-jit-compilation) |
+| 결제·게임 서버의 지연 스파이크, OOM 장애 조사 | **5부 GC·성능** — G1·ZGC 선택, JFR·힙 덤프·스레드 덤프 | [GC 기초와 G1](/java/notes/17-gc-basics-g1), [진단 도구](/java/notes/19-diagnostic-tools) |
+| 쿠버네티스 위 Spring Boot 서비스 | **5·6부** — 컨테이너 메모리 한도, Actuator·Micrometer·OTel, 그레이스풀 셧다운 | [컨테이너 속 JVM](/java/notes/20-jvm-in-containers), [운영과 관측](/java/notes/24-operations-observability) |
+| 사내 표준 백엔드 스택(Spring + JPA) | **6부 빌드·프레임워크** — 의존성 충돌·BOM, DI·프록시, `@Transactional`, N+1 | [Spring 핵심](/java/notes/22-spring-core), [Spring 웹·데이터·트랜잭션](/java/notes/23-spring-web-data-tx) |
+
+**회사 규모에 따라**
+- 스타트업: Spring Boot + JPA 로 빠르게 만들고 JVM 설정은 기본값 그대로 쓴다. 문제는 대개 N+1·트랜잭션 경계 같은 6부 쪽에서 먼저 터진다.
+- 성장기: 컨테이너 메모리 한도·GC·스레드 풀 크기를 맞추고 Actuator·Micrometer 로 JVM 메트릭을 대시보드에 올린다. 5부가 필요해지는 시기다.
+- 대규모 조직: 플랫폼팀이 표준 베이스 이미지·BOM·OTel 에이전트를 제공하고, JFR 수집·GC 선택·가상 스레드 전환 같은 런타임 결정을 중앙에서 내린다.
+
+**이럴 땐 안 맞는다**
+- 수십 ms 안에 떠야 하는 서버리스 함수·CLI: JVM 시작과 JIT 웜업 비용이 크다 → Go·Node, 또는 GraalVM 네이티브 이미지·CRaC([운영과 관측](/java/notes/24-operations-observability)).
+- 메모리 수십 MB 로 도는 작은 사이드카·에이전트: 힙·메타스페이스·스레드 스택의 기본 비용이 부담이다 → Go·Rust.
+- 데이터 분석·모델 학습 코드: 생태계가 Python 중심이다 → 자바는 그 앞뒤의 서빙 API·데이터 파이프라인(Kafka·Spark)에서 만난다.
+
+**누가 매일 만나나** — 백엔드(Spring) 개발자는 코드 리뷰에서 equals·스트림·트랜잭션을, SRE·플랫폼 엔지니어는 OOMKilled·GC 일시정지·스레드 덤프를, 데이터 엔지니어는 Kafka·Spark·Elasticsearch 의 힙과 GC 설정을 만난다.
+
 ## 정리
 
 - 자바 = 언어 · 바이트코드 · JVM · 표준 라이브러리. JVM 개선은 모든 JVM 언어가 함께 누린다.

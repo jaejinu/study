@@ -148,6 +148,29 @@ Grafana 데이터소스 설정(`observability/grafana/provisioning/datasources/p
 
 > 이어서 읽기: [데이터·관측 비용 — 볼륨 × 보존 × 카디널리티](/finops/notes/04-data-observability-cost) — 로그 볼륨·카디널리티가 곧 비용 · [집계와 로그 분석 — 검색 엔진이 분석 엔진이 되는 순간, 그리고 Loki 와의 선택](/opensearch/notes/04-aggregations-log-analysis) — 같은 로그를 OpenSearch 집계로 · [ClickHouse · OLAP](/clickhouse) — ClickHouse 로 로그 분석
 
+## 실전에서는 어디에 쓰이나
+
+> 메트릭이 "에러율 2%" 라고 알려 주면 로그는 "어떤 요청이 왜" 를 알려 준다. 장애 조사에서 결정적 증거가 나오는 곳이지만, 관측 신호 중 비용이 가장 빨리 커지는 곳이기도 하다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 "결제가 안 돼요" 특정 고객 문의 | 그 주문 요청에 무슨 일이 있었나 | `{service="payment"} \| json \| order_id="…"` → 줄의 trace_id 로 트레이스 열기 | 서버 ssh + grep — 로그가 여러 Pod 에 흩어져 있다 |
+| SaaS 배포 직후 에러율 상승 | 새로 생긴 에러가 무엇인가 | `sum by (msg) (count_over_time({service="api", level="error"} \| json [5m]))` 로 이벤트별 집계 | 에러 로그를 위에서부터 읽기 |
+| 핀테크 외부 PG 연동 지연 | 어느 외부 호출이 느려졌나 | `\| json \| durationMs > 3000` 필터, `unwrap durationMs` 로 p95 | 의존성별 메트릭이 있다면 그게 더 빠르다 |
+| 로그 비용 급증 | 어느 서비스가 갑자기 많이 찍나(루프 버그) | `sum by (service) (rate({service=~".+"}[5m]))` 급증 알림 | 월말 청구서로 발견 |
+| 금융·공공 개인정보 감사 | 토큰·주민번호가 로그에 남지 않게 | 로거 단계 마스킹, 저장소 접근 권한 분리, 짧은 보존 | 저장 후 사후 삭제 — 이미 복제됐을 수 있다 |
+
+**이럴 땐 안 맞는다**
+- 자주 보는 지표(요청 수·p95)를 매번 로그에서 계산 → 느리고 비싸다. 메트릭으로 승격한다.
+- 필드 전문 검색·복잡한 집계가 핵심인 로그 분석 → Loki 는 라벨만 인덱싱한다. OpenSearch·Elasticsearch, 대용량 분석은 ClickHouse 가 맞다.
+- trace_id·user_id 를 Loki 라벨로 → 스트림이 폭발한다. 본문이나 구조화 메타데이터로 둔다.
+
+**누가 매일 만나나** — 백엔드는 이벤트 이름과 필드를 정해 로그를 남기고, 장애 때 LogQL 로 증거를 찾는다. 플랫폼 팀은 수집기 DaemonSet 과 보존·비용을, 보안 팀은 PII 마스킹과 접근 권한을 본다.
+
+**면접·실무 단골 질문**
+- Q. 로그 레벨을 어떻게 나누나? → error 는 사람이 조치해야 하는 실패(알림 대상), warn 은 자동 복구됐지만 주의, info 는 비즈니스 이벤트.
+- Q. Loki 와 Elasticsearch 의 차이는? → 라벨만 인덱싱하고 본문은 grep(싸다) vs 모든 필드 인덱싱(비싸지만 검색이 강력).
+
 ## 실습 체크리스트
 
 - [ ] `pnpm obs:up` 후 Grafana Explore → Loki → `{service="study-app"} | json` 에서 노트 조회·실험 실행 로그 보기

@@ -206,6 +206,33 @@ histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[
 | 부하 테스트 | [perf-k6-arrival-rate](/performance/lab/perf-k6-arrival-rate) |
 | 사례 전용 | [sd-url-shortener](/system-design/lab/sd-url-shortener), [sd-feed-fanout](/system-design/lab/sd-feed-fanout), [sd-autocomplete](/system-design/lab/sd-autocomplete) |
 
+## 실전에서는 어디에 쓰이나 — 시스템 디자인 지도
+
+> 시스템 디자인은 면접 과목이기 전에 "새 기능을 만들기 전 설계 문서(디자인 독)" 를 쓰는 방법이다. 요구사항과 숫자로 부품을 고르고, 병목과 장애를 미리 적어 리뷰에서 합의하는 일을 실무에서 반복한다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 마케팅 캠페인 링크·초대 링크·QR 코드 | 짧은 코드 생성, 읽기 위주 다층 캐시, 비동기 클릭 통계 | [URL 단축기](/system-design/notes/02-url-shortener) |
+| 공개 API·로그인·LLM 호출 비용 보호 | 토큰 버킷·슬라이딩 창, Redis 원자성, fail-open/closed | [분산 레이트리미터](/system-design/notes/03-rate-limiter) |
+| SNS 타임라인·커뮤니티 홈 피드 | fan-out on write/read, 셀럽 하이브리드, 커서 페이지네이션 | [뉴스피드](/system-design/notes/04-news-feed) |
+| 메신저·고객 상담 채팅·앱 푸시 | WebSocket 게이트웨이, 대화방 시퀀스, seq 동기화, 알림 우선순위 | [채팅·알림](/system-design/notes/05-chat-notifications) |
+| 커머스 주문·구독 결제·포인트 | 멱등 키, 상태 머신, 이중 기입 원장, PG "모름" 처리, 대사 | [결제·주문](/system-design/notes/06-payments-orders) |
+| 검색창 추천어·상품명 자동완성 | 노드별 상위 K 트라이, 디바운스·CDN 캐시, 한국어 초성 | [검색 자동완성](/system-design/notes/07-search-autocomplete) |
+| 신규 서비스 설계 리뷰 | 봉투 뒷면 계산, 리틀의 법칙, 장애 표, 관측 메트릭 | 이 노트 |
+
+**회사 규모에 따라**
+- 스타트업: 관리형 DB·캐시 하나로 시작하고, 설계 문서는 한 페이지. 숫자 추정은 "지금 구조로 몇 배까지 버티나" 를 확인하는 용도다.
+- 성장기: 캐시·큐·읽기 복제본이 붙고, 피크 계수와 핫 키·장애 표가 설계 리뷰의 핵심이 된다.
+- 대규모 조직: 디자인 독 템플릿과 아키텍처 리뷰 위원회가 있고, SLO·용량 계획·보안·개인정보 검토가 설계 단계에서 함께 요구된다.
+
+**이럴 땐 안 맞는다**
+- 하루 수천 요청짜리 사내 도구에 샤딩·Kafka 부터 그리기: 숫자가 그 복잡도를 요구하지 않는다. 단일 DB + 백업으로 충분한지 먼저 계산한다.
+
+**누가 매일 만나나** — 백엔드 개발자는 새 기능의 설계 문서를 쓰고 리뷰받을 때, 테크 리드·아키텍트는 숫자와 트레이드오프를 근거로 설계를 승인할 때, SRE 는 장애 표와 관측 메트릭이 빠졌는지 확인할 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. 설계를 어디서부터 시작하나? → 기능·비기능 요구사항과 범위 밖을 확정하고, QPS·저장량을 계산한 뒤 부품을 고른다.
+
 ## 실습 체크리스트
 
 - [ ] 하루 활성 사용자 1,000만인 채팅 서비스의 메시지 QPS·저장량을 봉투 뒷면 계산하기

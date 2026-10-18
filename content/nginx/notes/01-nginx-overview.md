@@ -109,6 +109,33 @@ curl http://localhost:18080/nginx_status   # Active connections ...
 
 대시보드의 환경 카드가 `/health`, `/`(프록시), `/nginx_status` 를 확인한다.
 
+## 실전에서는 어디에 쓰이나 — Nginx 지도
+
+> Nginx 는 대부분의 웹 서비스에서 "인터넷과 앱 사이의 첫 관문" 이다. 앱 코드를 고치지 않고 라우팅·TLS·캐시·속도 제한·장애 우회를 맡기는 자리이고, Kubernetes 에서는 ingress-nginx 라는 이름으로 같은 역할을 한다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 한 도메인 아래 웹·API·관리자 화면을 여러 앱으로 나눠 운영 | `server_name`·`location` 매칭으로 경로별 라우팅 | 이 노트 (server 선택·location 매칭) |
+| 앱 서버 여러 대 앞에서 무중단 배포·장애 전환 | `upstream`, `max_fails`, `proxy_next_upstream` | [리버스 프록시와 로드밸런싱](/nginx/notes/02-reverse-proxy-lb) |
+| 실시간 채팅·알림(WebSocket·SSE) | Upgrade 헤더, `proxy_buffering off`, 긴 `proxy_read_timeout` | [리버스 프록시와 로드밸런싱](/nginx/notes/02-reverse-proxy-lb) |
+| 커머스·미디어의 정적 자원·이미지 서빙 | `proxy_cache`, `proxy_cache_lock`, `use_stale` | [캐시, TLS, 레이트 리밋, 운영](/nginx/notes/03-cache-tls-ratelimit) |
+| 로그인·공개 API 남용 방어, HTTPS 종단 | `limit_req`·`limit_conn`, `ssl_*`·certbot | [캐시, TLS, 레이트 리밋, 운영](/nginx/notes/03-cache-tls-ratelimit) |
+| 대규모 이벤트 트래픽 입구·업스트림 커넥션 풀 | 워커·fd 한도, upstream `keepalive`, HTTP/2·3 | [심화 — 내부 동작과 성능 튜닝](/nginx/notes/04-internals-performance-openresty) |
+| API 게이트웨이(인증·전역 레이트 리밋·요청 변환) | OpenResty/njs 로 phase 에 로직 삽입 — Kong·APISIX 의 기반 | [심화 — OpenResty](/nginx/notes/04-internals-performance-openresty) |
+| Kubernetes 클러스터 입구 | ingress-nginx 컨트롤러가 Ingress 를 nginx 설정으로 바꿔 적용 | [Kubernetes Service 와 Ingress](/kubernetes/notes/04-service-ingress) |
+
+**회사 규모에 따라**
+- 스타트업: VM 한 대에 Nginx + certbot 으로 TLS·정적 파일·리버스 프록시를 한 번에 해결한다. 설정 파일 하나가 곧 인프라다.
+- 성장기: 클라우드 로드밸런서 뒤에 Nginx 나 ingress-nginx 를 두고, 캐시·레이트 리밋·JSON 접근 로그를 관측 스택(Prometheus·Loki)과 잇는다.
+- 대규모 조직: CDN 이 엣지를 맡고, Nginx 계열은 내부 API 게이트웨이(OpenResty 기반)나 팀별 프록시로 나뉜다. 설정은 사람이 아니라 컨트롤러·GitOps 가 만든다.
+
+**이럴 땐 안 맞는다**
+- 여러 대에 걸친 정확한 전역 레이트 리밋: `limit_req` 는 노드 로컬이라 대수만큼 한도가 커진다 → Redis 기반 리미터나 API 게이트웨이.
+- 수백 개 서비스 사이의 mTLS·재시도·트래픽 분할을 일관되게: 손으로 쓴 설정으로는 감당이 안 된다 → 서비스 메시(Envoy 기반 Istio 등).
+- 컨테이너 레이블만으로 라우팅과 인증서를 자동으로 붙이고 싶을 때: ACME 를 내장한 Caddy·Traefik 이 더 간단하다.
+
+**누가 매일 만나나** — 백엔드 개발자는 "업로드가 413", "API 가 502" 를 볼 때 `client_max_body_size`·`proxy_pass` 를 열어 본다. SRE·플랫폼 엔지니어는 Ingress annotation·`nginx -T`·`stub_status` 로 트래픽 입구를 운영한다.
+
 ## 실습 체크리스트
 
 - [ ] `nginx -T` 로 최종 설정을 읽고 location 우선순위를 손으로 따라가 보기

@@ -120,6 +120,30 @@ jobs:
 
 실험 [gha-workflow-lint](/github-actions/lab/gha-workflow-lint)는 이 저장소 워크플로가 actionlint 0건인 것을 확인한 뒤, 일부러 틀린 워크플로에서 6건을 잡았다: 러너 라벨 오타(`ubuntu-lates`), 액션 입력 오타(`fetch-dept`), PR 제목을 `run:` 에 직접 넣는 인젝션, 정의 안 된 `matrix.nod`, 없는 잡 `needs: [biuld]`, 없는 `steps.missing`. 특히 `matrix.nod` 같은 오타는 실행해도 에러 없이 **빈 문자열**이 되므로 정적 검사가 아니면 늦게 발견된다.
 
+## 실전에서는 어디에 쓰이나 — GitHub Actions 지도
+
+> GitHub Actions 는 코드가 저장소에 들어오는 순간부터 배포까지를 자동으로 잇는 CI/CD 실행기다. 실무에서는 "PR 마다 무엇을 검사하나", "누가 어떤 권한으로 배포하나", "CI 가 왜 이렇게 느린가" 라는 세 질문으로 매일 등장한다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| PR 마다 lint·테스트 자동 실행 | 이벤트·잡·스텝, 서비스 컨테이너, actionlint | 이 노트 |
+| 여러 Node·OS 버전 지원 라이브러리 | 매트릭스, 의존성 캐시, 아티팩트 | [캐시·매트릭스·아티팩트](/github-actions/notes/02-cache-matrix-artifacts) |
+| 클라우드·쿠버네티스로 배포 | OIDC, environment 승인, 재사용 워크플로 | [시크릿·권한·배포](/github-actions/notes/03-secrets-deploy) |
+| 여러 앱이 한 저장소에 있는 모노레포 | affected 빌드, 머지 큐, 릴리스 자동화 | [모노레포·릴리스·보안](/github-actions/notes/04-monorepo-release-security) |
+| 사내망 자원이 필요한 빌드·공급망 보안 | self-hosted 러너, 액션 SHA 고정, pull_request_target | [러너와 보안](/github-actions/notes/05-runners-and-security) |
+| "PR 피드백이 너무 느리다" | 캐시 적중, 샤딩, concurrency, CI 시간 메트릭 | [CI 성능](/github-actions/notes/06-ci-performance) |
+
+**회사 규모에 따라**
+- 스타트업: 워크플로 파일 한두 개(test·image)로 시작한다. GitHub-hosted 러너와 기본 캐시면 충분하고, 배포 키를 시크릿에 넣는 실수가 흔하다.
+- 성장기: OIDC 배포, environment 승인, 매트릭스·캐시 튜닝, 머지 큐가 들어온다. CI 시간이 개발 속도를 좌우하기 시작한다.
+- 대규모 조직: 조직 `.github` 저장소의 재사용 워크플로로 표준 CI 를 배포하고, ARC 러너 풀·액션 허용 목록·CI 시간 대시보드를 플랫폼 팀이 운영한다.
+
+**이럴 땐 안 맞는다**
+- 코드가 GitHub 밖(GitLab·사내 Git)에 있음 → 그 플랫폼의 CI(GitLab CI 등)가 자연스럽다.
+- 몇 시간씩 도는 데이터 파이프라인·주기 배치 → CI 러너는 잡 시간 제한과 비용이 맞지 않는다. Airflow 같은 오케스트레이터나 쿠버네티스 CronJob 으로.
+
+**누가 매일 만나나** — 모든 개발자가 PR 의 빨간 체크를 열어 실패 로그를 볼 때, 플랫폼·DevOps 엔지니어가 워크플로를 고치고 러너·캐시·권한을 관리할 때, 보안 담당이 공급망 스캔 결과를 볼 때.
+
 ## 실습 체크리스트
 
 - [ ] `gh run list`, `gh run view <id> --log` 로 이 저장소의 실행 로그 읽기

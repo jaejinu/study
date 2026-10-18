@@ -129,6 +129,29 @@ error_log /dev/stderr debug;                                     # 특정 IP 만
 - 워커 CPU 100% 면 TLS/압축/Lua. 업스트림 대기면 앱. 둘 다 아닌데 느리면 OS 소켓(backlog, conntrack).
 - `limit_req` 503 이 의도대로 나오는지 부하 테스트로 확인 ([캐시·TLS·레이트리밋 노트](/nginx/notes/03-cache-tls-ratelimit)).
 
+## 실전에서는 어디에 쓰이나
+
+> 동시 연결이 수만 단위로 늘거나, 설정만으로는 안 되는 로직(토큰 검증·전역 레이트 리밋·동적 라우팅)을 프록시에서 처리해야 할 때 이 노트의 내부 구조와 튜닝 지식이 필요하다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 티켓팅·선착순 이벤트 트래픽 입구 | 동시 연결 수만에서 fd·backlog 고갈 | `worker_rlimit_nofile`·`worker_connections`·`somaxconn` 을 함께 올림 | 앞단 대기열(가상 대기실) 서비스 |
+| 마이크로서비스 내부 프록시 | 요청마다 새 TCP 연결 → TIME_WAIT 폭증 | upstream `keepalive` + `proxy_http_version 1.1` + `Connection ""` | 서비스 메시 사이드카의 커넥션 풀 |
+| 모바일 앱 API(손실 많은 망) | 핸드셰이크·HOL 블로킹 지연 | HTTP/2, `listen 443 quic` 로 HTTP/3, TLS 세션 캐시 | CDN 에서 HTTP/3 종단 |
+| SaaS 공개 API 게이트웨이 | 인증·키별 쿼터·요청 변환을 앱 밖에서 | OpenResty `access_by_lua` + Redis, 또는 Kong·APISIX 플러그인 | 클라우드 관리형 API 게이트웨이 |
+| 설정 변경이 잦은 운영 환경 | 설정 배포 중 연결 끊김 | `nginx -t` 후 `-s reload` — 새 워커로 교체, 옛 워커는 처리 끝내고 종료 | 프록시 자체를 블루그린 교체 |
+| 느린 응답 장애 조사 | 병목이 Nginx·앱·OS 중 어디인지 | `stub_status` 의 Reading/Writing/Waiting, rt vs urt, `debug_connection` | APM, eBPF 도구 |
+
+**이럴 땐 안 맞는다**
+- Lua·njs 에 무거운 비즈니스 로직이나 블로킹 호출: 워커 하나가 멈추면 그 워커의 연결 수천 개가 같이 멈춘다 → 로직은 앱으로, 프록시엔 얇은 검사만(논블로킹 API).
+- 측정 없이 튜닝 숫자 복사: 병목이 앱이나 conntrack 이면 워커·버퍼를 키워도 그대로다 → `wrk` 로 재고 rt/urt 로 구간을 나눈 뒤 손댄다.
+
+**누가 매일 만나나** — 플랫폼·SRE 엔지니어가 부하 테스트 전에 커널·Nginx 한도를 맞출 때, API 게이트웨이 팀이 플러그인과 phase 순서를 다룰 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. Nginx 는 적은 프로세스로 어떻게 수만 연결을 다루나? → 워커마다 단일 스레드 epoll 이벤트 루프. 블로킹 작업은 `aio threads` 로 넘기고, 블로킹 하나가 워커 전체를 멈춘다는 점에 주의한다.
+- Q. `nginx -s reload` 가 무중단인 이유는? → master 가 새 설정으로 새 워커를 띄우고, 옛 워커는 처리 중인 연결을 끝낸 뒤 종료한다.
+
 ## 실습 체크리스트
 
 - [ ] `nginx -V` 로 컴파일 모듈 확인, `ps` 로 master/worker 확인 후 `-s reload` 중 연결이 끊기지 않는지 `wrk` 로 검증

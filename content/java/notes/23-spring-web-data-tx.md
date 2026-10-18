@@ -130,6 +130,30 @@ public void update(UpdateProduct cmd) { ... }   // ⚠ 커밋 전에 지우면 �
 - [이벤트 소싱 노트의 낙관적 동시성](/event-sourcing/notes/03-event-store)과 JPA 의 `@Version` 은 같은 기법이다(버전 불일치면 `OptimisticLockException` → 재시도).
 - [결제·원장 노트](/architecture/notes/09-payments-ledger-consistency)의 "외부 PG 호출을 트랜잭션 밖으로, 멱등 키로" 가 위 `place()` 의 올바른 모양이다.
 
+## 실전에서는 어디에 쓰이나
+
+> 요청이 들어와 DB 에 닿는 경로다. 느린 응답, 커넥션 풀 고갈, 쿼리 폭발, 데이터 불일치 같은 자바 서비스 장애의 대부분이 여기서 나온다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 주문 목록 API | 주문 100건 조회에 쿼리 101번(N+1) | 페치 조인·`@EntityGraph`·`default_batch_fetch_size`, 테스트에서 쿼리 수 단언 | DTO 프로젝션, jOOQ·MyBatis 로 직접 SQL |
+| 핀테크 결제 처리 | 트랜잭션 안의 외부 PG 호출이 커넥션을 붙잡아 풀 고갈 | 외부 호출은 트랜잭션 밖으로 + 멱등 키, 이벤트는 아웃박스·`AFTER_COMMIT` | 사가 기반 비동기 처리 |
+| 오토스케일되는 API 서비스 | Pod 수 × 풀 크기가 DB `max_connections` 초과 | 작은 풀, 짧은 `connectionTimeout`, `hikaricp_connections_pending` 알림 | PgBouncer 같은 커넥션 프록시 |
+| 상품 상세 조회 | 같은 데이터 반복 조회로 DB 부하 | `@Cacheable` + Redis(JSON 직렬화, TTL, `sync = true`) | 로컬 캐시와 2단 구성 |
+| 스트리밍·게이트웨이 서비스 | 느린 외부 호출이 많아 요청 스레드가 묶임 | WebFlux(논블로킹) 또는 MVC + 가상 스레드 | 스레드 풀 증설 |
+| 재고·포인트 동시 수정 | 덮어쓰기로 인한 갱신 유실 | JPA `@Version` 낙관적 잠금 + 재시도 | 비관적 잠금(`SELECT … FOR UPDATE`) |
+
+**이럴 땐 안 맞는다**
+- 수십만 건 갱신 배치를 JPA 엔티티로 하나씩: 영속성 컨텍스트·변경 감지 비용이 크다 → JDBC 배치, 벌크 UPDATE.
+- WebFlux 에서 JDBC 같은 블로킹 라이브러리: 이벤트 루프가 멈춘다 → R2DBC, 또는 MVC + 가상 스레드.
+- `REQUIRES_NEW` 남용: 요청 하나가 커넥션 두 개를 잡아 풀 크기 절반의 동시 요청에서 멈춘다 → 정말 독립 커밋이 필요한 곳만.
+
+**누가 매일 만나나** — Spring 백엔드 개발자가 느린 API 의 쿼리 로그, `LazyInitializationException`, `Connection is not available` 을 볼 때. DBA·SRE 는 커넥션 수와 느린 쿼리를 함께 본다.
+
+**면접·실무 단골 질문**
+- Q. N+1 문제란, 어떻게 푸나? → 지연 로딩된 연관을 루프에서 건드려 건마다 SELECT 가 나가는 것. 페치 조인, EntityGraph, 배치 페치, DTO 프로젝션.
+- Q. API 서버에서 OSIV 를 끄는 이유는? → 요청 내내 DB 커넥션을 붙잡아 풀이 마른다. 필요한 데이터는 서비스 계층에서 미리 로딩한다.
+
 ## 실습 체크리스트
 
 - [ ] 연관 엔티티를 루프에서 접근하는 코드로 N+1 을 만들고 SQL 로그로 쿼리 수 세기 → 페치 조인으로 1개로

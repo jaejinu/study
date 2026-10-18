@@ -124,6 +124,29 @@ hubble observe -n netpol-lab --verdict DROPPED
 - Nginx 앞의 DDoS 방어를 생각하면: [레이트리밋](/nginx/notes/03-cache-tls-ratelimit)은 L7(연결이 이미 맺어진 뒤), XDP 드롭은 L2/3(SYN 조차 스택에 안 들어옴)이다. 계층이 다르다.
 - 보안 측면의 eBPF(Tetragon 의 네트워크 정책 강제)는 [05](/ebpf/notes/05-security-falco-tetragon).
 
+## 실전에서는 어디에 쓰이나
+
+> 패킷 처리량이 커지거나 Kubernetes 의 Service·정책 규칙이 수천 개를 넘어 iptables 가 한계에 닿을 때 eBPF 데이터패스가 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| CDN·공개 API 앞단 | 볼류메트릭 DDoS 를 스택 진입 전에 버림 | XDP 가 차단 대역(LPM_TRIE 맵)과 대조해 `XDP_DROP` | iptables 는 sk_buff 생성 후라 비싸고, Nginx 레이트리밋은 L7 이라 늦다 |
+| 대형 서비스의 L4 로드밸런서 | 서버 한 대로 수천만 pps 분산 | XDP + Maglev 해싱 + `XDP_TX` (Meta 가 공개한 Katran) | IPVS, 하드웨어 LB |
+| 서비스 수천 개의 Kubernetes 플랫폼 | Service 라우팅·NetworkPolicy 규칙 폭증 | Cilium 소켓 LB(cgroup 훅) + 신원 기반 정책 맵 | kube-proxy iptables/IPVS |
+| 핀테크 멀티테넌트 클러스터 | 정책이 무엇을 막았는지 감사 | Hubble 흐름 로그 `--verdict DROPPED` | 패킷 캡처는 규모상 불가 |
+| 사이드카 기반 서비스 메시 | 프록시 ↔ 앱 로컬 통신 오버헤드 | sockmap + sk_msg 로 루프백 스택 우회 | 루프백 비용을 그대로 감수 |
+
+**이럴 땐 안 맞는다**
+- URL·헤더·인증을 봐야 하는 차단 — XDP 는 패킷 헤더만 본다. Nginx·WAF·Envoy 같은 L7 계층이 맞다.
+- 노드 몇 대·서비스 수십 개의 작은 클러스터 — iptables 한계에 닿지 않는다. 기존 CNI 로 충분하고 Cilium 은 운영 학습 비용이 더 크다.
+- native XDP 를 지원하지 않는 가상 NIC — generic 모드는 이득이 작다.
+
+**누가 매일 만나나** — 플랫폼·네트워크 엔지니어가 CNI 를 고르고 업그레이드할 때, SRE 가 "Pod 간 연결이 안 된다" 를 Hubble 로 정책 거부인지 가려낼 때.
+
+**면접·실무 단골 질문**
+- Q. XDP 가 iptables 보다 빠른 이유는? → sk_buff 할당 전 드라이버 수신 루프에서 판정해 스택 비용을 건너뛴다.
+- Q. Cilium 은 kube-proxy 를 어떻게 대체하나? → connect 시점에 cgroup 훅이 ClusterIP 를 백엔드 IP 로 바꿔 NAT 가 없고, 규칙 순회 대신 맵 O(1) 조회.
+
 ## 실습 체크리스트
 
 - [ ] 위 XDP 프로그램을 `clang -O2 -target bpf -c` 로 컴파일하고 `ip link set dev eth0 xdpgeneric obj prog.o sec xdp` 로 특권 컨테이너의 veth 에 붙여 `nc -u` 로 9999 가 드롭되는지 확인(07 의 작성 환경)

@@ -116,6 +116,28 @@ grep AnonHugePages /proc/meminfo                  # THP 로 쓰이는 양
 
 실험 `os-cgroup-limits` 에서 본 것처럼 제한 없이 띄운 study-redis 의 `memory.max` 는 `max` 다. 튜닝의 첫걸음은 커널 노브가 아니라 **한도를 명시하는 것**이다: 컨테이너 메모리 한도 + Redis `maxmemory`(한도의 70~80%, fork 여유) + `maxmemory-policy`.
 
+## 실전에서는 어디에 쓰이나
+
+> 큰 메모리·멀티 소켓 서버에서 DB·캐시·JVM 의 지연 스파이크를 쫓거나, 노드 이미지의 커널 기본값을 표준화할 때 등장한다. 블로그의 sysctl 목록을 복사하는 일이 아니라 측정 → 가설 → 하나씩 변경의 절차다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 대형 Redis·PostgreSQL 노드 | THP 로 인한 fork 메모리 급증·수 ms 할당 지연 | THP `madvise` 기본, Redis `disable-thp`, PG 는 명시적 HugeTLB | THP never(시스템 전체) |
+| JVM 기반 Kafka·검색 클러스터 | 큰 힙의 TLB 미스 | madvise 모드에서 힙에만 THP 요청 | 힙 축소·인스턴스 분할 |
+| 멀티 소켓 DB 서버(핀테크·데이터 분석) | 원격 노드 메모리 접근으로 지연 증가 | `numactl` 로 노드 고정, 노드 수만큼 인스턴스 | 단일 소켓 인스턴스 선택 |
+| 연결 폭주가 있는 게이트웨이·프록시 | SYN 큐·accept 백로그 넘침, 포트 고갈 | `somaxconn` 과 앱 backlog 함께, `ip_local_port_range`, `ulimit -n` | 커넥션 풀·keep-alive 로 연결 수 감소 |
+| 쿠버네티스 노드 표준(사내 플랫폼) | 노드마다 다른 커널 값 | 노드 이미지·DaemonSet 으로 sysctl 고정, 근거를 IaC 주석에 | Pod 단위 "안전한 sysctl" 만 |
+
+**이럴 땐 안 맞는다**
+- 측정 없이 "성능 튜닝 sysctl 모음" 적용 — 기본값은 대부분 합리적이고, 잘못 바꾼 값은 오래 숨어 있다가 장애로 나온다.
+- 일반 웹 서버에 io_uring 도입 — epoll 로 충분한 경우가 많고, 보안 이력 때문에 런타임에서 막혀 있을 수 있다.
+
+**누가 매일 만나나** — 인프라·플랫폼 엔지니어는 노드 이미지와 커널 파라미터를 관리할 때, DBA·캐시 운영자는 THP·hugepage 설정 경고를 처리할 때, 성능 엔지니어는 지연 회귀를 커널 설정 변화와 대조할 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. Redis 가 THP 를 싫어하는 이유는? → fork 후 COW 단위가 2 MiB 로 커져 메모리 급증·복사 지연, 할당 시 압축 대기 스파이크.
+- Q. 컨테이너 안에서 `sysctl` 을 바꾸면? → 대부분 호스트 커널 전체 값이다. 네임스페이스로 분리된 일부 `net.*` 만 Pod 단위로 안전하다.
+
 ## 실습 체크리스트
 
 - [ ] `docker exec study-redis redis-cli config get disable-thp` 와 `/proc/1/status` 의 `THP_enabled` 를 확인하고, 다른 JVM 컨테이너의 AnonHugePages 와 비교하기

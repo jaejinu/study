@@ -146,6 +146,28 @@ return List.copyOf(page.subList(0, Math.min(10, page.size())));   // 복사가 �
 
 JPA 엔티티의 `@OneToMany List<Item>` 는 Hibernate 가 자기 컬렉션(`PersistentBag`)으로 바꿔 넣는다. 이 필드를 `List.of(...)` 로 교체하면 변경 추적이 끊긴다 — 엔티티 컬렉션은 `clear()` + `addAll()` 로 내용을 바꾼다.
 
+## 실전에서는 어디에 쓰이나
+
+> 목록은 대부분 `ArrayList` 로 끝나지만, 순회 중 삭제·뷰 공유·큐 구현에서 운영 버그와 메모리 누수가 나온다. 어떤 구조가 메모리에서 어떻게 생겼는지가 선택의 근거다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 대부분의 서비스 코드(조회 결과 목록) | 순서 있는 목록 저장·인덱스 접근 | `ArrayList`, 크기를 정확히 알면 용량 지정 | `List.of`·`toList()` 불변 리스트 |
+| 모니터링·시세 처리의 최근 N 건 유지 | 슬라이딩 윈도우를 O(1)로 | `ArrayDeque` 에 `addLast` + 넘치면 `removeFirst` | Redis Stream `MAXLEN`, 링 버퍼 라이브러리 |
+| 게임 서버의 맵 탐색(BFS)·작업 스택 | 양쪽 끝 삽입·삭제 | `ArrayDeque` 를 큐·스택으로(`Stack` 대신) | 스레드 간이면 `ArrayBlockingQueue` |
+| 사내 프레임워크의 이벤트 리스너 목록 | 순회 중 등록·해제로 `ConcurrentModificationException` | `CopyOnWriteArrayList` — 읽기가 압도적일 때 | 순회 전에 스냅숏 복사 |
+| JPA 엔티티의 `@OneToMany` 컬렉션 | 컬렉션 교체 시 변경 추적이 끊김 | `clear()` + `addAll()` 로 내용만 바꿈 | 연관 엔티티를 하나씩 추가·삭제 |
+
+**이럴 땐 안 맞는다**
+- "중간 삽입이 O(1)" 이라며 `LinkedList`: 위치를 찾는 데 O(n)이고 노드·캐시 미스로 거의 항상 느리다 → `ArrayList`, 양쪽 끝이면 `ArrayDeque`.
+- 큰 리스트의 `subList` 를 오래 보관: 원본 전체가 GC 되지 않는다 → `new ArrayList<>(list.subList(...))` 로 복사.
+
+**누가 매일 만나나** — 백엔드 개발자가 `ConcurrentModificationException`, `List.of` 에 `add` 하다 난 `UnsupportedOperationException` 을 만났을 때, 성능 리뷰에서 자료구조 선택을 설명해야 할 때.
+
+**면접·실무 단골 질문**
+- Q. ArrayList 와 LinkedList 는 언제 무엇을 쓰나? → 거의 항상 ArrayList, 양쪽 끝 작업이면 ArrayDeque. LinkedList 는 노드 객체와 포인터 추적 때문에 느리다.
+- Q. fail-fast 반복자는 멀티스레드 검출기인가? → 아니다. modCount 비교라 같은 스레드에서도 나고, 멀티스레드 경합은 못 잡을 수도 있다.
+
 ## 정리
 
 - 목록은 `ArrayList`, 양쪽 끝은 `ArrayDeque`. `LinkedList` 는 이론과 달리 거의 항상 느리다(노드·포인터 추적·캐시 미스).

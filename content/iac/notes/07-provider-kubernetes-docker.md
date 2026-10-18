@@ -194,6 +194,29 @@ resource "kubernetes_manifest" "app_study" {
 
 > 이어서 읽기: [로컬 클러스터와 kubectl](/kubernetes/notes/02-local-cluster-kubectl) — kind·kubectl 기본 · [심화 — CRD 와 Operator: Kubernetes 를 확장하는 방법](/kubernetes/notes/11-operators-crds) — CRD 와 Terraform 타이밍 문제의 배경
 
+## 실전에서는 어디에 쓰이나
+
+> 쿠버네티스 플랫폼을 세울 때 "클러스터와 애드온은 무엇으로, 앱 배포는 무엇으로" 를 정해야 한다. Terraform 으로 부트스트랩하고 ArgoCD 에 넘기는 경계 설계가 이 노트의 실무 쓰임이다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 사내 쿠버네티스 플랫폼 구축 | 클러스터·애드온을 재현 가능하게 | 클러스터 리소스 + `helm_release`(모니터링·인그레스·ArgoCD) | 생성 스크립트 + 수동 `helm install` |
+| 배포가 잦은 SaaS | 개발자가 PR 만으로 배포 | ArgoCD 설치까지 Terraform, 워크로드는 GitOps | 전부 Terraform(배포마다 plan, 느림) |
+| 클라우드 리소스와 k8s 연결 | IAM 역할 ↔ ServiceAccount, DNS ↔ 인그레스 | 같은 그래프에서 kubernetes 프로바이더로 엮기 | 값을 손으로 복사 |
+| 개발자 로컬 클러스터 | 클러스터 + 모니터링을 한 명령으로 | kind 프로바이더 + cluster/platform 2단계 state | compose·셸 스크립트 |
+| 재해 복구 리허설 | 클러스터를 지우고 다시 세우는 시간 | `destroy` → `apply` 재현 시간 기록 | 문서 런북 |
+
+**이럴 땐 안 맞는다**
+- 하루 여러 번 바뀌는 앱 매니페스트를 Terraform 으로 → plan 이 느리고 개발자에게 tofu 권한이 필요하다. ArgoCD·Flux 로.
+- 한 리소스를 Terraform 과 ArgoCD 가 함께 관리 → 서로 되돌리며 싸운다. 소유권 표로 하나만 정한다.
+- 로컬 개발용 compose 를 Docker 프로바이더로 대체 → profiles·healthcheck 대기·로그 보기 같은 개발 편의가 사라진다.
+
+**누가 매일 만나나** — 플랫폼 엔지니어가 새 클러스터를 부트스트랩하고 소유권 표를 관리할 때, 앱 개발자가 "내 리소스가 왜 되돌려졌지?" 를 두 도구의 충돌로 진단할 때.
+
+**면접·실무 단골 질문**
+- Q. 같은 apply 에서 CRD 와 그 CR 을 만들면 왜 실패하나? → `kubernetes_manifest` 가 plan 시점에 스키마를 조회하기 때문이다. 단계를 나누거나 `kubectl_manifest`·Helm 으로.
+- Q. Terraform 과 GitOps 의 경계는? → 클러스터·플랫폼 애드온·ArgoCD 까지는 Terraform, 애플리케이션 워크로드는 GitOps.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `iac-local-stack` 을 돌리고, `infra/local/20-platform/main.tf` 의 `config-hash` 어노테이션을 지운 뒤 변수를 바꿔 Pod 가 재시작되지 **않는** 것을 확인(ConfigMap 만 바뀌고 프로세스는 옛 값)

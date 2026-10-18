@@ -163,6 +163,28 @@ bpftrace -e 'uprobe:/lib/.../libssl.so.3:SSL_write { printf("%s\n", str(arg1, ar
 
 실험 `ebpf-tcp-latency` 는 앱(Node) → Redis 연결이 열리고 닫히는 것을 `inet_sock_set_state` 로 잡아 **연결 수명과 핸드셰이크 지연**을 표로 만든다. ioredis 가 연결을 재사용하는지(수명이 길다) 매번 새로 맺는지(짧은 연결이 많다)가 바로 보인다.
 
+## 실전에서는 어디에 쓰이나
+
+> 대시보드가 "느리다" 까지만 알려 줄 때, 그다음 "어느 프로세스의 어떤 syscall 이 얼마나" 를 운영 중인 서버에서 즉석으로 물어보는 순간 bpftrace 한 줄이 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 API 서버 장애 대응 | p99 가 튀는데 메트릭에 원인이 없음 | `sys_enter/exit` 짝 + `@start[tid]` 로 syscall 지연 `hist()`, pid 필터 | `strace -c` 는 ptrace 라 운영 서버를 더 느리게 만든다 |
+| 게임 서버의 세션 캐시 연동 | 짧은 TCP 연결이 폭증하는지 확인 | `inet_sock_set_state` 로 연결 수명·주체 집계 | `ss` 는 스냅샷이라 짧은 연결을 놓친다 |
+| 사내 빌드·CI 노드 | 원인 모를 CPU 소비 주체 | `sys_enter_execve` 로 짧게 살다 죽는 프로세스 포착 | `top` 은 수명이 짧은 프로세스를 놓친다 |
+| SaaS 데이터베이스 호스트 | 디스크 I/O 꼬리 지연 | `block_rq_issue/complete` 짝으로 지연 히스토그램 | `iostat` 은 평균만 준다 |
+| 핀테크 게이트웨이 기동 실패 | 설정·인증서 파일을 어디서 찾다 실패하나 | `sys_enter_openat` 로 경로 출력, 반환값으로 실패 확인 | 앱 로그에 경로가 안 남으면 단서가 없다 |
+
+**이럴 땐 안 맞는다**
+- 상시 수집해 대시보드로 볼 지표 — bpftrace 는 LLVM 이 필요한 즉석 도구다. 굳어진 질문은 libbpf-tools 나 직접 만든 에이전트([07](/ebpf/notes/07-writing-your-own))로 옮긴다.
+- `vfs_read`·`sched_switch` 같은 뜨거운 프로브에 printf — 관측이 장애를 만든다. 커널 안 집계(`count`, `hist`)만 쓴다.
+
+**누가 매일 만나나** — SRE·성능 담당 백엔드 엔지니어가 장애 채널에서 "이 서버 지금 뭘 하고 있나" 를 확인할 때, 그리고 런북에 "이 증상이면 이 한 줄" 을 적어 둘 때 쓴다.
+
+**면접·실무 단골 질문**
+- Q. strace 대신 bpftrace 를 쓰는 이유는? → strace 는 syscall 마다 ptrace 컨텍스트 스위치가 생기고, bpftrace 는 커널 안 맵에서 집계해 요약만 유저로 보낸다.
+- Q. 함수 지연은 어떻게 재나? → 진입에서 `@start[tid] = nsecs`, 반환에서 차이를 `hist()` 하고 `delete` — 스레드 단위로 짝짓기.
+
 ## 실습 체크리스트
 
 - [ ] `bpftrace -l 'tracepoint:syscalls:sys_enter_*' | wc -l` 로 프로브 수 세기, `-lv` 로 openat 인자 구조 보기

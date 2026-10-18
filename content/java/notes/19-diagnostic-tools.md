@@ -171,6 +171,29 @@ asprof -d 30 -e wall  -f /tmp/wall.html  <pid>   # 벽시계 — 대기 포함 (
 - [SRE 포스트모템](/sre/notes/05-incident-postmortem)의 타임라인 재구성에 JFR 덤프가 가장 강력한 증거다 — 메트릭은 "언제", JFR 은 "어느 스레드가 어느 메서드에서" 를 말한다.
 - Node 진단 도구(`--cpu-prof`, heap snapshot, `--inspect`)와 1:1 대응이 된다: JFR ≈ `--cpu-prof`+trace events, 힙 덤프 ≈ heap snapshot, jcmd ≈ inspector 프로토콜([Node.js 13편: 진단 도구](/nodejs/notes/13-profiling-diagnostics)).
 
+## 실전에서는 어디에 쓰이나
+
+> "느리다, 메모리가 샌다, 가끔 멈춘다" 는 자바 장애의 세 증상이다. 이 도구들은 운영 중인 프로세스를 멈추지 않고(혹은 짧게만 멈추고) 원인을 증거로 남기는 수단이고, 포스트모템의 핵심 자료가 된다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 결제 API 응답 지연(CPU 는 낮음) | 스레드가 어디서 기다리나 | 5초 간격 스레드 덤프 3번 — `HikariPool.getConnection` 에 WAITING 이 몰리면 풀 고갈 | APM 트랜잭션 트레이스 |
+| 배포 뒤 CPU 사용률 급증 | 어느 메서드가 CPU 를 쓰나 | async-profiler·JFR CPU 샘플의 플레임 그래프 | 연속 프로파일러(Pyroscope) |
+| 며칠마다 OOM 나는 사내 서비스 | 누가 메모리를 붙잡고 있나 | 시간 간격을 둔 힙 덤프 2개 비교, MAT 지배자 트리·GC 루트 경로 | `GC.class_histogram` 으로 가볍게 먼저 |
+| 장애 뒤 포스트모템 | 장애 직전 몇 분의 상세 | 상시 켜 둔 JFR 을 `JFR.dump` 로 회수 | 메트릭·로그만으로 재구성 |
+| JRE 이미지로 배포한 k8s Pod | 컨테이너 안에 진단 도구가 없음 | `kubectl debug --target` 으로 JDK 에피머럴 컨테이너 | JDK 이미지로 배포 |
+| 가상 스레드 전환 뒤 지연 | 피닝 지점 | JFR `jdk.VirtualThreadPinned` | `-Djdk.tracePinnedThreads` |
+
+**이럴 땐 안 맞는다**
+- 트래픽 피크에 큰 힙 덤프: 힙 크기에 비례한 STW 멈춤과 디스크가 필요하다 → 인스턴스를 트래픽에서 빼고 뜨거나 `GC.class_histogram` 으로 먼저 좁힌다.
+- 힙 덤프를 일반 로그처럼 공유: 개인정보·비밀이 그대로 들어 있다 → 접근이 통제된 절차로 다룬다.
+
+**누가 매일 만나나** — 온콜 SRE 와 백엔드 개발자가 장애 대응 중에, 성능 엔지니어가 최적화 대상을 찾을 때 가장 먼저 꺼낸다.
+
+**면접·실무 단골 질문**
+- Q. 메모리 누수인지 어떻게 판별하나? → Full GC 직후 Old 사용량의 바닥이 시간이 지나며 계속 오르면 누수다. 두 시점 힙 덤프에서 늘어난 클래스를 비교한다.
+- Q. JFR 을 운영에서 상시 켜도 되나? → 기본 설정 오버헤드가 1% 안팎이라 가능하다. 장애 때 지난 몇 분을 덤프해 사후 분석한다.
+
 ## 실습 체크리스트
 
 - [ ] `jcmd <pid> VM.flags` 로 실제 GC 와 MaxHeapSize 를 확인

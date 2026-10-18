@@ -159,6 +159,28 @@ SELECT lp, lp_flags, t_xmin FROM heap_page_items(get_raw_page('lab_mvcc', 0));  
 
 같은 페이지 안의 HOT 사슬, VACUUM 후 슬롯이 재사용 가능으로 바뀌는 것까지 눈으로 확인된다. 다른 세션에서 `BEGIN ISOLATION LEVEL REPEATABLE READ; SELECT * FROM lab_mvcc;` 를 열어 둔 채 UPDATE·VACUUM 하면 **정리되지 않는** 것도 보인다 — 긴 트랜잭션의 효과다.
 
+## 실전에서는 어디에 쓰이나
+
+> "디스크가 계속 찬다", "VACUUM 이 돌아도 줄지 않는다", "동시 요청에서 규칙이 깨졌다" — 긴 트랜잭션·블로트·쓰기 왜곡 장애에서 MVCC 내부가 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 PostgreSQL 운영 | 테이블·인덱스 블로트로 디스크 증가 | `n_dead_tup`·가장 오래된 `xact_start` 감시, `idle_in_transaction_session_timeout` | `pg_repack` 으로 사후 회수 |
+| 쓰기 많은 SaaS PostgreSQL | XID 랩어라운드로 쓰기 거부 | `age(datfrozenxid)` 알림, 큰 테이블 autovacuum 비율 낮추기 | 장애 후 단일 사용자 모드 VACUUM(긴 중단) |
+| 당직·최소 재고 같은 규칙 | 쓰기 왜곡으로 불변식이 깨짐 | SERIALIZABLE(SSI) + 재시도, 또는 `FOR UPDATE` | 트리거·배제 제약으로 DB 에 규칙 |
+| 운영 DB 의 장시간 리포트 | 리포트가 쓰기를 막지 않게 | 스냅샷 읽기, 단 긴 스냅샷이 GC 를 막으니 분석 저장소로 | 복제본 + `hot_standby_feedback`(주 서버 블로트 위험) |
+| 갱신이 잦은 대형 테이블 | UPDATE 마다 모든 인덱스에 새 항목 | HOT 유도(fillfactor, 인덱스 열 갱신 회피) | undo 로그 방식 엔진(InnoDB) |
+
+**이럴 땐 안 맞는다**
+- 재시도 로직 없이 SERIALIZABLE 켜기 — 직렬화 실패가 그대로 사용자 오류가 된다. 재시도할 수 없으면 명시적 락이나 제약을 쓴다.
+- 트랜잭션을 열어 둔 채 외부 API 호출 — 그동안 생긴 모든 옛 버전이 쌓인다. 트랜잭션은 DB 작업만 짧게.
+
+**누가 매일 만나나** — DBA·SRE 가 블로트·랩어라운드 대시보드를 볼 때, 백엔드 개발자가 `idle in transaction` 커넥션을 남기는 코드를 리뷰할 때.
+
+**면접·실무 단골 질문**
+- Q. PostgreSQL 과 InnoDB 의 MVCC 차이? → PG 는 새 튜플을 힙에 추가하고 VACUUM 으로 청소, InnoDB 는 제자리 갱신 + undo 로그와 purge.
+- Q. 스냅샷 격리에서 생기는 이상 현상은? → 쓰기 왜곡. 서로 다른 행을 쓰며 서로의 읽기에 의존한다. SSI 나 `FOR UPDATE` 로 막는다.
+
 ## 실습 체크리스트
 
 - [ ] 위 SQL 로 HOT 사슬을 만들고, 인덱스 열(id)을 UPDATE 했을 때 `hot_updated` 가 false 가 되는 것 확인

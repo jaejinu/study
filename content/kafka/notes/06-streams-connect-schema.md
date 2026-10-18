@@ -110,6 +110,28 @@ kafkajs 는 `@kafkajs/confluent-schema-registry` 로 encode/decode. CI 에서 �
 
 > 이어서 읽기: [데이터 엔지니어링](/data-engineering) — 데이터 엔지니어링 — CDC 를 레이크하우스로 · [ClickHouse · OLAP](/clickhouse) — ClickHouse — Kafka 토픽을 분석 저장소로
 
+## 실전에서는 어디에 쓰이나
+
+> 토픽에 쌓인 이벤트를 실시간으로 집계·조인하거나, DB·검색·스토리지와 코드 없이 잇거나, 여러 팀이 이벤트 형식을 계약으로 관리해야 할 때 이 생태계가 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 핀테크 이상 거래 탐지 | 사용자별 최근 N분 거래 패턴 | Kafka Streams 윈도우 집계 + 상태 저장소 | 대규모·복잡한 상태는 Flink |
+| 커머스 실시간 매출 대시보드 | 주문 스트림과 상품·사용자 정보 결합 | KStream–KTable 조인, 결과 토픽을 대시보드가 구독 | 분 단위 배치 집계 |
+| 검색·분석 저장소 적재 | 토픽을 OpenSearch·S3·DW 로 | Connect 싱크 커넥터, upsert 모드로 중복 흡수 | 직접 짠 컨슈머 |
+| 레거시 DB 변경 이벤트화 | 앱 수정 없이 변경 스트림 | Connect + Debezium 소스 커넥터 | 폴링 ETL |
+| 여러 팀이 쓰는 주문 이벤트 | 필드 변경이 소비자를 깨뜨림 | Schema Registry + Avro, CI 에서 호환성 검사 | JSON + 문서 합의 |
+
+**이럴 땐 안 맞는다**
+- 간단한 필터·변환 → Streams·Flink 도입은 과하다. 일반 컨슈머 하나로 충분하다.
+- Node·Python 중심 팀의 상태 있는 처리 → Kafka Streams 는 JVM 라이브러리다. Flink·관리형 스트림 처리나 직접 구현을 검토한다.
+
+**누가 매일 만나나** — 데이터 엔지니어가 커넥터 상태와 스트림 앱의 지연을 확인할 때, 백엔드 개발자가 이벤트 스키마를 바꾸는 PR 에서 호환성 검사 결과를 볼 때.
+
+**면접·실무 단골 질문**
+- Q. KStream 과 KTable 의 차이는? → 이벤트 흐름(insert) 대 키별 최신 값(upsert). KTable 은 컴팩션 토픽과 대응한다.
+- Q. BACKWARD 호환 모드에서는 무엇을 먼저 배포하나? → 소비자를 먼저. 새 스키마로 옛 데이터를 읽을 수 있어야 한다.
+
 ## 실습 체크리스트
 
 - [ ] Connect 워커(`confluentinc/cp-kafka-connect` 또는 `debezium/connect`)를 compose 에 추가하고 PostgreSQL 컨테이너에 `wal_level=logical` 설정 후 Debezium 소스 등록 → orders 테이블 INSERT 가 토픽에 나타나는지

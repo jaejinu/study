@@ -109,6 +109,26 @@ Service 는 **L4** 다. 가상 IP 로 온 연결을 각 노드의 kube-proxy 규
 - `kube-proxy` 가 각 노드에 Service → Pod 규칙(iptables/IPVS)을 설치한다.
 - **NetworkPolicy** 로 Pod 간 트래픽을 제한할 수 있다 (CNI 가 지원해야 함). 기본은 전부 허용.
 
+## 실전에서는 어디에 쓰이나
+
+> Pod IP 는 계속 바뀌므로 서비스 간 호출과 외부 노출은 전부 Service·Ingress 를 거친다. "접속이 안 된다" 장애의 상당수가 이 계층(셀렉터·endpoints·DNS·Ingress 규칙)에서 난다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 마이크로서비스 커머스 | 주문 서비스가 재고 서비스를 IP 없이 호출 | `http://inventory.shop:8080` 같은 Service DNS, ClusterIP | 별도 서비스 레지스트리(Consul 등) |
+| 멀티 도메인 SaaS | `api.`·`app.`·`admin.` 을 LB 하나로 | Ingress Controller 하나 + 호스트·경로 규칙, TLS Secret | 서비스마다 LoadBalancer — LB 비용이 서비스 수만큼 |
+| 공공·사내 시스템 | 클러스터 밖 레거시 DB 를 내부 이름으로 | ExternalName Service | 앱 설정에 외부 주소 하드코딩 |
+| Redis Sentinel·Kafka 같은 상태 있는 클러스터 | 클라이언트가 특정 노드(Pod)를 직접 지목 | Headless Service 로 Pod 별 DNS | 일반 ClusterIP — 아무 Pod 에나 붙는다 |
+
+**이럴 땐 안 맞는다**
+- Service 에 재시도·타임아웃을 기대 → L4 라서 하지 않는다. Ingress Controller·서비스 메시·앱 라이브러리에서 한다.
+- 오래 유지되는 gRPC(HTTP/2) 연결의 부하 분산 → Service 는 연결 단위로 나눠서 한 Pod 에 요청이 몰린다. L7 프록시(Envoy·메시)나 클라이언트 측 분산을 쓴다.
+
+**누가 매일 만나나** — 백엔드는 접속 실패 시 `kubectl get endpoints` 로 셀렉터·readiness 부터 확인한다. 플랫폼 팀은 Ingress Controller 운영, 인증서, Gateway API 전환을 맡는다.
+
+**면접·실무 단골 질문**
+- Q. Service 는 있는데 접속이 안 된다면? → endpoints 가 비었는지(셀렉터 불일치·readiness 실패) → DNS 이름 → 포트·targetPort → NetworkPolicy 순으로 좁힌다.
+
 ## 실습 체크리스트
 
 - [ ] `kubectl get endpoints redis` 로 Service 가 가리키는 Pod IP 확인

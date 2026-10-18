@@ -207,6 +207,28 @@ docker exec -it study-postgres psql -U study -c "SELECT slot_name, active FROM p
 | 커넥션 사용률 | `numbackends / max_connections > 0.8` | 고갈 직전 |
 | 체크포인트 강제 비율 | requested 비율 상승 | `max_wal_size` 부족 → I/O 스파이크 |
 
+## 실전에서는 어디에 쓰이나
+
+> DB 가 진실의 원천이 되는 순간부터 "얼마나 잃어도 되나, 얼마나 빨리 돌아오나, 커넥션이 버티나, 무엇이 느린가" 가 매일의 질문이 된다. 이 노트의 백업·복제·풀링·쿼리 통계가 그 답이다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 핀테크 결제 원장 | 유실 0 과 빠른 장애 조치 | 동기 스트리밍 복제 + Patroni 같은 장애 조치 도구, WAL 아카이브 | 관리형 DB 의 다중 AZ 옵션 |
+| SaaS 운영 사고(실수로 DELETE) | 사고 직전 시각으로 되돌리기 | 베이스백업 + WAL 아카이브로 PITR, 지연 복제본 | 매일 `pg_dump` 는 최대 하루 유실 |
+| 쿠버네티스 위 마이크로서비스 | Pod 수 × 앱 풀이 `max_connections` 초과 | PgBouncer transaction 모드로 다중화 | 클라우드 관리형 DB 프록시 |
+| 커머스 피크 대비 점검 | DB 시간을 가장 많이 쓰는 쿼리 찾기 | `pg_stat_statements` 를 total 시간 순으로, `auto_explain` | APM 의 DB 스팬 분석 |
+| 데이터 플랫폼 CDC | WAL 을 Kafka 로 흘리기 | 논리 복제 슬롯 + `max_slot_wal_keep_size` 로 디스크 폭발 방지 | 주기적 쿼리 폴링 ETL |
+
+**이럴 땐 안 맞는다**
+- "복제본이 있으니 백업은 됐다" → `DROP TABLE` 도 수 ms 만에 복제된다. PITR 이나 지연 복제를 따로 둔다.
+- 세션 상태(`LISTEN`, 세션 `SET`, 임시 테이블)에 의존하는 앱에 transaction 모드 풀러 → 기능이 깨진다. session 모드나 직접 연결로.
+
+**누가 매일 만나나** — SRE·DBA 가 복제 지연·슬롯 보존 WAL·커넥션 사용률 경보를 받을 때, 백엔드 개발자가 장애 회고에서 "too many connections" 의 원인을 풀 크기에서 찾을 때.
+
+**면접·실무 단골 질문**
+- Q. RPO·RTO 로 백업 전략을 고르면? → `pg_dump` 는 RPO 하루, PITR 은 수 초~분, 스탠바이 승격은 빠르지만 실수까지 복제되므로 백업이 아니다.
+- Q. 커넥션 풀은 클수록 좋은가? → 아니다. DB 동시성은 코어 수 근처로 제한하고 대기는 풀러 큐에서 하게 한다.
+
 ## 실습 체크리스트
 
 - [ ] `pg_dump -Fc` → `pg_restore --create` 로 이 프로젝트 DB 복원 연습(복원 시간 기록)

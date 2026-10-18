@@ -119,6 +119,30 @@ JDK 9 부터 서버급 머신(CPU 2개 이상, 메모리 1792MB 이상)의 기�
 - [Redis 노트 12](/redis/notes/12-memory-performance)의 액티브 디프래그도 "살아 있는 객체를 옮겨 단편화를 줄이기" — GC 의 압축과 같은 발상이다.
 - 관측: Micrometer 는 `jvm_gc_pause_seconds`(히스토그램, cause·action 레이블)를 내보낸다. 이 사이트의 [Grafana·알림](/observability/notes/04-grafana-alerting) 방식대로 `histogram_quantile(0.99, rate(jvm_gc_pause_seconds_bucket[5m]))` 패널과 "GC 시간 비율이 10% 초과" 알림을 둔다([운영과 관측](/java/notes/24-operations-observability)).
 
+## 실전에서는 어디에 쓰이나
+
+> GC 는 자바 서비스의 p99 지연과 메모리 누수 두 가지 모두의 무대다. 대부분의 서버가 기본 수집기 G1 위에서 돌기 때문에, G1 로그를 읽을 줄 알면 "가끔 느려지는" 장애의 상당수를 설명할 수 있다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 주문 API(G1, 힙 수 GB) | 가끔 튀는 수백 ms 지연 | GC 로그에서 `to-space exhausted`·`Pause Full` 확인 → 힙 증설, 캐시 크기 제한 | 저지연 수집기(ZGC) |
+| 로컬 캐시를 static 맵으로 둔 서비스 | Full GC 뒤에도 Old 가 안 줄어듦(누수) | GC 루트(static·ThreadLocal·리스너) 경로 추적, 크기·TTL 제한 캐시로 교체 | 외부 캐시(Redis) |
+| 대용량 파일·이미지 처리 | Humongous 할당으로 이른 GC·단편화 | 큰 배열 재사용, `G1HeapRegionSize` 조정 | 스트리밍 처리, 오프힙 버퍼 |
+| 네이티브 자원을 쥔 라이브러리 | `finalize` 지연으로 자원·메모리가 밀림 | try-with-resources, `Cleaner` | 명시적 close API 제공 |
+| 운영 대시보드·알림 | GC 가 지연에 주는 영향을 숫자로 | `jvm_gc_pause_seconds` p99 패널, GC 시간 비율 10% 초과 알림 | APM 의 GC 뷰 |
+| 큰 카운트 루프가 있는 계산 코드 | GC 는 짧은데 앱이 오래 멈춤(TTSP) | `-Xlog:safepoint` 의 도달 시간 확인 | 긴 루프를 작은 단위로 나누기 |
+
+**이럴 땐 안 맞는다**
+- 메모리 누수를 힙 증설로 덮기: 시간만 번다 → 힙 덤프로 원인을 제거([진단 도구](/java/notes/19-diagnostic-tools)).
+- `SoftReference` 로 캐시 만들기: 회수 시점을 예측할 수 없다 → 크기 제한 캐시(Caffeine).
+- 1ms 단위 지연 요구: G1 의 일시정지 목표는 보장이 아니다 → ZGC([다음 노트](/java/notes/18-zgc-shenandoah-tuning)).
+
+**누가 매일 만나나** — SRE 가 p99 스파이크를 GC 로그·`jvm_gc_pause_seconds` 와 대조할 때, 백엔드 개발자가 캐시·대용량 처리 코드를 리뷰할 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. GC 가 있는데 왜 메모리 누수가 생기나? → GC 는 GC 루트에서 닿는가로 판단한다. static 캐시·ThreadLocal·리스너가 붙잡은 객체는 영원히 산다.
+- Q. 세대별 GC 의 근거는? → 약한 세대 가설 — 대부분 객체는 일찍 죽는다. Young GC 는 생존 객체만 복사하므로 쓰레기가 많을수록 싸다.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `java-gc-compare` 를 돌려 G1 의 최대 멈춤과 Serial 의 최대 멈춤을 비교

@@ -120,6 +120,30 @@ k6 에서는 `constant-arrival-rate` / `ramping-arrival-rate` 실행기가 열�
 
 > 함께 읽기: [측정 방법론 — USE·RED·골든 시그널, 프로파일링 vs 트레이싱, 벤치마크의 함정](/performance/notes/02-measurement-methodology)
 
+## 실전에서는 어디에 쓰이나 — 성능 공학 지도
+
+> 성능 공학은 "얼마나 빠른가" 보다 "어느 부하까지 약속(SLO)을 지키나" 를 숫자로 답하는 일이다. 출시 전 부하 리허설, 장애 중 병목 찾기, 증설 결정, 비용 논의가 모두 이 노트의 백분위수·리틀의 법칙·큐잉이라는 공통 언어로 이뤄진다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| "어제부터 p99 가 튄다" 알림 | RED 로 서비스를, USE 로 자원을 좁히기 | [측정 방법론](/performance/notes/02-measurement-methodology) |
+| 커머스 세일·티켓 오픈 직전 | 열린 모델 부하, spike·breakpoint 테스트 | [k6 부하 테스트](/performance/notes/03-k6-load-testing) |
+| Node·Next.js API 의 간헐 멈춤 | 이벤트 루프 지연, GC, flame graph | [Node.js·웹 서버 성능](/performance/notes/04-node-web-server-performance) |
+| 대부분의 웹 API 지연 | N+1, 커넥션 풀, 캐시 | [데이터 접근 병목](/performance/notes/05-data-access-bottlenecks) |
+| 쿠버네티스로 옮긴 뒤 느려진 서비스 | CPU 스로틀링, requests/limits | [시스템 수준](/performance/notes/06-system-level) |
+| 다음 분기 인프라 예산 | 부하 모델, 단위 용량, 헤드룸, HPA | [용량 계획](/performance/notes/07-capacity-planning) |
+| 팬아웃 많은 마이크로서비스·AI 서비스 | 꼬리 증폭, 헤징, 부하 차단, TTFT | [꼬리 지연과 대규모](/performance/notes/08-tail-latency-at-scale) |
+
+**회사 규모에 따라** — 스타트업은 관리형 APM 의 p95 와 출시 전 스모크 테스트 정도로 시작하고, 병목은 대개 N+1·인덱스 같은 데이터 접근에서 나온다.
+성장기에는 SLO 를 정하고 k6 를 CI 에 넣어 회귀를 막으며, 이벤트 시즌마다 breakpoint 테스트로 필요한 인스턴스 수를 계산한다.
+대규모 조직에서는 팬아웃 때문에 꼬리가 곧 사용자 경험이 되어 헤징·부하 차단·재시도 예산을 공통 라이브러리로 제공하고, 연속 프로파일링과 요청당 비용을 전담 팀이 관리한다.
+
+**이럴 땐 안 맞는다**
+- 트래픽이 거의 없는 사내 도구·초기 MVP 에 정밀한 용량 계획 → 측정 비용이 이득보다 크다. 기본 지표와 스모크 테스트면 충분하다.
+- 정합성 버그(중복 결제, 레이스)를 부하 테스트로 찾으려는 것 → 기능·동시성 테스트의 일이다. 부하 테스트는 지연·처리량을 본다.
+
+**누가 매일 만나나** — 백엔드 개발자는 PR 의 성능 게이트가 실패하거나 "평균은 괜찮은데 사용자가 느리다" 는 문의를 받을 때, SRE 는 p99 알림과 용량 리뷰에서, 플랫폼 팀은 커넥션 풀·HPA 기본값을 정할 때 이 언어를 쓴다.
+
 ## 실습 체크리스트
 
 - [ ] `perf-k6-arrival-rate` 를 돌려 포화점을 찾고, 운영 빌드(`pnpm build && pnpm start`)에서 다시 돌려 비교한다

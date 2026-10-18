@@ -141,6 +141,31 @@ PostgreSQL 은 `shared_buffers` 를 RAM 의 25% 정도로 두고 나머지는 �
 docker run --rm alpine sh -c 'cat /proc/meminfo | grep -E "^(MemTotal|Cached|Dirty)"; cat /sys/block/vda/queue/rotational 2>/dev/null'
 ```
 
+## 실전에서는 어디에 쓰이나 — DB 내부 구조 지도
+
+> DB 내부 구조는 엔진을 직접 만들 때보다 "왜 이 DB 가 이 상황에서 느린가·부푸나·데이터를 잃나" 를 설명하고 저장소를 고를 때 쓰인다. 커밋 지연, 블로트, 쓰기 정체 같은 운영 문제의 대부분이 이 노트들의 숫자와 구조로 환원된다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 클라우드 블록 스토리지 위 DB 의 커밋 지연 예산 | 지연 숫자, fsync 비용, 배치로 줄이는 쓰기 증폭 | 이 노트 |
+| 주문 테이블 PK 를 UUID 로 할지 결정 | 무작위 키의 페이지 분할·캐시 지역성 | [B-tree 와 버퍼 풀](/db-internals/notes/02-btree-pages-buffer-pool) |
+| 메트릭·로그·메시지를 대량 적재할 저장소 선택 | 쓰기를 순차로 바꾸는 LSM 과 컴팩션 비용 | [LSM 트리와 컴팩션](/db-internals/notes/03-lsm-tree-compaction) |
+| "커밋됐다고 했는데 재시작 후 없다" 사고 분석 | WAL 규칙, fsync 손잡이, 복구 | [WAL·체크포인트·복구](/db-internals/notes/04-wal-checkpoint-recovery) |
+| 검색·위치·벡터 검색 기능 추가 | 질의 모양별 인덱스(GIN·GiST·BRIN·HNSW) | [인덱스 구조](/db-internals/notes/05-index-structures) |
+| 디스크가 계속 차는 PostgreSQL 운영 | MVCC 버전 저장, VACUUM, 긴 트랜잭션 | [MVCC 와 GC 비교](/db-internals/notes/06-mvcc-gc-comparison) |
+| 운영 DB 에 대시보드 쿼리가 몰려 느려짐 | 볼케이노 vs 벡터화, 행 vs 열 저장 | [쿼리 실행기와 열 저장](/db-internals/notes/07-query-execution-columnar) |
+
+**회사 규모에 따라**
+- 스타트업: 관리형 PostgreSQL·MySQL 기본값으로 시작하고, 내부 지식은 PK 타입·인덱스 위치 같은 스키마 결정과 느린 쿼리 하나를 고칠 때 쓰인다.
+- 성장기: 블로트·체크포인트 스파이크·복제 지연이 반복 장애가 되고, autovacuum·WAL 설정 튜닝과 분석 쿼리를 OLAP 저장소로 떼어 내는 일이 생긴다.
+- 대규모 조직: 워크로드별로 B-tree RDBMS·LSM 계열 분산 DB·열 저장 웨어하우스를 나눠 쓰고, 쓰기 증폭·컴팩션 특성이 디스크 용량 계획과 비용에 직접 들어간다.
+
+**이럴 땐 안 맞는다**
+- 데이터가 작아 전부 메모리에 들어가는 서비스 — 페이지·I/O 최적화보다 쿼리·스키마 단순화가 먼저다.
+- 엔진 손잡이가 막힌 관리형·서버리스 DB — 내부 구조는 원인 설명에는 쓰이지만 직접 조정할 여지가 적다. 배치·질의·스키마 쪽으로 푼다.
+
+**누가 매일 만나나** — 백엔드 개발자는 스키마·인덱스를 설계하고 `EXPLAIN` 을 읽을 때, DBA·SRE 는 디스크 지연·블로트·체크포인트 경보를 받을 때, 데이터 엔지니어는 분석 저장소와 파일 포맷을 고를 때 이 구조를 근거로 쓴다.
+
 ## 실습 체크리스트
 
 - [ ] 지연 표에서 "메모리 vs SSD", "SSD vs fsync", "SSD vs 네트워크 왕복" 비율을 외워 두고, Redis 파이프라이닝 노트의 RTT 이야기와 연결하기

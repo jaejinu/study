@@ -156,6 +156,28 @@ docker exec -it study-postgres psql -U study -c "set jit = on; set jit_above_cos
 
 `EXPLAIN (ANALYZE)` 출력의 `JIT: Functions: N, Timing: Generation/Optimization/Emission` 이 코드 생성 비용이다. 짧은 질의에서는 JIT 을 켜는 쪽이 오히려 느려지는 것을 직접 볼 수 있다.
 
+## 실전에서는 어디에 쓰이나
+
+> 운영 DB 에서 대시보드·리포트가 느릴 때, "같은 집계가 DuckDB 에선 초, PostgreSQL 에선 분" 인 이유를 설명하고 OLTP 와 OLAP 를 나눌지 정할 때 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 매출 대시보드 | 수억 행 집계를 초 단위로 | CDC 로 열 저장 OLAP(ClickHouse 등)에 적재, 정렬 키로 존 맵 활용 | 운영 DB 복제본 집계(행 단위 실행이라 느림) |
+| 관측 플랫폼 로그 분석 | 서비스·시간 조건 대량 스캔 | MergeTree `ORDER BY (service, ts)`, LowCardinality 사전 인코딩 | 검색 엔진 기반 로그 저장소 |
+| 분석가·ML 피처 탐색 | 노트북에서 Parquet 바로 분석 | DuckDB 임베디드 + 벡터화 실행 | Spark 클러스터 띄우기 |
+| OLTP 서비스의 느린 조인 | 해시 조인이 디스크로 유출 | `EXPLAIN ANALYZE` 로 rows 추정 vs 실제, `Batches`, 확장 통계 | `work_mem` 만 키우기(근본 원인이 남는다) |
+| 핀테크 실시간 리스크 집계 | 트랜잭션과 분석을 한 시스템에서 | HTAP(행 복제본 + 열 복제본) | OLTP + CDC + OLAP 분리 |
+
+**이럴 땐 안 맞는다**
+- 행 몇 개를 자주 갱신하는 OLTP 를 열 저장에 — 단건 INSERT·UPDATE 가 비싸다(뮤테이션). 행 저장 RDBMS 가 맞다.
+- 짧은 OLTP 쿼리에 JIT — 컴파일 시간이 실행보다 길다. `jit_above_cost` 를 높게 둔다.
+
+**누가 매일 만나나** — 데이터·분석 엔지니어가 웨어하우스 테이블의 정렬 키·파티션을 설계할 때, 백엔드 개발자가 느린 쿼리의 실행 계획을 읽을 때.
+
+**면접·실무 단골 질문**
+- Q. 열 저장이 분석에 빠른 이유? → 필요한 열만 읽고, 같은 타입이 연속이라 압축이 잘 되며, 벡터화와 존 맵으로 블록을 건너뛴다.
+- Q. 해시 조인과 중첩 루프는 언제 고르나? → 큰 테이블끼리 등호 조인은 해시, 한쪽이 작거나 안쪽에 인덱스가 있으면 인덱스 중첩 루프.
+
 ## 실습 체크리스트
 
 - [ ] `lab_olap` 에 `cid` 와 `amount` 의 확장 통계(`CREATE STATISTICS`)를 만들기 전후로 AND 조건의 `rows=` 추정이 어떻게 바뀌는지 보기

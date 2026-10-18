@@ -176,6 +176,28 @@ public <T> T get(String key, Class<T> type)                              // 캐�
 
 `RedisTemplate<String, Object>` 로 값을 꺼낼 때 `(Order) template.opsForValue().get(k)` 캐스트가 실패하면, 직렬화기(`Jackson2JsonRedisSerializer` vs `GenericJackson2JsonRedisSerializer`)가 타입 정보를 저장하는지부터 본다 — 소거된 타입을 런타임에 되살리는 방법이 직렬화기마다 다르기 때문이다.
 
+## 실전에서는 어디에 쓰이나
+
+> 제네릭은 평소엔 컴파일러 뒤에 숨어 있다가, 공통 라이브러리 API 를 설계할 때와 JSON·Redis 직렬화처럼 "런타임에 타입이 필요한" 경계에서 문제로 드러난다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 사내 공통 라이브러리(SDK) API 설계 | 호출하는 쪽이 하위·상위 타입을 자유롭게 넘기게 | 매개변수에 PECS 와일드카드, 반환 타입은 구체 타입 | 타입별 메서드 여러 개(소거로 오버로딩 충돌 가능) |
+| 외부 API 응답의 JSON 역직렬화 | `List<Order>` 를 런타임에 만들어야 함 | Jackson `TypeReference<List<Order>>`(슈퍼 타입 토큰) | 래퍼 클래스 `OrderList` |
+| Redis 캐시(`RedisTemplate`) | 꺼낸 값의 `ClassCastException` | 타입 정보를 저장하는 직렬화기 선택, 또는 타입별 템플릿 | 문자열 JSON 으로 저장하고 직접 파싱 |
+| Spring Data 리포지토리 | 엔티티·ID 타입을 선언에서 알아내기 | `Repository<Order, Long>` 의 선언 시그니처(소거되지 않음) | 명시적 `Class<T>` 전달 |
+| 레거시 시스템 연동 경계 | 로 타입이 섞인 컬렉션이 늦게 터짐 | `Collections.checkedList` 로 넣는 순간 검사 | 경계에서 새 리스트로 복사하며 검증 |
+
+**이럴 땐 안 맞는다**
+- 런타임에 타입별로 분기해야 하는 로직을 `T` 로 풀려 할 때: `new T()`·`instanceof List<String>` 이 안 된다 → `Class<T>` 토큰, 또는 sealed 계층 + 패턴 매칭.
+- 반환 타입에 와일드카드나 깊은 중첩 제네릭: 호출자가 다루기 어렵다 → 구체 타입이나 이름 있는 record 로 감싼다.
+
+**누가 매일 만나나** — 백엔드 개발자가 공통 모듈·SDK 를 만들 때, 그리고 `ClassCastException` 이 넣을 때가 아니라 꺼낼 때 터지는 버그를 쫓을 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. `List<String>` 은 왜 `List<Object>` 의 하위 타입이 아닌가? → 제네릭은 불공변이다. 배열 공변이 낳는 `ArrayStoreException` 같은 사고를 컴파일 시점에 막기 위해서다.
+- Q. PECS 란? → 값을 꺼내 주는(생산) 매개변수는 `extends`, 받아 넣는(소비) 매개변수는 `super`.
+
 ## 정리
 
 - 제네릭은 컴파일 시점 검사다. 런타임에는 대부분 지워진다(선언 시그니처는 남는다).

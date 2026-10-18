@@ -120,6 +120,29 @@ env:
 - 이 저장소의 앱은 Node 지만 같은 질문을 가진다: Node 의 `--max-old-space-size` 기본값도 컨테이너 한도와 맞춰야 한다([Node.js 10편: GC 와 힙](/nodejs/notes/10-gc-heap)).
 - 관측: `container_memory_working_set_bytes` (k8s, OOMKilled 판정 기준) 와 `jvm_memory_used_bytes{area="heap"}` 를 한 패널에 그리면 "힙 밖" 이 두 선의 차이로 보인다. 컨테이너 한도의 90% 알림을 둔다([k8s 관측](/observability/notes/07-kubernetes-observability)).
 
+## 실전에서는 어디에 쓰이나
+
+> 자바 서비스를 컨테이너·쿠버네티스로 옮기는 순간 만나는 주제다. JVM 의 기본값(힙 25%, 2GB 미만이면 SerialGC, cgroup 으로 계산한 CPU 수)이 서비스에 맞지 않아 OOMKilled·긴 GC 멈춤·스로틀링이 생긴다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 쿠버네티스로 옮긴 Spring Boot 서비스 | 1GB 를 줬는데 힙 256MB, GC 폭증 | `MaxRAMPercentage=60~75` 를 `JAVA_TOOL_OPTIONS` 로 주입 | `-Xmx` 고정(한도 바꿀 때마다 수정 필요) |
+| 1GB 컨테이너의 웹 서비스 | SerialGC 로 수십 ms 멈춤 | `-XX:+UseG1GC` 명시 | 메모리 2GB 이상 할당 |
+| CPU limit 없는 대형 노드 | GC·공용 풀 스레드가 노드 코어 수만큼 생김 | `-XX:ActiveProcessorCount=N` | CPU limit 설정 |
+| CPU limit 이 빠듯한 Pod | CFS 스로틀링으로 꼬리 지연 | limit 에 여유(조직 정책에 따라 제거), 스로틀 메트릭 확인 | replica 수를 늘려 Pod 당 부하 감소 |
+| OOMKilled 반복 | 흔적 없는 137 종료 | 힙 상한 + 힙 밖 < 한도, NMT, `MaxDirectMemorySize` 명시 | 한도 증설 |
+| CPU 기반 HPA | 워밍업 CPU 때문에 새 Pod 이 또 스케일 아웃 | `stabilizationWindowSeconds` 로 안정화 창 | 요청률·지연 기반 지표로 스케일 |
+
+**이럴 땐 안 맞는다**
+- 인체공학 기본값에 맡기기: 한도를 바꿀 때마다 JVM 이 고르는 GC·힙이 바뀐다(위 2GB 사례) → 핵심 플래그를 명시한다.
+- 메모리 limit 을 requests 보다 크게 둔 버스트 전략: JVM 은 한도까지 힙을 쓰도록 설계돼 노드 압박 때 먼저 축출된다 → limit = requests.
+
+**누가 매일 만나나** — 플랫폼·SRE 엔지니어가 Deployment 리소스와 JVM 옵션을 표준화할 때, 백엔드 개발자가 `OOMKilled` 알림을 받았을 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. Pod 이 OOMKilled 됐는데 자바 OOM 로그가 없다면? → 커널 OOM 킬러가 cgroup 한도 초과로 SIGKILL(137)한 것이다. 힙 밖 메모리와 과한 `-Xmx` 를 본다.
+- Q. 컨테이너 JVM 에서 가장 먼저 할 설정은? → `MaxRAMPercentage` 50~75, GC 명시, `ExitOnOutOfMemoryError`.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `java-container-memory` 를 돌려 1GB 컨테이너의 기본 힙(256MB)과 GC(Serial)를 확인

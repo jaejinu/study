@@ -181,6 +181,28 @@ docker exec -it study-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap
 - **마이크로서비스 분리(strangler)**: 모놀리스 DB 의 테이블 변경을 이벤트로 흘려 새 서비스가 구독.
 - **감사 로그**: `before/after` 가 그대로 변경 이력.
 
+## 실전에서는 어디에 쓰이나
+
+> "DB 에 저장하고 이벤트도 보내야 한다" 는 요구는 마이크로서비스라면 거의 반드시 나온다. Outbox 와 CDC 는 그 이중 쓰기를 DB 트랜잭션 하나로 줄이는 널리 쓰이는 해법이다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 주문 서비스 | 주문 저장과 `OrderCreated` 발행의 정합 | outbox 테이블 + Debezium EventRouter, 키 = aggregateid | 폴링 퍼블리셔(`SKIP LOCKED`) |
+| 상품 정보 캐시 | 앱이 캐시 무효화를 빼먹음 | `products` 변경 CDC → Redis 키 삭제 | TTL 만으로 버티기 |
+| 검색 서비스 | DB 와 검색 인덱스 동기화 | CDC → Kafka → OpenSearch 싱크 | 주기적 전체 재색인 |
+| 데이터 플랫폼 | 운영 DB 변경 이력을 데이터 레이크로 | 모든 변경을 S3·Iceberg 로 적재 | 야간 덤프 배치 |
+| 모놀리스 분해 | 새 서비스가 기존 테이블 변경을 구독 | strangler 패턴 + CDC 이벤트 | 공유 DB 직접 조회 |
+
+**이럴 땐 안 맞는다**
+- 논리 복제를 켤 수 없는 DB 환경 → 로그 기반 CDC 가 불가능하다. 폴링 퍼블리셔로 간다.
+- 테이블 CDC 의 before/after 를 그대로 도메인 이벤트로 공개 → 내부 스키마가 외부 계약이 된다. outbox 로 의도한 이벤트만 내보낸다.
+
+**누가 매일 만나나** — 백엔드 개발자가 "이벤트가 가끔 빠진다" 버그를 이중 쓰기로 진단할 때, DBA·SRE 가 복제 슬롯 lag 와 WAL 디스크 경보를 받을 때.
+
+**면접·실무 단골 질문**
+- Q. 이중 쓰기 문제란? → DB 커밋과 브로커 발행 사이에 죽으면 한쪽만 반영된다. 한 곳에만 쓰고 다른 쪽은 그것을 구독하게 한다.
+- Q. 복제 슬롯의 위험은? → 구독자가 돌아오지 않으면 WAL 이 쌓여 디스크가 찬다. `max_slot_wal_keep_size` 와 lag 알림으로 막는다.
+
 ## 실습 체크리스트
 
 - [ ] `pnpm cdc:up` 후 `curl localhost:18083/connector-plugins` 에서 PostgresConnector 확인

@@ -187,6 +187,28 @@ Comparator<Order> c = switch (sort) {
 
 대부분의 정렬은 DB(`ORDER BY`, 인덱스)에 맡기고, 메모리 정렬은 여러 소스를 합친 뒤에만 한다. 페이지네이션 정렬에는 반드시 **유일한 마지막 기준**(id)을 둔다 — 그렇지 않으면 같은 값의 순서가 페이지마다 바뀐다(→ [API 설계: REST 원칙](/api-design/notes/01-rest-principles)의 커서 페이지네이션).
 
+## 실전에서는 어디에 쓰이나
+
+> 정렬·근접 조회·우선순위는 랭킹, 요금 구간, 스케줄러, 일관 해싱처럼 "순서" 가 비즈니스 규칙인 곳에 쓰인다. 비교자 계약 위반은 특정 데이터 분포에서만 터지는, 재현하기 어려운 장애가 된다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 게임 리더보드·커머스 인기 상품 상위 K | 큰 목록에서 상위 K 개만 | 크기 K 의 최소 힙(`PriorityQueue`) — O(n log K) | Redis Sorted Set, DB `ORDER BY … LIMIT` |
+| 핀테크·통신 요금 구간표 | 금액이 속한 구간의 요율 찾기 | `TreeMap.floorEntry(amount)` | DB 구간 테이블 조회 |
+| 분산 캐시·샤드 라우팅 | 해시 위치 → 담당 노드(일관 해싱 링) | `ceilingEntry(hash)`, 없으면 `firstEntry()` | 라이브러리의 해시 링 구현 |
+| 예약·배송 슬롯 스케줄러 | 실행 시각 순 처리, 예약 겹침 검사 | `DelayQueue`, 시작 시각 키 `TreeMap` 의 앞뒤 확인 | 스케줄러 프레임워크, DB 인덱스 |
+| 관리자 화면·API 페이지네이션 | 같은 값의 순서가 페이지마다 바뀜 | 마지막 기준에 유일 키(id)를 두는 `thenComparing` | DB `ORDER BY …, id` + 커서 |
+
+**이럴 땐 안 맞는다**
+- DB 에 있는 데이터를 메모리로 가져와 정렬: 전송·메모리 비용이 크다 → DB `ORDER BY` + 인덱스, 메모리 정렬은 여러 소스를 합친 뒤에만.
+- 여러 스레드가 함께 쓰는 정렬 맵에 `TreeMap`: 스레드 안전하지 않다 → `ConcurrentSkipListMap`.
+
+**누가 매일 만나나** — 백엔드 개발자가 랭킹·스케줄 기능을 만들 때, 그리고 운영 로그에서 `Comparison method violates its general contract!` 를 처음 볼 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. `Comparison method violates its general contract!` 의 원인은? → 비교자 계약 위반(0 을 안 돌려줌, 가변 필드, 뺄셈 오버플로, `double` 캐스트). `Integer.compare`·`Comparator.comparing` 조합으로 고친다.
+- Q. 객체 정렬과 원시 배열 정렬의 알고리즘이 다른 이유는? → 객체는 다단계 정렬을 위해 안정성이 필요해 TimSort, 원시값은 같으면 구별할 수 없어 더 빠른 Dual-Pivot Quicksort.
+
 ## 정리
 
 - 비교자는 `comparing`·`thenComparing`·`reversed` 로 조합하고, 뺄셈 대신 `Integer.compare`.

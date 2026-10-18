@@ -111,6 +111,26 @@ kubectl create deployment web --image=nginx:1.27 --dry-run=client -o yaml > web.
 
 > 이어서 읽기: [Docker 란 무엇인가](/docker/notes/01-docker-overview) — 컨테이너가 무엇인지부터 · [Kubernetes·Docker 프로바이더로 이 프로젝트 코드화 — kind, Helm, 역할 분담](/iac/notes/07-provider-kubernetes-docker) — kind 클러스터를 OpenTofu 로 선언하기
 
+## 실전에서는 어디에 쓰이나
+
+> kubectl 과 로컬 클러스터는 운영 클러스터를 건드리기 전에 매니페스트를 시험하는 곳이자, 운영 중 상태를 읽고 조작하는 손이다. 컨텍스트 하나 잘못 고른 것이 곧 운영 사고라서 습관이 기술만큼 중요하다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| SaaS 백엔드 CI 파이프라인 | PR 마다 매니페스트·차트가 실제로 뜨는지 검증 | CI 러너에서 kind 클러스터 생성 → `apply` → `rollout status` | 스키마 검사(kubeconform)만 — 빠르지만 기동 여부는 모른다 |
+| 여러 환경을 다루는 플랫폼 팀 | dev 인 줄 알고 prod 에 적용하는 사고 방지 | 컨텍스트 분리, kube-ps1·kubens 로 프롬프트에 표시 | prod 는 사람의 쓰기 권한을 막고 GitOps 로만 |
+| 장애 대응 중인 온콜 | 문제 Pod 의 노드·IP·생성 시각을 빠르게 추리기 | `-o wide`, `-o jsonpath`, `--sort-by`, `-w` | k9s·Lens 같은 UI |
+| 새 서비스 매니페스트 작성 | 손으로 YAML 을 쓰다 생기는 오타 줄이기 | `create ... --dry-run=client -o yaml` 로 뼈대, `kubectl diff` 로 미리보기 | Helm 차트 스캐폴드 |
+
+**이럴 땐 안 맞는다**
+- 로컬 kind 결과를 운영과 같다고 믿기 → LoadBalancer·StorageClass·CNI 가 다르다. 클라우드 의존 기능은 스테이징 클러스터에서 확인한다.
+- 운영 변경을 명령형(`create`·`edit`)으로 → 이력이 남지 않는다. 파일 + `apply`, 더 나아가 GitOps 로 간다.
+
+**누가 매일 만나나** — 백엔드·SRE 는 하루에도 수십 번 `get`·`describe`·`logs` 를 친다. 플랫폼 엔지니어는 누가 어느 클러스터에 어떤 컨텍스트로 접근하는지(kubeconfig 배포, 권한)를 관리한다.
+
+**면접·실무 단골 질문**
+- Q. `kubectl apply` 와 `create` 의 차이는? → 선언형(원하는 상태를 반복 적용 가능) vs 명령형(이미 있으면 실패). 운영은 파일 + apply.
+
 ## 실습 체크리스트
 
 - [ ] `pnpm k8s:cluster` 후 `kubectl get nodes` 에서 Ready 확인

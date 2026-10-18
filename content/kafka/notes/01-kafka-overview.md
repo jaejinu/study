@@ -75,6 +75,31 @@ Redis Stream 은 Kafka 의 축소판이라 할 수 있다 (컨슈머 그룹, ID 
 - 로그·메트릭 파이프라인 (앱 → Kafka → Elasticsearch/S3)
 - 스트림 처리 (Kafka Streams, Flink)
 
+## 실전에서는 어디에 쓰이나 — Kafka 지도
+
+> Kafka 는 서비스 사이를 흐르는 이벤트의 "중앙 로그" 역할을 한다. 한 번 쓴 이벤트를 여러 팀이 각자 속도로 읽고, 필요하면 되감아 다시 읽을 수 있다는 점이 일반 큐와 다른 쓰임을 만든다. 원래 LinkedIn 이 활동 데이터 파이프라인을 위해 만들어 오픈소스로 공개했다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 커머스 주문 → 결제·재고·알림 | 키 기반 파티션 순서, acks, 보존 | [토픽·파티션·프로듀서](/kafka/notes/02-topics-partitions) |
+| 같은 이벤트를 여러 팀이 각자 소비 | 컨슈머 그룹, LAG, 리밸런스, 재처리 | [컨슈머 그룹·오프셋·리밸런스](/kafka/notes/03-consumer-groups) |
+| 결제·포인트처럼 중복·유실이 안 되는 곳 | at-least-once + 멱등 소비자, DLQ | [전달 보장과 설계 패턴](/kafka/notes/04-delivery-guarantees) |
+| 대용량 로그·클릭스트림 수집 | 순차 I/O, 페이지 캐시, 복제와 ISR | [Kafka 내부](/kafka/notes/05-internals-storage-replication) |
+| 실시간 집계·사기 탐지·저장소 연동 | Kafka Streams, Connect, Schema Registry | [Streams·Connect·Schema](/kafka/notes/06-streams-connect-schema) |
+| 사내 공용 Kafka 플랫폼 | 파티션 산정, 모니터링, ACL·쿼터, 용량 | [운영과 튜닝](/kafka/notes/07-operations-tuning) |
+| DB 변경을 이벤트·검색·캐시로 | Outbox, CDC, Debezium | [CDC 와 Outbox](/kafka/notes/08-cdc-outbox-debezium) |
+
+**회사 규모에 따라** — 스타트업은 대개 Kafka 가 아직 필요 없어 DB 큐(SKIP LOCKED)·Redis Stream·관리형 큐로 시작하고, 쓰더라도 관리형 Kafka 를 쓴다.
+성장기에는 서비스가 늘어 여러 팀이 같은 이벤트를 구독하게 되면서 Kafka 를 도입하고, Outbox/CDC 로 DB 와 정합을 맞추며 Schema Registry 로 이벤트 계약을 관리한다.
+대규모 조직에서는 데이터 플랫폼 팀이 여러 클러스터를 공용 인프라로 운영하며 토픽 소유권·ACL·쿼터·보존 비용·리전 간 복제를 관리한다.
+
+**이럴 땐 안 맞는다**
+- 작업 하나를 워커 하나가 처리하고 끝나는 단순 작업 큐 → 메시지별 확인·지연 재시도·우선순위는 RabbitMQ·SQS 같은 큐가 더 편하다.
+- 즉시 응답이 필요한 요청-응답 호출 → 이벤트 로그로 RPC 를 흉내 내면 복잡도만 는다. HTTP·gRPC 로.
+- 트래픽이 작은 초기 서비스 → 브로커 클러스터 운영 부담이 이득보다 크다.
+
+**누가 매일 만나나** — 백엔드 개발자는 이벤트를 발행·소비하며 키와 멱등성을 고민하고, 데이터 엔지니어는 토픽을 데이터 레이크·검색으로 잇고, SRE·플랫폼 팀은 LAG·UnderReplicatedPartitions 알림을 받는다.
+
 ## 이 노트 시리즈의 실습
 
 ```bash

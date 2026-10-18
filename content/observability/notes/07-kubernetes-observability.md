@@ -110,6 +110,28 @@ histogram_quantile(0.99, sum by (le, service) (rate(http_server_request_duration
 
 EKS/GKE/AKS 는 컨트롤 플레인 메트릭을 제한적으로 노출하고, 클라우드 자체 모니터링(CloudWatch Container Insights, Cloud Monitoring)과 Prometheus 를 함께 쓰는 경우가 많다. **Managed Prometheus**(AMP, GMP) 로 운영 부담을 줄일 수 있다. 비용은 수집 샘플 수 기준이니 카디널리티 관리가 곧 비용 관리다.
 
+## 실전에서는 어디에 쓰이나
+
+> 클러스터에서는 장애 신호가 노드·컨테이너·오브젝트 상태·앱 네 층에 흩어진다. 어느 층의 어느 신호를 보면 되는지 알아야 "Pod 이 이상하다" 에서 원인까지 빨리 간다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 배포 후 일부 Pod 재시작 반복 | OOM 인지 앱 크래시인지 | `restarts_total` 증가 + `waiting_reason`, working_set ÷ memory limit > 0.9 | Pod 마다 `kubectl describe` |
+| SaaS 성장기, 사용률은 낮은데 Pending | 왜 자리가 없나 | requests 합 ÷ allocatable(예약률)이 80% 를 넘는지, 과다 requests 찾기 | 노드 증설 — 비용만 는다 |
+| 지난밤 장애 사후 분석 | 이미 사라진 이벤트 확인 | kube-event-exporter → Loki 로 이벤트 보존 | `kubectl get events` — 1시간 뒤 사라진다 |
+| 금융권 보안 감사 | 누가 언제 Secret 을 읽었나 | API 서버 audit 로그 → SIEM | 없음 — 사후 추적 불가 |
+| 관리형 Prometheus 비용 급증 | 수집 샘플 수 줄이기 | 불필요한 `container_*` 를 `metricRelabelings` 로 drop, 간격 15~30초 | 보존 기간만 단축 |
+
+**이럴 땐 안 맞는다**
+- `kubectl top` 으로 추세 분석·알림 → metrics-server 는 현재값만 있다. 시계열과 알림은 Prometheus.
+- 관리형 클러스터에서 컨트롤 플레인 지표에 기대는 알림 → 일부만 노출된다. 클라우드 자체 모니터링과 병행한다.
+
+**누가 매일 만나나** — 플랫폼 팀은 클러스터 용량(예약률·Pending)을, 앱 팀은 자기 네임스페이스의 재시작·OOM 임박을, 온콜은 page 계층 알림을 본다.
+
+**면접·실무 단골 질문**
+- Q. OOMKilled 를 미리 알 수 있나? → 컨테이너 working_set 을 memory limit 으로 나눈 비율이 0.9 를 넘으면 경고. 노드 단위는 MemoryPressure 조건.
+- Q. requests 예약률과 실제 사용률이 다르면? → 예약률이 높으면 실제로 한가해도 Pending 이 난다. VPA 추천값으로 requests 를 줄인다.
+
 ## 실습 체크리스트
 
 - [ ] `pnpm k8s:monitoring` 후 Grafana(13001) 의 "Kubernetes / Compute Resources / Cluster" 에서 requests 예약률 보기

@@ -184,6 +184,28 @@ docker ps -q | xargs docker inspect -f \
 - 런타임 신호: Falco 알림, `docker events` 의 `exec_start`(누가 운영 컨테이너에 exec 했나), 예상 밖 아웃바운드 연결.
 - 예외(특권·호스트 마운트)는 **목록으로 관리**하고 이유·소유자를 적는다. 예외가 늘어나는 것 자체가 지표다.
 
+## 실전에서는 어디에 쓰이나
+
+> capabilities·seccomp·rootless·탈출 경로 차단은 "컨테이너 하나가 뚫려도 호스트와 이웃은 지킨다" 는 요구가 생길 때 — 보안 감사, 멀티테넌트 운영, CI 러너 설계 — 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 공용 CI 러너(여러 팀의 빌드) | 빌드 잡이 docker.sock·`--privileged` 로 호스트 장악 | DinD 대신 rootless BuildKit·Kaniko, 소켓 마운트 금지 | 잡마다 일회용 VM 러너 |
+| 핀테크·공공 보안 인증 대응 | CIS 벤치마크·감사 항목 충족 | `docker bench security`, `--cap-drop ALL`, `no-new-privileges`, 읽기 전용 루트 | 수작업 점검표 — 누락이 생긴다 |
+| 사용자 코드를 실행하는 SaaS(노트북·코딩 테스트) | 커널 공유로 인한 탈출 위험 | 좁힌 seccomp + gVisor 같은 샌드박스 런타임 | microVM(Firecracker·Kata) |
+| 로그·모니터링 에이전트 배포 | docker.sock 을 써야 하는 수집기의 권한 축소 | docker-socket-proxy 로 API 를 읽기 전용으로 제한 | 로그 파일 경로를 직접 수집 |
+| Kubernetes 운영 클러스터 | 위험 설정 Pod 를 배포 단계에서 차단 | Pod Security Standards(restricted)·Kyverno, 런타임은 Falco | 배포 후 사후 감사만 — 이미 늦다 |
+
+**이럴 땐 안 맞는다**
+- eBPF·perf 같은 커널 관측 도구 — 원래 `bpf`·`perf_event_open` 이 필요하다. 막기보다 예외 목록에 소유자·사유를 적고 일회용으로만 띄운다.
+- 앱이 쓰는 시스템 콜을 모른 채 바로 좁힌 seccomp 를 운영에 거는 것 — 예상 못 한 장애가 난다. `SCMP_ACT_LOG` 로 스테이징에서 먼저 돌린다.
+
+**누가 매일 만나나** — 보안 엔지니어는 Falco 알림과 예외 목록을 검토할 때, 플랫폼 엔지니어는 CI 러너·에이전트의 권한을 설계할 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. docker.sock 마운트가 왜 위험한가 → 소켓으로 특권 컨테이너를 만들 수 있어 호스트 root 와 같다. `:ro` 마운트도 API 호출은 막지 못한다.
+- Q. rootless 는 무엇을 바꾸나 → user namespace 로 컨테이너 root 를 호스트 일반 사용자에 매핑해, 탈출해도 호스트 권한이 없다.
+
 ## 실습 체크리스트
 
 - [ ] `docker run --rm --cap-drop ALL redis:8-alpine redis-server --port 80` 이 실패하고 `--cap-add NET_BIND_SERVICE` 로 성공하는지

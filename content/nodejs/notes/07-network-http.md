@@ -181,6 +181,28 @@ server saw close: true
 - **Redis 는 HTTP 가 아니지만 같은 원리.** ioredis 는 연결 하나에 명령을 파이프라인처럼 실어 보낸다 — keep-alive 의 극단적인 형태다. 반대로 `createRedis()` 로 만든 별도 연결을 닫지 않으면 연결이 샌다(Redis 의 `connected_clients` 가 계속 증가).
 - **브로커 벤치의 동시성.** 메시징 실험이 1만 메시지를 500개 묶음으로 보낸 것도 같은 이유다 — 한 번에 1만 개를 동시에 보내면 클라이언트 버퍼와 서버 큐가 넘친다.
 
+## 실전에서는 어디에 쓰이나
+
+> 서비스 간 HTTP 호출이 많은 백엔드라면 keep-alive·연결 풀·타임아웃 설정이 곧 장애 예방이다. 로드밸런서 뒤 502 와 연결 폭주가 대표 사고다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| ALB·Nginx 뒤의 Node API | 간헐적 502 | `keepAliveTimeout` 을 LB 유휴 타임아웃보다 길게 | LB 유휴 타임아웃을 줄임 |
+| 마이크로서비스 간 호출 | 요청마다 TCP·TLS 핸드셰이크 | keep-alive 에이전트로 연결 재사용 | gRPC(HTTP/2 다중화) |
+| 외부 API 를 대량으로 부르는 배치 | 동시 fetch 가 상대 accept 큐를 넘김 | undici `Agent({ connections })` 로 호스트당 상한 | 요청 단위 동시성 풀 |
+| AI 챗 SSE 서버 | 사용자가 떠난 뒤에도 LLM 호출 계속 | `req.on("close")` 에서 abort 해 하류 취소 | — |
+| 공개 웹 서버 | Slowloris·느린 업로드 | `headersTimeout`·`requestTimeout` | 앞단 프록시가 버퍼링·차단 |
+
+**이럴 땐 안 맞는다**
+- 타임아웃 없는 fetch 로 외부 호출 — 기본 수 분 동안 연결과 메모리를 붙잡는다. 호출마다 `signal` 을 준다.
+- 응답 본문을 읽지 않고 버리기 — 소켓이 풀로 돌아가지 않아 고갈된다. 끝까지 소비하거나 명시적으로 버린다.
+
+**누가 매일 만나나** — 백엔드 개발자가 서비스 간 클라이언트를 설정할 때, SRE·네트워크 엔지니어가 LB 502 나 `ECONNRESET` 을 조사할 때.
+
+**면접·실무 단골 질문**
+- Q. LB 뒤에서 502 가 간헐적으로 나는 이유 → 업스트림이 keep-alive 연결을 먼저 닫아, LB 가 재사용하던 연결에 RST.
+- Q. HTTP keep-alive 와 TCP keepalive 의 차이 → 연결 재사용 vs 죽은 연결 감지.
+
 ## 실습 체크리스트
 
 - [ ] `keepAlive: false/true` 로 순차 요청 300개의 시간·새 연결 수 측정

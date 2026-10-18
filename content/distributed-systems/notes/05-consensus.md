@@ -148,6 +148,28 @@ kubectl -n kube-system exec etcd-study-control-plane -- sh -c \
 
 Raft 는 "이해 가능" 하지만 **정확히** 구현하기는 여전히 어렵다. Jepsen 이 etcd·Consul·RethinkDB·TiKV 에서 찾은 버그는 대부분 Raft 코어가 아니라 **그 주변**(클라이언트 재시도, 리스 읽기, 멤버십 변경, 스냅샷 복원)에 있었다. 결론: 합의가 필요하면 etcd/ZooKeeper/Consul 을 쓰거나, 검증된 라이브러리(etcd/raft, hashicorp/raft)를 쓰고, 그 위의 코디네이션 로직(락, 리더 선출)은 [8장](/distributed-systems/notes/08-verification-and-practice) 의 기법으로 검증한다.
 
+## 실전에서는 어디에 쓰이나
+
+> "리더는 정확히 하나", "이 설정값은 모두가 같은 것을 본다" 가 깨지면 재앙인 곳에 합의가 쓰인다. 실무에서 Raft·Paxos 를 직접 구현할 일은 드물고, etcd·ZooKeeper·Consul·KRaft 같은 합의 기반 시스템을 운영하고 그 동작을 이해하는 일이 대부분이다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 쿠버네티스 컨트롤 플레인 | 클러스터 상태의 단일 진실 | etcd(Raft) 3·5노드, fsync 지연과 DB 크기 상한 모니터링 | 단일 etcd 는 노드 하나 장애가 클러스터 쓰기 중단 |
+| 메시지 브로커 메타데이터 | 토픽·파티션 리더 정보 합의 | Kafka KRaft 컨트롤러 쿼럼 (데이터 복제는 ISR 로 분리) | 과거 방식인 외부 ZooKeeper 의존 |
+| PostgreSQL 고가용성 | 프라이머리가 둘이 되는 사고 방지 | Patroni 가 etcd·Consul 의 리더 키(리스)로 프라이머리 결정 | 수동 페일오버 |
+| 서비스 디스커버리·설정 저장소 | 모든 인스턴스가 같은 설정을 봄 | Consul·etcd 의 선형화 읽기(ReadIndex) | 최종 일관 저장소 + 짧은 TTL 캐시 |
+| 분산 SQL DB | 범위별 복제와 리더 선출 | CockroachDB·TiKV 처럼 범위마다 Raft 그룹 | 단일 리더 DB 의 수직 확장 |
+
+**이럴 땐 안 맞는다**
+- 높은 쓰기 처리량의 일반 데이터: 모든 쓰기가 과반 fsync 를 기다린다. 메타데이터만 합의로, 데이터는 리더 기반 복제로 나누는 분업이 흔하다.
+- 직접 구현: 버그는 코어보다 주변(재시도·리스 읽기·멤버십 변경)에 숨는다. etcd/raft, hashicorp/raft 같은 검증된 라이브러리나 완성된 서비스를 쓴다.
+
+**누가 매일 만나나** — 플랫폼·쿠버네티스 운영자는 etcd 리더 교체 알림과 `wal_fsync_duration_seconds` 를 볼 때, SRE 는 쿼럼을 잃은 클러스터가 "멈춘" 이유를 설명할 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. etcd 를 왜 홀수 노드로 두나? → 과반 기준이라 4노드는 3노드와 견디는 장애 수(1)가 같고 쓰기 비용만 늘기 때문.
+- Q. 네트워크 분단 시 Raft 클러스터는? → 과반 쪽만 리더를 유지하고 소수 쪽은 쓰기를 멈춘다. 멈춤이 정상 동작이다.
+
 ## 실습 체크리스트
 
 - [ ] Raft 시각화(thesecretlivesofdata.com/raft)를 보며 분할 투표와 네트워크 분단 시나리오를 따라간다

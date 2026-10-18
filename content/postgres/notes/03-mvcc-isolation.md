@@ -183,6 +183,28 @@ for (let i = 0; i < 5; i++) {
 - HOT 비율(`n_tup_hot_upd / n_tup_upd`)이 낮은 갱신 테이블은 인덱스 설계·fillfactor 를 점검한다.
 - SERIALIZABLE 을 쓰면 40001 발생률을 메트릭으로 남긴다. 재시도율이 오르면 경합이 늘었다는 신호다.
 
+## 실전에서는 어디에 쓰이나
+
+> 같은 데이터를 동시에 읽고 쓰는 요청 — 이체, 예약, 근무 배정 — 이 생기는 순간 격리 수준이 결과의 정확성을 정한다. 그리고 오래 열린 트랜잭션이 VACUUM 을 막아 테이블이 부푸는 운영 문제로도 다시 만난다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 핀테크 잔액 차감 | 동시 이체의 초과 인출 방지 | READ COMMITTED 에서 조건부 UPDATE 한 문장(재검사) 또는 `FOR UPDATE` | SERIALIZABLE + 재시도는 일반적이지만 abort 처리 필요 |
+| 병원·매장 근무표 SaaS | "최소 1명 당직" 같은 여러 행 불변식(write skew) | SERIALIZABLE + `40001` 재시도 루프 | 관련 행을 모두 `FOR UPDATE` 로 명시 잠금 |
+| 정산·리포트 배치 | 긴 집계 동안 일관된 한 시점의 숫자 | REPEATABLE READ 읽기 전용 트랜잭션 | 읽기 복제본에서 돌려 primary 부담 분리 |
+| 자주 갱신되는 상태 테이블 | UPDATE 마다 새 튜플·인덱스 갱신으로 bloat | fillfactor 낮추고 갱신 컬럼에 인덱스를 걸지 않아 HOT 비율 유지 | 휘발성 상태는 Redis 로 |
+| 사내 DB 운영 | `idle in transaction` 세션이 VACUUM 지평선을 붙잡음 | `idle_in_transaction_session_timeout`, `backend_xmin` 나이 감시 | 사후에 `pg_repack` 으로 정리 |
+
+**이럴 땐 안 맞는다**
+- 전역 카운터처럼 경합이 몰리는 한 행에 SERIALIZABLE → abort·재시도가 폭증한다. 원자적 `UPDATE … SET n = n + 1` 이나 Redis `INCR`, 집계 테이블로.
+- 넣자마자 지우는 대량 임시 데이터 → MVCC 라 dead tuple 이 쌓인다. 파티션 단위 DROP 이나 전용 브로커로.
+
+**누가 매일 만나나** — 결제·주문 백엔드 개발자가 "가끔 재고·잔액이 음수가 된다" 는 버그를 두 세션으로 재현할 때, DBA 가 bloat·`age(datfrozenxid)` 경보를 받을 때.
+
+**면접·실무 단골 질문**
+- Q. PostgreSQL 기본 격리 수준과 막지 못하는 이상 현상은? → READ COMMITTED. non-repeatable read, phantom, write skew 는 가능하다.
+- Q. VACUUM 은 왜 필요한가? → MVCC 가 남긴 옛 버전 회수, visibility map 갱신, xid 랩어라운드 방지(freeze).
+
 ## 실습 체크리스트
 
 - [ ] 두 세션으로 non-repeatable read 재현 (실험실)

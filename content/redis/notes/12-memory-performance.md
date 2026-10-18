@@ -181,6 +181,28 @@ eBPF 주제의 `ebpf-bpftrace-syscalls` 실험은 Redis 프로세스의 시스�
 
 `quiz:stats:<주제>` 의 값은 `{"right":..,"wrong":..,"streak":..,"box":..,"due":..,"last":..}` JSON 이라 100바이트 안팎이다. 카드가 몇 장만 기록돼도 `hash-max-listpack-value`(64)를 넘어 hashtable 로 바뀐다. 주제당 카드가 수십 장이라 문제는 없지만, 수백만 사용자 규모라면 값을 `box|due` 처럼 짧게 인코딩하거나 필드를 분리해 listpack 을 유지하는 편이 메모리를 몇 배 아낀다. 이 판단을 직접 해 보는 것이 이 노트의 목표다.
 
+## 실전에서는 어디에 쓰이나
+
+> "Redis 메모리가 계속 오른다", "가끔 수십 ms 씩 튄다" 는 운영 문의에서 등장한다. 키가 수천만 개 규모가 되면 키당 오버헤드와 인코딩이 비용을 좌우한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 대량의 작은 ID 매핑 | 키 오버헤드가 값보다 큼 | 작은 Hash 버킷으로 묶어 listpack 유지 (Instagram 이 블로그로 공개한 기법) | 디스크 기반 KV |
+| SNS 팔로워 목록 | big key 조회·삭제로 서버 정지 | 키 분할, `UNLINK`, `SSCAN` 페이징 | RDBMS·그래프 저장소 |
+| 게임 이벤트 공지 키 | hot key 로 한 노드만 포화 | `--hotkeys`(LFU 정책), 앱 로컬 캐시 | 키 복제 |
+| 운영 중 지연 스파이크 | 원인 구분(O(N) 명령·fork·스왑) | `SLOWLOG`, `LATENCY DOCTOR`, `MEMORY STATS` | eBPF 로 시스템 콜 관찰 |
+| 대량 삭제 후 메모리 미반환 | 단편화 | `activedefrag yes` + 임계값 | 레플리카로 옮겨 재시작 |
+
+**이럴 땐 안 맞는다**
+- 메모리를 아끼려고 listpack 임계값을 크게 올리기 — 조회가 선형 탐색이 되어 CPU 가 튄다. 키 구조를 바꾼다.
+- 운영에서 `MONITOR`·`KEYS *` 로 원인 찾기 — 그 자체가 장애가 된다. `--bigkeys`·SCAN 기반 도구를 쓴다.
+
+**누가 매일 만나나** — SRE 가 메모리·지연 알림을 받은 직후의 첫 진단에서, 백엔드가 설계 리뷰에서 "키 1억 개면 몇 GB?" 를 계산할 때.
+
+**면접·실무 단골 질문**
+- Q. `mem_fragmentation_ratio` 가 1보다 작으면 → 스왑 중이라는 신호, 즉시 조치.
+- Q. 작은 키 수억 개의 메모리를 줄이는 법 → Hash 버킷으로 묶어 listpack 유지, 짧은 키 이름, 정수 인코딩.
+
 ## 실습 체크리스트
 
 - [ ] `MEMORY STATS` 에서 `keys.bytes-per-key`, `dataset.percentage`, `fragmentation` 읽기

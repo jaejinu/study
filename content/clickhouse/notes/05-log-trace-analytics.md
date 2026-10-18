@@ -192,6 +192,27 @@ WHERE msg = 'note.view' AND ts > now() - INTERVAL 7 DAY GROUP BY subject ORDER B
 
 Loki 에서 같은 질문은 `sum by (subject) (count_over_time({service="study-app"} | json | msg="note.view" [7d]))` — 7일치 원문을 모두 풀어 파싱한다. 지금 규모(하루 수천 줄)에선 둘 다 순식간이지만, 로그가 하루 수억 줄이 되면 결과는 실험 표처럼 갈린다.
 
+## 실전에서는 어디에 쓰이나
+
+> 로그·트레이스를 "찾기" 가 아니라 "집계" 해야 할 때 ClickHouse 가 등장한다. 관측 데이터가 커져 기존 로그 저장소의 질의 시간이나 비용이 문제가 되는 시점이다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 사내 관측 플랫폼 | 수십 개 서비스 로그를 오래 두고 오류율·지연 집계 | 고정 열 + `attrs` Map, OTel Collector clickhouseexporter | Loki — 저장은 싸지만 넓은 집계가 무겁다 |
+| 마이크로서비스 지연 분석 | 엔드포인트별 스팬 지연 분포 | spans 테이블 + `quantiles` 집계 | Tempo — trace_id 단건 조회엔 더 싸다 |
+| 보안 감사 로그 | 몇 달치 접근 기록에서 이상 패턴 집계 | Kafka 엔진 + MV 적재, TTL 로 보존 기간 | SIEM·OpenSearch — 전문 검색·탐지 규칙 |
+| 고객 문의 대응 | 특정 요청의 로그와 스팬을 함께 보기 | trace_id bloom_filter + logs ⋈ spans 조인 | 로그·트레이스 저장소를 Grafana 에서 연결 |
+
+**이럴 땐 안 맞는다**
+- 로그를 가끔 grep 하듯 보고 운영 인력이 적다 → Loki. 스키마·적재 파이프라인을 운영하는 부담이 더 크다.
+- 문장 검색과 관련도 순위가 핵심 → OpenSearch. tokenbf 는 "단어가 있나" 정도만 빠르게 한다.
+
+**누가 매일 만나나** — SRE·플랫폼 엔지니어가 관측 백엔드를 고르고 운영할 때, 백엔드 개발자가 장애 뒤 "이 오류가 언제부터, 어느 경로에서" 를 물을 때.
+
+**면접·실무 단골 질문**
+- Q. Loki·OpenSearch·ClickHouse 중 무엇을 고르나? → 질문 유형(grep·검색·집계), 데이터량, 운영 인력. 단기 Loki + 장기 ClickHouse 병행도 흔하다.
+- Q. 서비스마다 로그 속성이 다르면 스키마는? → 자주 쓰는 것은 고정 열, 나머지는 Map, 자주 읽는 키는 MATERIALIZED 열로 승격.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `ch-log-analytics` 를 돌리고 Grafana Explore 에서 `{source="ch-lab"}` 로 같은 LogQL 을 직접 실행해 보기

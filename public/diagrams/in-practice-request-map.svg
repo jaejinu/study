@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 540" font-family="ui-sans-serif, system-ui, 'Apple SD Gothic Neo', sans-serif" font-size="12.5">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#8b98a9"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#3fb950"/></marker>
+  </defs>
+  <rect width="900" height="540" fill="#0d1117"/>
+  <text x="30" y="30" fill="#e6edf3" font-weight="600" font-size="15">서비스 하나의 지도 — 요청 경로의 각 지점에 어떤 기술이 들어가나</text>
+
+  <!-- platform band -->
+  <rect x="30" y="46" width="840" height="40" rx="8" fill="#121821" stroke="#2ea043" stroke-dasharray="5 4"/>
+  <text x="44" y="71" fill="#3fb950" font-weight="600">플랫폼</text>
+  <text x="104" y="71" fill="#8b98a9" font-size="11.5">코드 → GitHub Actions(빌드·테스트) → Docker 이미지 → Terraform·AWS(인프라) → Kubernetes + GitOps·메시(카나리 배포)</text>
+
+  <!-- row 1: synchronous path -->
+  <g fill="#1a222e" stroke="#243040">
+    <rect x="30" y="112" width="110" height="52" rx="8"/>
+    <rect x="165" y="112" width="150" height="52" rx="8"/>
+    <rect x="340" y="112" width="175" height="52" rx="8"/>
+    <rect x="740" y="112" width="130" height="52" rx="8"/>
+  </g>
+  <rect x="540" y="112" width="175" height="52" rx="8" fill="#12261a" stroke="#2ea043" stroke-width="1.5"/>
+  <g fill="#e6edf3" font-weight="600">
+    <text x="44" y="134">클라이언트</text>
+    <text x="179" y="134">엣지 CDN·WAF</text>
+    <text x="354" y="134">게이트웨이 (Nginx)</text>
+    <text x="554" y="134">앱 서비스 (Pod)</text>
+    <text x="754" y="134">외부 API</text>
+  </g>
+  <g fill="#8b98a9" font-size="11">
+    <text x="44" y="153">웹·앱</text>
+    <text x="179" y="153">정적 캐시·DDoS 차단</text>
+    <text x="354" y="153">TLS·인증·레이트리밋</text>
+    <text x="554" y="153">Java·Node.js 비즈니스 로직</text>
+    <text x="754" y="153">결제사(PG)·LLM</text>
+  </g>
+  <g fill="none" stroke="#8b98a9" marker-end="url(#a)">
+    <path d="M140 138 H163"/><path d="M315 138 H338"/><path d="M515 138 H538"/><path d="M715 138 H738"/>
+  </g>
+
+  <!-- row 2: sync stores -->
+  <g fill="#121821" stroke="#243040">
+    <rect x="340" y="214" width="175" height="62" rx="8"/>
+    <rect x="540" y="214" width="175" height="62" rx="8"/>
+    <rect x="740" y="214" width="130" height="62" rx="8"/>
+  </g>
+  <g fill="#e6edf3" font-weight="600"><text x="354" y="236">Redis</text><text x="554" y="236">PostgreSQL</text><text x="754" y="236">벡터 인덱스</text></g>
+  <g fill="#8b98a9" font-size="11">
+    <text x="354" y="254">캐시·카운터·락·세션</text><text x="354" y="269">"빠르지만 잃어도 되는 것"</text>
+    <text x="554" y="254">주문·원장·사용자</text><text x="554" y="269">"진실의 원천" — 트랜잭션</text>
+    <text x="754" y="254">pgvector 등</text><text x="754" y="269">RAG 의미 검색</text>
+  </g>
+  <g fill="none" stroke="#8b98a9" marker-end="url(#a)">
+    <path d="M600 164 L470 212"/><path d="M627 164 V212"/><path d="M660 164 L790 212"/>
+  </g>
+  <text x="30" y="236" fill="#8b98a9" font-size="11">동기 경로 — 사용자가 기다린다</text>
+  <text x="30" y="252" fill="#8b98a9" font-size="11">p99 지연·에러율이 곧 경험</text>
+
+  <!-- row 3: async -->
+  <rect x="540" y="318" width="175" height="62" rx="8" fill="#12261a" stroke="#2ea043" stroke-width="1.5"/>
+  <g fill="#121821" stroke="#243040">
+    <rect x="340" y="318" width="175" height="62" rx="8"/>
+    <rect x="165" y="318" width="150" height="62" rx="8"/>
+    <rect x="30" y="318" width="110" height="62" rx="8"/>
+  </g>
+  <g fill="#e6edf3" font-weight="600"><text x="554" y="340">Kafka (이벤트 로그)</text><text x="354" y="340">컨슈머·워커</text><text x="179" y="340">OpenSearch</text><text x="44" y="340">ClickHouse</text></g>
+  <g fill="#8b98a9" font-size="11">
+    <text x="554" y="358">아웃박스·CDC 로 발행</text><text x="554" y="373">재처리 가능한 사실 기록</text>
+    <text x="354" y="358">알림·정산·검색 색인</text><text x="354" y="373">각자 속도로 소비</text>
+    <text x="179" y="358">전문 검색·로그 검색</text><text x="179" y="373">한국어 형태소</text>
+    <text x="44" y="358">집계·대시보드</text><text x="44" y="373">조회수·통계</text>
+  </g>
+  <path d="M627 276 V316" fill="none" stroke="#3fb950" marker-end="url(#g)"/>
+  <g fill="none" stroke="#8b98a9" marker-end="url(#a)"><path d="M540 349 H517"/><path d="M340 349 H317"/><path d="M165 349 H142"/></g>
+  <text x="740" y="340" fill="#8b98a9" font-size="11">비동기 경로 —</text>
+  <text x="740" y="356" fill="#8b98a9" font-size="11">사용자는 안 기다린다</text>
+  <text x="740" y="372" fill="#8b98a9" font-size="11">지연(lag)·유실이 관건</text>
+
+  <!-- observability band -->
+  <rect x="30" y="414" width="840" height="100" rx="10" fill="#121821" stroke="#2ea043" stroke-width="1.5"/>
+  <text x="46" y="438" fill="#3fb950" font-weight="600">관측 — 모든 상자에 붙는다</text>
+  <g fill="#1a222e" stroke="#243040">
+    <rect x="46" y="450" width="190" height="50" rx="6"/>
+    <rect x="248" y="450" width="190" height="50" rx="6"/>
+    <rect x="450" y="450" width="190" height="50" rx="6"/>
+    <rect x="652" y="450" width="202" height="50" rx="6"/>
+  </g>
+  <g fill="#e6edf3" font-weight="600" font-size="12"><text x="58" y="470">메트릭 Prometheus</text><text x="260" y="470">로그 Loki</text><text x="462" y="470">트레이스 OTel·Tempo</text><text x="664" y="470">SLO·번레이트 알림</text></g>
+  <g fill="#8b98a9" font-size="11"><text x="58" y="488">RED·USE·큐 lag·적중률</text><text x="260" y="488">구조화 JSON·trace_id</text><text x="462" y="488">한 요청이 지난 상자들</text><text x="664" y="488">"사용자가 아픈가" 만 깨운다</text></g>
+</svg>

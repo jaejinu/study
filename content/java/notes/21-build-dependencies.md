@@ -179,6 +179,29 @@ CI 에서는 `~/.gradle/caches`·`~/.m2/repository` 를 락 파일 해시 키로
 - [플랫폼 엔지니어링의 골든 패스](/platform-engineering/notes/03-golden-paths-templates)에서 사내 BOM(`company-platform-bom`)과 Gradle 컨벤션 플러그인을 제공하는 것이 자바 조직의 전형적 "포장된 길" 이다.
 - [테스트 비용 노트](/testing/notes/07-mutation-testing-cost)의 테스트 샤딩·캐시가 Gradle 빌드 캐시와 같은 원리다(입력 해시 → 출력 재사용).
 
+## 실전에서는 어디에 쓰이나
+
+> 빌드와 의존성 관리는 "로컬에선 되는데 운영에서 `NoSuchMethodError`", 대형 취약점 대응, 느린 CI 의 원인이다. 여러 팀이 같은 라이브러리를 쓰는 조직일수록 버전 정렬이 곧 운영 안정성이다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 마이크로서비스 수십 개를 운영하는 조직 | 서비스마다 다른 Jackson·Netty 버전으로 인한 충돌 | 사내 BOM·버전 카탈로그 + Gradle 컨벤션 플러그인(골든 패스) | 서비스별 자율 관리 |
+| 라이브러리 업그레이드 PR | 런타임 `NoSuchMethodError` | `dependencyInsight`·`mvn dependency:tree` 로 어느 버전이 이겼는지 확인 | 강제 버전·exclusion |
+| Log4Shell 같은 대형 취약점 공개 | 어느 서비스가 영향받는지 즉시 파악 | 빌드마다 CycloneDX SBOM 생성·검색, Dependabot·trivy 스캔 | 서비스별 수동 조사 |
+| 핀테크·공공의 감사 대응 | 같은 소스 → 같은 산출물 증명 | 잠금 파일, 툴체인, Wrapper, 체크섬 검증 | 빌드 서버 스냅숏 보관 |
+| 모듈이 많은 저장소의 CI | 빌드 시간이 수십 분 | Gradle 빌드 캐시·병렬·설정 캐시, 락 파일 해시로 CI 캐시 | Bazel 같은 빌드 시스템 |
+| 사내 공용 라이브러리 배포 | 소비자 클래스패스 오염 | `implementation` 을 기본, `api` 는 꼭 노출할 것만 | 셰이딩으로 내부 의존성 숨기기 |
+
+**이럴 땐 안 맞는다**
+- 버전 범위·`latest.release`: 어느 날 같은 소스의 빌드 결과가 바뀐다 → 정확한 버전 + 잠금 파일.
+- Spring Boot 프로젝트에서 BOM 이 관리하는 라이브러리 버전을 개별 지정: 묶음 정합성 보호를 잃는다 → BOM 프로퍼티나 Boot 버전째 올린다.
+
+**누가 매일 만나나** — 백엔드 개발자가 의존성 업그레이드 PR 과 런타임 에러를 다룰 때, 플랫폼 엔지니어가 사내 BOM·CI 캐시를 관리할 때, 보안 담당이 새 CVE 의 영향 범위를 조사할 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. Maven 과 Gradle 의 버전 충돌 해석은 어떻게 다른가? → Maven 은 가장 가까운 선언이, Gradle 은 그래프 전체에서 가장 높은 버전이 이긴다.
+- Q. Gradle 의 `implementation` 과 `api` 의 차이는? → `api` 는 소비자에게 전이되고, `implementation` 은 숨겨져 재컴파일 범위와 클래스패스 오염을 줄인다.
+
 ## 실습 체크리스트
 
 - [ ] 같은 라이브러리의 두 버전을 서로 다른 깊이로 끌어오는 프로젝트를 Maven·Gradle 로 각각 빌드해 어떤 버전이 이기는지 확인

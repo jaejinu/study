@@ -129,6 +129,30 @@ t=40  아직 살아 있으면 SIGKILL
 - [SRE 노트의 SLO 기반 카나리](/sre/notes/07-slo-driven-automation)는 자바의 워밍업을 고려해야 한다 — 카나리 Pod 의 첫 수십 초는 JIT 때문에 느리니 분석 시작 전 대기(초기 지연)를 둔다.
 - [플랫폼 엔지니어링의 골든 패스](/platform-engineering/notes/03-golden-paths-templates)에 위 체크리스트를 템플릿 기본값으로 넣는 것이 조직 차원의 해법이다.
 
+## 실전에서는 어디에 쓰이나
+
+> 자바 서비스를 운영에 올리면 "보이게 하기(메트릭·트레이스)", "배포 중 요청을 잃지 않기(프로브·셧다운)", "빨리 뜨게 하기(시작 시간)" 세 가지가 필요하다. 이 노트는 그 셋을 실제 설정으로 묶는다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 쿠버네티스 위 Spring Boot 서비스 | 롤링 배포 때마다 5xx 스파이크 | `server.shutdown=graceful` + preStop sleep + `exec java`, 시간 예산 맞추기 | 서비스 메시의 연결 드레이닝 |
+| 기동이 느린 서비스 | 시작 도중 liveness 실패로 재시작 반복 | startupProbe → readiness(의존성) → liveness(프로세스만) | liveness 초기 지연을 길게 |
+| DB 장애가 난 순간 | liveness 에 DB 를 넣어 전 Pod 재시작 폭풍 | liveness 는 프로세스만, DB 는 readiness 로 | — |
+| 마이크로서비스 분산 트레이싱 도입 | 코드 수정 없이 서비스 간 호출 추적 | OTel 자바 에이전트 + 로그의 `trace_id` 로 Loki·Tempo 연결 | Micrometer Tracing(에이전트 없이) |
+| 사내 표준 모니터링 | 서비스마다 같은 JVM·HTTP·풀 메트릭 | Micrometer → `/actuator/prometheus` → 공통 Grafana 대시보드·알림 | 상용 APM 에이전트 |
+| 서버리스·잦은 오토스케일 | 콜드 스타트가 SLO 를 깸 | AppCDS → CRaC → GraalVM 네이티브 순으로 검토 | 최소 replica 를 높게 유지 |
+
+**이럴 땐 안 맞는다**
+- `/actuator/env`·`/heapdump` 를 공개 포트에 노출: 비밀이 들어 있다 → 관리 포트 분리, 인증.
+- 메트릭 레이블에 사용자 id·주문 id: 시계열이 폭발하고 관측 비용이 커진다 → URI 템플릿 같은 유한한 값만.
+- 수명이 긴 서비스에 네이티브 이미지: 빌드 비용·리플렉션 제약에 비해 이득이 작고 피크 처리량이 낮을 수 있다 → 기본 JVM + AppCDS.
+
+**누가 매일 만나나** — SRE·플랫폼 엔지니어가 배포 템플릿·대시보드·알림 규칙을 만들 때, 백엔드 개발자가 새 서비스를 골든 패스 기본값에 맞춰 띄울 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. liveness 와 readiness 의 차이는? → liveness 는 재시작 판단이라 프로세스 상태만, readiness 는 트래픽을 받을지 판단이라 의존성·워밍업까지 본다.
+- Q. 그레이스풀 셧다운은 왜 필요한가? → k8s 에서 엔드포인트 제거와 SIGTERM 이 동시에 일어나, 전파 전에 들어온 요청이 실패한다. preStop 대기 후 처리 중 요청을 마무리하고 끝낸다.
+
 ## 실습 체크리스트
 
 - [ ] Actuator 를 관리 포트로 분리하고 `/actuator/prometheus` 를 이 저장소 Prometheus 에 스크레이프 대상으로 추가

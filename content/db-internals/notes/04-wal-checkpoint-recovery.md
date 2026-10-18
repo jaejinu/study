@@ -170,6 +170,28 @@ docker exec -it study-postgres ls /var/lib/postgresql/data/pg_wal | head
 
 > 이어서 읽기: [스토리지와 StatefulSet](/kubernetes/notes/06-storage-statefulset) — StatefulSet 과 PVC — 디스크를 Pod 에 묶기
 
+## 실전에서는 어디에 쓰이나
+
+> "완료라고 응답했는데 재시작 후 없다", "커밋 지연이 왜 수 ms 인가", "체크포인트 때마다 쿼리가 튄다" — 내구성과 커밋 지연을 맞바꾸는 결정에서 WAL 이 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 핀테크 결제·원장 | 커밋 응답 = 유실 없음 | `synchronous_commit=on` + 동기 복제, 동시성으로 그룹 커밋 효과 | 비동기 커밋은 최근 수백 ms 를 잃을 수 있다 |
+| 커머스 조회수·세션성 데이터 | 커밋 지연 최소화 | 트랜잭션 단위로 `SET LOCAL synchronous_commit = off` | Redis 같은 메모리 저장소로 분리 |
+| 이벤트 기반 MSA 연동 | DB 변경을 다른 시스템으로 전파 | WAL 논리 디코딩 기반 CDC(Debezium)·outbox | 애플리케이션 이중 쓰기(불일치 위험) |
+| SaaS DB 운영 | 체크포인트 스파이크와 복구 시간 | `max_wal_size`·`checkpoint_completion_target` 조정, `checkpoints_req` 감시 | 더 빠른 디스크, WAL 별도 장치 |
+| 금융·공공 데이터 복구 요구 | 특정 시점으로 되돌리기 | 베이스 백업 + WAL 아카이브로 PITR | 정기 덤프(마지막 덤프 이후 유실) |
+
+**이럴 땐 안 맞는다**
+- 잃어도 다시 만들 수 있는 캐시·파생 데이터 — 커밋마다 fsync 는 낭비다. 비동기 커밋이나 영속성 없는 저장소.
+- 여러 노드의 복제로 내구성을 사는 설계(Kafka `acks=all`)에 노드마다 fsync 강제 — 처리량만 잃기 쉽다. 다만 같은 랙 동시 전원 차단 같은 상관 장애는 따로 따진다.
+
+**누가 매일 만나나** — DBA·SRE 가 WAL 디스크 사용량·복제 지연·체크포인트 경고를 볼 때, 백엔드 개발자가 "이 쓰기는 잃어도 되나" 를 정하고 배치 커밋을 설계할 때.
+
+**면접·실무 단골 질문**
+- Q. WAL 이 있으면 왜 커밋이 빨라지나? → 흩어진 데이터 페이지 대신 로그 끝에 순차로 한 번 fsync 하고 페이지는 나중에 모아 쓴다(steal + no-force).
+- Q. `synchronous_commit=off` 에서 잃는 것과 잃지 않는 것은? → 최근 커밋 일부를 잃을 수 있지만 데이터 손상·불일치는 없다.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `dbi-wal-vs-aof` 를 돌리고 네 설정 각각이 "전원이 나가면 무엇을 잃는가" 를 자기 말로 적기

@@ -153,6 +153,27 @@ kubectl -n linkerd logs deploy/linkerd-destination -c destination       # 컨트
 
 > 이어서 읽기: [mTLS 와 서비스 신원](/service-mesh/notes/03-mtls-identity) · [카나리와 트래픽 분할 — 호출 쪽 프록시에서 나눈다](/service-mesh/notes/06-canary-traffic-split) · [메시 비교와 운영 — 장애 모드](/service-mesh/notes/07-mesh-comparison-ops) · [운영체제 07 — 컨테이너는 결국 프로세스](/os-internals/notes/07-containers-are-processes)
 
+## 실전에서는 어디에 쓰이나
+
+> 프록시를 Pod 옆에 둘지 노드에 둘지는 "Pod 수 × 프록시 비용" 이 눈에 띄게 커지거나, Job·배치가 사이드카 때문에 끝나지 않을 때 실제 결정 문제가 된다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| Pod 수천 개의 대형 커머스 클러스터 | Envoy 사이드카 메모리가 GB 단위로 쌓임 | ambient(ztunnel) 로 L4 만 노드 단위, L7 은 필요한 서비스에만 waypoint | 사이드카 유지 + `Sidecar` 리소스로 엔드포인트 범위 축소 |
+| 데이터 파이프라인·ML 배치 Job | 앱이 끝나도 프록시가 살아 Job 이 Completed 가 안 됨 | 네이티브 사이드카(`restartPolicy: Always` initContainer) | Job 은 `linkerd.io/inject: disabled` 로 메시 밖 |
+| 핀테크 멀티 테넌트 클러스터 | 테넌트 간 키·장애 반경 격리 | Pod 별 사이드카로 신원·장애를 Pod 단위로 | ambient 는 노드 프록시가 여러 테넌트 키를 쥐므로 보안 검토 필요 |
+| PostgreSQL·Redis 를 부르는 SaaS 백엔드 | 연결이 10초씩 멈추는 프로토콜 감지 지연 | 5432·6379 를 opaque 포트로 지정해 TCP 로만 프록시 | `skip-outbound-ports` 로 우회(단, mTLS·관측 밖) |
+
+**이럴 땐 안 맞는다**
+- 사이드카: 짧게 뜨고 사라지는 Pod 가 아주 많은 환경(배치·서버리스형) — 매번 프록시 기동·인증서 발급 비용을 낸다. 해당 워크로드만 메시에서 빼거나 노드 단위 프록시를 쓴다.
+- ambient: 노드 하나의 프록시 장애가 그 노드 전체 Pod 에 번지는 것을 받아들일 수 없는 곳 — 사이드카가 장애 반경이 작다.
+
+**누가 매일 만나나** — 플랫폼 엔지니어는 프록시 자원 요청값과 주입 어노테이션 표준을 정할 때, SRE 는 "READY 1/1 인데 사이드카가 없나?" 같은 질문과 `linkerd-init` 로그를 볼 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. 앱은 프록시를 모르는데 트래픽이 어떻게 프록시를 지나나? → Pod 네트워크 네임스페이스의 iptables(또는 eBPF) 규칙이 나가고 들어오는 TCP 를 프록시 포트로 REDIRECT 한다. 프록시 자신의 트래픽은 UID 로 제외한다.
+- Q. 네이티브 사이드카가 해결한 것은? → 시작 경쟁·종료 경쟁·Job 미종료. 앱보다 먼저 시작하고 앱이 끝난 뒤 종료된다.
+
 ## 실습 체크리스트
 
 - [ ] 메시 Pod 의 `spec.initContainers` 에서 `linkerd-proxy` 와 `restartPolicy: Always` 를 찾기

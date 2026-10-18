@@ -151,6 +151,27 @@ linkerd viz install | kubectl apply -f - ; linkerd viz dashboard
 
 [Linux 네트워크 도구 노트](/linux-network/notes/05-tools) 의 `tcpdump` 를 Pod 에서(`kubectl debug … --image=nicolaka/netshoot`) 쓸 수 있다.
 
+## 실전에서는 어디에 쓰이나
+
+> 클러스터 안 통신을 막고(NetworkPolicy), 밖으로 노출하고(Gateway API), 서비스 간 호출에 암호화·재시도를 얹는(서비스 메시) 계층이다. 보안 감사, 대규모 마이크로서비스, 카나리 배포에서 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 핀테크 결제 시스템 | "카드 데이터 서비스는 지정된 서비스만 접근" 감사 요구 | 네임스페이스 default-deny + 필요한 경로만 허용 | 클라우드 보안 그룹 — Pod 단위 제어가 어렵다 |
+| 대규모 마이크로서비스 | 서비스 간 mTLS·신원, 코드 수정 없는 재시도·타임아웃 | Istio·Linkerd | 언어별 복원력 라이브러리 + 앱 TLS |
+| 여러 팀이 쓰는 공용 진입점 | 플랫폼 팀은 리스너·인증서, 앱 팀은 라우트 | Gateway API(Gateway + HTTPRoute) 역할 분리 | Ingress + 컨트롤러별 어노테이션 |
+| 신규 버전 카나리 | 트래픽 10% 만 새 버전 | HTTPRoute `backendRefs` weight | Argo Rollouts 복제본 비율 |
+| Service 가 수천 개인 대형 클러스터 | iptables 규칙 평가 지연 | IPVS 모드 또는 Cilium eBPF 로 kube-proxy 대체 | 클러스터 분할 |
+
+**이럴 땐 안 맞는다**
+- 서비스 몇 개짜리 시스템에 메시 → 사이드카 메모리·지연·업그레이드 부담이 이득보다 크다. 라이브러리 + OTel 로 충분하다.
+- kindnet·Flannel 위에 NetworkPolicy 작성 → 정책이 조용히 무시된다. Calico·Cilium 처럼 정책을 지원하는 CNI 가 필요하다.
+
+**누가 매일 만나나** — 보안·플랫폼 엔지니어는 정책·mTLS·Gateway 를 설계한다. 백엔드는 "기본 거부 적용 후 모든 호출이 타임아웃" 같은 증상으로 처음 만난다.
+
+**면접·실무 단골 질문**
+- Q. default-deny 적용 후 전부 실패한다면? → egress 에서 DNS(UDP 53) 허용을 빠뜨린 경우가 가장 흔하다.
+
 ## 실습 체크리스트
 
 - [ ] kind 노드에서 `iptables -t nat -L` 로 redis Service 의 DNAT 규칙 찾기

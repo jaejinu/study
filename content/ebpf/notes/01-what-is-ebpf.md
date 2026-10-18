@@ -123,6 +123,32 @@ docker run --rm --privileged --pid=host -v /sys/kernel/debug:/sys/kernel/debug:r
 - **pinning**: 맵/프로그램을 `/sys/fs/bpf/` 에 파일로 고정해 프로세스가 죽어도 유지.
 - **libbpf / bpftool**: 표준 로더 라이브러리 / CLI(`bpftool prog list`, `bpftool map dump`).
 
+## 실전에서는 어디에 쓰이나 — eBPF 지도
+
+> eBPF 는 "커널을 고치지 않고 커널에서 일어나는 일을 보거나 바꾸는" 공통 기반이라 관측·네트워크·보안 도구의 엔진으로 쓰인다. 대부분의 실무자는 eBPF 를 직접 쓰기보다 eBPF 로 만든 도구(Cilium, Falco, 연속 프로파일러 등)를 운영하면서 만난다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 장애 중 "지금 커널에서 무슨 일이" 를 재배포 없이 확인 | tracepoint·kprobe + 맵 집계 한 줄 | [bpftrace 한 줄 관측](/ebpf/notes/02-bpftrace-one-liners) |
+| 디스크·런큐·TCP 지연 분포를 표준 도구로 진단 | biolatency·runqlat·tcplife 같은 libbpf-tools | [BCC · libbpf-tools](/ebpf/notes/03-bcc-libbpf-tools) |
+| 서비스 수천 개인 Kubernetes 의 Service·NetworkPolicy | TC·cgroup 훅과 맵 조회로 kube-proxy 대체 | [XDP, TC, Cilium](/ebpf/notes/04-networking-xdp-tc-cilium) |
+| 공개 서비스 앞단의 DDoS 드롭·L4 로드밸런서 | 스택 진입 전 XDP 에서 DROP·TX | [XDP, TC, Cilium](/ebpf/notes/04-networking-xdp-tc-cilium) |
+| 컨테이너 런타임 침입 탐지·실행 이력 감사 | syscall·LSM 훅 + 프로세스 상태 추적 | [Falco 와 Tetragon](/ebpf/notes/05-security-falco-tetragon) |
+| 클러스터 전체 CPU 를 어떤 코드가 쓰는지 상시 기록 | perf_event 샘플링 + 커널 안 스택 집계 | [프로파일링](/ebpf/notes/06-profiling-continuous) |
+| 사내 관측·보안 에이전트를 직접 만들 때 | libbpf·cilium/ebpf 로더, 링버퍼, CO-RE 배포 | [직접 작성하기](/ebpf/notes/07-writing-your-own) |
+
+**회사 규모에 따라**
+- 스타트업: 관리형 Kubernetes 의 eBPF 기반 CNI 나 관측 SaaS 에이전트를 켜서 간접적으로 쓴다. 장애 때 bpftrace 한 줄이 가장 현실적인 직접 사용이다.
+- 성장기: Cilium·Falco·연속 프로파일러를 직접 운영하기 시작하고, 규칙 노이즈 튜닝과 노드 커널 버전 관리가 플랫폼 팀의 일이 된다.
+- 대규모 조직: L4 LB·DDoS 방어·사내 관측 에이전트를 eBPF 로 직접 작성하고, 여러 커널 버전에서의 로드 테스트를 CI 에 넣는다.
+
+**이럴 땐 안 맞는다**
+- macOS·Windows 호스트 자체나 BTF 없는 오래된 커널 — 훅·CO-RE 가 없다. Linux VM 안에서 보거나 perf·strace 같은 기존 도구를 쓴다.
+- "어떤 사용자 요청이 느린가" 같은 애플리케이션 수준 질문 — 커널 이벤트만으로는 답하기 어렵다. 분산 트레이싱·APM 이 먼저다.
+- 특권을 줄 수 없는 환경(서버리스, 특권 컨테이너가 금지된 공유 클러스터) — 프로그램을 올릴 수 없다.
+
+**누가 매일 만나나** — SRE·플랫폼 엔지니어는 Cilium·Falco 같은 eBPF 기반 DaemonSet 을 업그레이드하며 커널 호환성을 맞출 때, 성능 엔지니어는 "CPU 는 한가한데 느리다" 를 지연 히스토그램·off-CPU 로 파고들 때, 보안 엔지니어는 런타임 탐지 규칙을 튜닝할 때 만난다.
+
 ## 실습 체크리스트
 
 - [ ] `docker run --rm --privileged alpine ls -la /sys/kernel/btf/vmlinux` 로 BTF 확인, `uname -r` 로 커널 버전 확인

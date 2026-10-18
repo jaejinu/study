@@ -128,6 +128,28 @@ const [a, b] = await Promise.all([getA(), getB()]);   // 지연 = max(A, B)
 
 > 함께 읽기: [시스템 수준 — CPU·메모리·디스크·네트워크, 컨테이너 제한과 스로틀링](/performance/notes/06-system-level)
 
+## 실전에서는 어디에 쓰이나
+
+> Node.js·Next.js 서버에서 "평균은 괜찮은데 가끔 수백 ms 씩 전부 멈춘다" 는 증상이 나오면 이 노트의 이벤트 루프·GC·프로파일링이 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| Node BFF·API 게이트웨이 | 큰 JSON 직렬화가 다른 요청까지 멈춤 | 이벤트 루프 지연 p99 알림, 응답 크기 축소, 스트리밍 | 멀티스레드 런타임(Go 등)으로 재작성 |
+| 이미지·PDF 생성 서비스 | CPU 집약 작업이 루프를 독점 | `worker_threads` 풀(piscina) 또는 큐 + 워커 프로세스 | 별도 서비스로 분리 |
+| Next.js SSR 커머스 상품 페이지 | 렌더링 CPU 와 직렬 await | 정적 생성·`revalidate` 캐시, `Promise.all`·Suspense 로 병렬 | CDN 캐시 |
+| 컨테이너 위 Node 서비스 | limit 근처 GC 폭주·OOM kill | `--max-old-space-size` 를 limit 의 ~75%, 힙 스냅샷 비교로 누수 추적 | 메모리 limit 만 상향 |
+| 운영 중 원인 불명 CPU 증가 | 어느 함수가 넓어졌나 | `--cpu-prof`·0x flame graph, Pyroscope 연속 프로파일링 | 코드에 타이밍 로그 추가 |
+
+**이럴 땐 안 맞는다**
+- 영상 인코딩·대량 수치 계산처럼 CPU 가 본업인 일을 메인 스레드에서 → 구조적으로 맞지 않는다. 네이티브 애드온, 다른 런타임, 별도 워커 서비스로.
+- `cluster` 로 프로세스를 늘려 꼬리 지연을 해결하려는 것 → 처리량만 늘고 한 프로세스 안의 막힘은 그대로다.
+
+**누가 매일 만나나** — Node 백엔드·풀스택 개발자가 Grafana 의 이벤트 루프 지연 패널이 튀는 것을 볼 때, 온콜이 계단식 힙 그래프와 OOM kill 알림을 받을 때.
+
+**면접·실무 단골 질문**
+- Q. 단일 스레드인 Node 가 어떻게 동시 요청을 처리하나? → I/O 는 OS 비동기 API·libuv 에 맡기고 JS 는 콜백만 실행한다. 그래서 CPU 작업이 길면 모두 멈춘다.
+- Q. flame graph 에서 무엇을 찾나? → 자식 없이 스스로 CPU 를 쓰는 넓은 plateau. 대기 시간은 flame graph 가 아니라 트레이스로 본다.
+
 ## 실습 체크리스트
 
 - [ ] `perf-node-eventloop` 를 돌리고 5ms 와 1ms 분할의 트레이드오프(총 시간 vs 최대 지연)를 설명한다

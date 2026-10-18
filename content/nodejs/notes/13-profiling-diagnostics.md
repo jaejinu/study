@@ -171,6 +171,28 @@ http.server.request.start, http.server.response.finish, http.client.request.star
 - **트레이스는 OTel 로.** `src/instrumentation.ts` 는 `@vercel/otel` 의 `registerOTel` 에 `IORedisInstrumentation`·`PgInstrumentation` 을 넘긴다. Redis 명령·SQL 이 스팬이 되어 Tempo 로 간다 — 진단 순서 5단계("기다리는 상대")를 이걸로 본다. 로그 줄의 `trace_id`(`src/lib/log.ts`)로 로그 ↔ 트레이스를 오간다.
 - **이벤트 루프 지연 경보.** `study_process_nodejs_eventloop_lag_seconds` 가 Grafana 에 있으니, p99 가 100ms 를 넘으면 알리는 규칙을 [관측성 09 알림 파이프라인](/observability/notes/09-alerting-pipeline) 의 규칙 파일에 추가하는 것이 자연스러운 다음 단계다.
 
+## 실전에서는 어디에 쓰이나
+
+> "Node 서버가 느리다" 는 신고를 받았을 때 CPU·I/O·GC 중 무엇인지 가르는 도구들이다. 관측성 스택과 연결해 상시로 켜 두는 경우가 많다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| SSR·API 서버 지연 알림 | 메인 스레드가 막히는지 판단 | 이벤트 루프 지연 p99·max 메트릭과 알림 | APM 에이전트 |
+| 운영 중 CPU 급증 | 재시작 없이 원인 함수 찾기 | `node:inspector` 로 수십 초 프로파일 → flame graph | 재현 환경에서 `--cpu-prof` |
+| 마이크로서비스 지연 분석 | Node 가 아니라 하류가 느린지 | OTel 트레이스 스팬, `diagnostics_channel` | 서비스 메시 지표 |
+| 플랫폼 관측 표준화 | 전 서비스 상시 프로파일 | Pyroscope·Parca 같은 연속 프로파일링 | eBPF 기반 프로파일러 |
+| 코드 안 구간 측정 | 쿼리·파싱 구간 시간 | `performance.mark/measure`, `timerify` | `Date.now()` (단조 시계가 아님) |
+
+**이럴 땐 안 맞는다**
+- 운영에서 `--inspect` 를 외부 인터페이스에 열기 — 원격 코드 실행이 된다. `127.0.0.1` + SSH 터널.
+- 이벤트 루프 지연이 낮은데 CPU 프로파일부터 — 범인은 기다리는 상대다. 트레이스를 먼저 본다.
+
+**누가 매일 만나나** — SRE·성능 엔지니어가 지연 알림의 원인을 좁힐 때, 백엔드 개발자가 배포 후 회귀를 확인할 때, 플랫폼 팀이 OTel 자동 계측을 표준으로 깔 때.
+
+**면접·실무 단골 질문**
+- Q. flame graph 의 가로축 → 시간 순서가 아니라 샘플 비율. 넓고 평평한 꼭대기부터 본다.
+- Q. self time 과 total time → 함수 자신이 실행 중이던 시간 vs 자식 호출 포함.
+
 ## 실습 체크리스트
 
 - [ ] `node --cpu-prof` 로 위 `prof.cjs` 를 프로파일링하고 speedscope 에서 flame graph 열기

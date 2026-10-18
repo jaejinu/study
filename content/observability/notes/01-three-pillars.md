@@ -69,6 +69,32 @@ Study 앱 OTel SDK ──OTLP──▶ Tempo (트레이스) ──────�
 3. 메트릭 이름은 `<namespace>_<subsystem>_<name>_<unit>` 예 `http_server_request_duration_seconds`.
 4. 계측은 라이브러리로 자동화(OpenTelemetry), 비즈니스 지표만 수동.
 
+## 실전에서는 어디에 쓰이나 — 관측성 지도
+
+> 관측성은 "사용자보다 먼저 장애를 알고(알림), 어디가 아픈지 좁히고(메트릭·트레이스), 왜 그런지 증거를 찾는(로그·프로파일)" 일을 위한 도구 체계다. 실제 장애 대응은 신호를 이 순서로 오간다: 알림 → 대시보드 → 트레이스 → 로그 → 프로파일.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 새벽에 "결제 에러율 3%" 알림이 울렸다 | 증상 기반 규칙, Alertmanager 라우팅·억제, 런북 | [알림 파이프라인](/observability/notes/09-alerting-pipeline) |
+| "지금 괜찮은가, 얼마나 빨리 나빠지나" 를 한 화면에 | SLI 레코딩 룰, 에러 버짓, 다중 윈도우 번레이트 | [SLO 대시보드](/observability/notes/11-slo-dashboard-burn-rate) |
+| 에러율·p99 가 언제부터 튀었나 | counter 의 `rate()`, `histogram_quantile` | [Prometheus 와 PromQL](/observability/notes/02-prometheus-promql) |
+| "특정 주문만 결제가 안 된다" 는 고객 문의 | JSON 로그의 order_id·trace_id, LogQL `\| json` 필터 | [로그와 Loki](/observability/notes/05-logging-loki) |
+| 마이크로서비스에서 "어느 서비스 때문에 느린가" | span 폭포수, TraceQL, span metrics | [분산 트레이싱](/observability/notes/06-tracing-otel) |
+| 배포 뒤 에러는 없는데 CPU 만 올랐다 | flame graph, 배포 전후 diff flame graph | [연속 프로파일링](/observability/notes/10-continuous-profiling) |
+| Pod 재시작·OOM·Pending 이 쌓인다 | kube-state-metrics, cAdvisor, 이벤트 수집 | [Kubernetes 관측](/observability/notes/07-kubernetes-observability) |
+| LLM 챗봇 비용 급증·답변 품질 하락 | 토큰·TTFT·비용 메트릭, GenAI span, 평가 루프 | [LLM 관측](/observability/notes/08-llm-observability) |
+
+**회사 규모에 따라**
+- 스타트업: 관리형 관측 SaaS 하나 또는 Prometheus + Grafana 단일 구성으로 시작한다. 가용성·에러율 알림 몇 개와 JSON 로그가 우선이다.
+- 성장기: OpenTelemetry 로 계측을 표준화하고, 로그·트레이스 백엔드(Loki·Tempo 등)를 붙이고, SLO 와 온콜 로테이션을 도입한다. 이때부터 관측 비용이 청구서에서 눈에 띈다.
+- 대규모 조직: 관측 플랫폼 팀이 수집 파이프라인(Collector·샘플링·카디널리티 제한)과 멀티 클러스터 장기 저장을 운영하고, 팀별 SLO 와 관측 비용 배분까지 관리한다.
+
+**이럴 땐 안 맞는다**
+- "일단 다 모아 두면 언젠가 쓴다" → 볼륨·보존·카디널리티가 곧 비용이다. 알림·SLO 같은 질문부터 정하고 필요한 신호만 모은다 ([관측 비용](/finops/notes/04-data-observability-cost)).
+- 대시보드만 많고 알림·런북이 없다 → 아무도 안 보는 화면이 된다. 증상 기반 알림 몇 개가 대시보드 수십 개보다 장애를 빨리 잡는다.
+
+**누가 매일 만나나** — 온콜 SRE 는 알림을 받아 대시보드 → 트레이스 → 로그 순으로 원인을 좁힌다. 백엔드 개발자는 배포 직후 RED 지표를 확인하고 코드에 메트릭·로그 필드를 심는다. 플랫폼 팀은 수집 파이프라인과 비용을, ML 엔지니어는 LLM 토큰·품질 지표를 본다.
+
 ## 관련 노트
 
 - [Redis 메모리와 성능 진단](/redis/notes/12-memory-performance) — INFO·SLOWLOG 가 exporter 메트릭의 원천

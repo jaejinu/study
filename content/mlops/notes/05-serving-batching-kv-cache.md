@@ -178,6 +178,28 @@ OLLAMA_NUM_PARALLEL=4 ollama serve
 
 `OLLAMA_NUM_PARALLEL=4` 로 다시 띄우고 실험 [`mlops-ollama-serving`](/mlops/lab/mlops-ollama-serving) 을 돌리면 동시 4 의 TTFT 최대와 전체 토큰/초가 어떻게 바뀌는지 직접 볼 수 있다. 이 사이트의 LLM 메트릭(`study_llm_latency_seconds{phase="ttft"}`)은 Grafana 에서 같은 지표를 실시간으로 보여 준다 — [LLM 관측](/observability/notes/08-llm-observability).
 
+## 실전에서는 어디에 쓰이나
+
+> LLM 을 직접 서빙하거나 API 모델의 지연·비용을 설계할 때, TTFT·TPOT·KV 캐시·배칭이 용량과 비용을 정한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 사내 GPU 로 LLM API 제공 | 같은 GPU 로 동시 요청 수 늘리기 | vLLM 류 연속 배칭 + PagedAttention | Ollama — 제한적 배칭, 대기열 |
+| 스트리밍 채팅 서비스 | 응답이 시작되기까지의 체감 지연 | TTFT 를 SLO 로, chunked prefill, 접두 캐시 | 처리량만 최적화 — TTFT 꼬리 증가 |
+| 긴 시스템 프롬프트의 RAG·에이전트 | 반복 접두의 prefill 비용 | 고정 부분을 앞에 두어 접두·프롬프트 캐시 적중 | 매 요청 전체 prefill — 비용·TTFT 증가 |
+| 노트북·온디바이스 추론 | 작은 메모리·대역폭 안에서 실행 | GGUF 4비트 양자화, Ollama·llama.cpp | fp16 원본 — 메모리 초과 |
+| 코딩 어시스턴트 자동완성 | 짧은 출력의 토큰 간격 단축 | 투기적 디코딩, 작은 모델 | 큰 모델 단독 decode — TPOT 큼 |
+
+**이럴 땐 안 맞는다**
+- 트래픽이 적고 들쭉날쭉한 초기 서비스의 GPU 자체 서빙 — 유휴 GPU 비용이 API 요금보다 크기 쉽다.
+- 같은 프롬프트를 반복하는 벤치마크 — 캐시 적중 숫자가 나온다. 고유한 입력으로 잰다.
+
+**누가 매일 만나나** — ML·플랫폼 엔지니어가 GPU 용량 계획과 서빙 엔진을 고를 때, 백엔드가 스트리밍 UI 의 TTFT 를 SLO 로 잡고 대시보드에 올릴 때.
+
+**면접·실무 단골 질문**
+- Q. prefill 과 decode 의 병목은 어떻게 다른가? → prefill 은 연산, decode 는 메모리 대역폭. 그래서 양자화가 decode 를 빠르게 한다.
+- Q. KV 캐시가 동시성 상한을 정하는 이유는? → 요청·토큰마다 메모리를 차지하기 때문. PagedAttention·GQA·KV 양자화로 줄인다.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `mlops-ollama-serving` 을 돌리고 "총 지연 ≈ TTFT + TPOT × (출력−1)" 를 숫자로 확인하기

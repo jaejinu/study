@@ -104,6 +104,29 @@ location /ws/ {
 
 재시도는 **멱등 요청에만** 안전하다. 기본값은 이미 업스트림에 보낸 POST 를 재시도하지 않는다(`non_idempotent` 를 켜야 한다). 결제처럼 중복이 치명적인 경로는 [멱등 키](/api-design/notes/01-rest-principles)로 서버가 막아야 한다. 재시도 폭풍과 서킷 브레이커는 [장애 실험실 노트 03](/chaos/notes/03-resilience-patterns-verified)에서 실측한다.
 
+## 실전에서는 어디에 쓰이나
+
+> 앱 서버를 두 대 이상 띄우는 순간, 또는 앱이 실제 클라이언트 IP·https 여부를 알아야 하는 순간 이 노트의 설정이 필요해진다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 API 서버 롤링 배포 | 내려간 인스턴스로 간 요청의 실패 | `max_fails`·`fail_timeout` + `proxy_next_upstream error timeout` | 클라우드 LB 헬스체크, k8s readiness |
+| 핀테크 결제 API | 프록시 재시도로 인한 이중 결제 | `non_idempotent` 재시도를 켜지 않고, 서버는 멱등 키로 중복 차단 | 게이트웨이에서 결제 경로 재시도 끄기 |
+| 채팅·게임 로비(WebSocket) | 연결 업그레이드와 긴 유휴 연결 유지 | `Upgrade`/`Connection` 헤더, `proxy_read_timeout 3600s` | L4 로드밸런서로 TCP 그대로 전달 |
+| AI 서비스의 LLM 응답 스트리밍(SSE) | 토큰이 버퍼에 막혀 한꺼번에 도착 | `proxy_buffering off` 또는 `X-Accel-Buffering: no` | 스트리밍 경로만 별도 location |
+| 이미지·정적 파일 캐시 노드 여러 대 | 같은 URL 이 같은 노드로 가야 히트율이 산다 | `hash $request_uri consistent` | 클라이언트 측 일관 해싱 |
+| 사내 플랫폼의 감사 로그·IP 허용 목록 | 앱이 실제 클라이언트 IP 를 알아야 함 | `X-Forwarded-For` + `real_ip` 모듈로 신뢰 범위 지정 | PROXY protocol(L4) |
+
+**이럴 땐 안 맞는다**
+- 죽은 서버를 요청이 실패하기 전에 미리 빼야 할 때: 오픈소스 Nginx 는 수동 헬스체크라 실제 요청이 실패해야 안다 → 능동 헬스체크가 있는 HAProxy·Nginx Plus·클라우드 LB, k8s readiness.
+- 세션을 서버 메모리에 두고 `ip_hash` 로 붙이는 설계: 서버가 죽으면 세션도 사라지고 분산이 치우친다 → 세션을 Redis 같은 외부 저장소로.
+
+**누가 매일 만나나** — 백엔드 개발자는 "로그의 IP 가 전부 프록시 IP", "경로가 이상하게 붙는다" 를 고칠 때, SRE 는 배포 중 502 스파이크와 `upstream timed out` 로그를 볼 때 이 설정을 연다.
+
+**면접·실무 단골 질문**
+- Q. `proxy_pass http://backend/` 와 `http://backend` 의 차이는? → 끝 슬래시가 있으면 location 접두어를 잘라 치환하고, 없으면 원래 URI 를 그대로 보낸다.
+- Q. 업스트림 장애 때 재시도는 왜 위험할 수 있나? → 멱등하지 않은 요청이 두 번 갈 수 있다. 재시도는 멱등 요청만, 결제는 멱등 키로 서버가 막는다.
+
 ## 실습 체크리스트
 
 - [ ] `proxy_pass` 끝 슬래시를 바꿔 `/api/` 경로 변화 확인

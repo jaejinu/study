@@ -186,6 +186,28 @@ SELECT pid, blockers, q, now() - query_start AS waiting FROM w JOIN pg_stat_acti
 - `pg_stat_database.deadlocks` 카운터 증가율. 0 이 아니면 잠금 순서를 점검한다.
 - 마이그레이션 도구(예: Flyway, Prisma migrate, sqitch)에 `lock_timeout` 기본값을 강제한다.
 
+## 실전에서는 어디에 쓰이나
+
+> 여러 요청·워커가 같은 행을 집거나 운영 중 스키마를 바꿀 때 잠금이 등장한다. 잘 쓰면 재고 차감·작업 큐가 단순해지고, 잘못 쓰면 마이그레이션 한 줄이 서비스 전체를 멈춘다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 재고 차감 | 동시 주문의 초과 판매 방지 | `SELECT … FOR UPDATE` 후 차감, 여러 행은 id 오름차순으로 잠금 | 선착순 같은 극단 트래픽은 Redis 원자 연산 + 비동기 반영 |
+| 사내 백오피스 작업 큐 | 브로커 없이 워커 여러 개가 중복 없이 처리 | `FOR UPDATE SKIP LOCKED` + `LISTEN/NOTIFY` 로 깨우기 | 처리량·팬아웃이 크면 Kafka·RabbitMQ |
+| SaaS 무중단 배포 | `ALTER TABLE` 이 잠금 큐를 만들어 전체 장애 | `lock_timeout`·`statement_timeout` + 재시도, `CREATE INDEX CONCURRENTLY` | 큰 테이블은 단계적 변경(NOT VALID → VALIDATE) |
+| 여러 인스턴스의 정기 배치 | 같은 일일 정산이 두 번 도는 것 | `pg_try_advisory_xact_lock(hashtext('job'))` | Redis 분산 락, k8s CronJob `concurrencyPolicy: Forbid` |
+| 핀테크 계좌 간 이체 | 양방향 동시 이체의 데드락 | 계좌 id 순서로 잠그고 `40P01` 이면 트랜잭션 재시도 | 단일 문장 조건부 UPDATE 로 잠금 시간 축소 |
+
+**이럴 땐 안 맞는다**
+- 초당 수만 건 이상이거나 여러 소비자 그룹이 같은 이벤트를 받아야 하는 경우 → SKIP LOCKED 큐는 한 번 소비 모델이고 bloat 가 생긴다. 로그 기반 브로커(Kafka)로.
+- PgBouncer transaction 모드에서 세션 수준 advisory lock → 잠금이 다른 클라이언트로 샌다. 트랜잭션 수준 잠금을 쓴다.
+
+**누가 매일 만나나** — 백엔드 개발자가 마이그레이션 PR 을 쓸 때 `lock_timeout` 을 넣는 순간, SRE 가 "DB 응답 없음" 장애에서 `pg_blocking_pids` 로 막고 있는 세션을 찾을 때.
+
+**면접·실무 단골 질문**
+- Q. 1ms 짜리 `ALTER TABLE` 이 왜 서비스 장애를 내나? → ACCESS EXCLUSIVE 대기 뒤에 일반 SELECT 가 줄 서는 잠금 큐. `lock_timeout` + 재시도로 막는다.
+- Q. 데드락 예방법은? → 항상 같은 순서로 잠그기, 한 문장으로 잠그기, 트랜잭션 짧게, `40P01` 재시도.
+
 ## 실습 체크리스트
 
 - [ ] FOR UPDATE 로 막힌 세션을 `pg_stat_activity` 에서 찾고 `pg_blocking_pids` 확인 (실험실)

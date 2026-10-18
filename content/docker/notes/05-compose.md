@@ -238,6 +238,28 @@ docker compose -p study config --profiles     # 정의된 프로파일 목록
 - `docker compose logs --since 10m -f web redis` 로 여러 서비스 로그를 시간순으로 섞어 본다.
 - Compose 는 **단일 호스트** 도구다. 여러 노드·롤링 배포·자동 복구가 필요해지면 Kubernetes 로 간다. 같은 구성을 쿠버네티스로 옮긴 것이 `k8s/` 디렉터리다 — [Kubernetes 로 넘어가기](/kubernetes/notes/01-kubernetes-overview).
 
+## 실전에서는 어디에 쓰이나
+
+> Compose 는 "여러 컨테이너로 이루어진 환경을 한 파일로 재현" 해야 할 때 등장한다. 주 무대는 로컬 개발·CI 통합 테스트·단일 호스트 운영이다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 커머스 백엔드 팀의 로컬 개발 | 앱·DB·캐시·브로커를 모두 같은 버전으로 | 서비스·볼륨을 YAML 로 선언, `compose up` 한 번 | 각자 설치 — 버전이 어긋난다 |
+| CI 통합 테스트 | 테스트 전에 DB 가 정말 준비됐는지 보장 | healthcheck + `depends_on: service_healthy`, 마이그레이션은 `service_completed_successfully` | Testcontainers 로 테스트 코드에서 띄우기 |
+| 데이터·관측 학습 환경 | 필요한 스택만 골라 띄우기 | 프로파일로 묶음 분리(`--profile observability`) | 스택마다 compose 파일 분리 |
+| 사내 도구·소규모 서비스 단일 VM 운영 | 오케스트레이터 없이 몇 개 서비스 운영 | `restart: unless-stopped`, 운영용 override 파일 병합 | PaaS, 경량 Kubernetes |
+| 공공·온프레미스 납품 | 고객 서버에 설치 절차를 단순화 | compose 파일과 `.env` 만 전달 | 설치 스크립트, Helm 차트 |
+
+**이럴 땐 안 맞는다**
+- 여러 노드·롤링 배포·자동 재배치가 필요한 운영 — Compose 는 단일 호스트 도구다. Kubernetes 같은 오케스트레이터로 간다.
+- `depends_on` 만 믿고 앱의 재연결 로직을 빼는 것 — 운영에서는 DB 가 먼저 재시작될 수 있다. 앱에 재시도를 둔다.
+
+**누가 매일 만나나** — 백엔드 개발자는 아침에 `compose up` 으로 하루를 시작하고, 플랫폼 엔지니어는 worktree·CI 에서 프로젝트 이름이 달라 볼륨이 따로 생기는 문제를 만난다.
+
+**면접·실무 단골 질문**
+- Q. `depends_on` 으로 순서를 줬는데 앱이 DB 연결에 실패한다 → 기본은 "시작됨" 만 기다린다. healthcheck 와 `service_healthy` 를 쓰고 앱에도 재시도를 둔다.
+- Q. 설정 파일을 고쳤는데 `up -d` 가 반영하지 않는다 → 바인드한 파일 내용은 config-hash 에 없다. `restart` 로 다시 읽게 한다.
+
 ## 실습 체크리스트
 
 - [ ] `pnpm redis:docker` 로 Redis 를 띄우고 Redis 대시보드에 연결되는지 확인

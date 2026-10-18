@@ -186,6 +186,27 @@ WHERE table = 't' ORDER BY event_time DESC LIMIT 10;
 
 `system.part_log` 의 `NewPart` 와 `MergeParts` 이벤트가 이 노트의 그림을 그대로 보여 준다.
 
+## 실전에서는 어디에 쓰이나
+
+> 파트·머지 구조는 "적재를 어떤 크기로 묶어야 하나" 와 "갱신·삭제를 어떻게 흉내 내나" 를 정할 때 등장한다. ClickHouse 운영 문제의 상당수가 결국 파트 수 이야기다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 모바일 앱 이벤트 수집 API | 1행씩 쏟아지는 INSERT 로 Too many parts | `async_insert=1` 또는 Kafka 로 받아 1초 단위 배치 | 앱 메모리 버퍼 — 재시작 시 유실 위험 |
+| 커머스 주문 분석(CDC) | PG 주문 행의 최신 상태를 분석용으로 유지 | `ReplacingMergeTree(updated_at)` + 질의에서 `argMax`·`FINAL` | 매일 전체 스냅샷 재적재 — 단순하지만 늦다 |
+| 핀테크 거래 상태 집계 | 승인 후 취소 같은 상태 변화를 합계에 반영 | `CollapsingMergeTree(sign)` 로 -1 행을 넣어 상쇄 | 원장은 OLTP DB 에 두고 일 배치 집계 |
+| SaaS 개인정보 삭제 요청 | 특정 사용자 행 제거 | 소량은 경량 삭제, 드물게 뮤테이션 | 설계 단계에서 개인 정보를 별도 테이블로 |
+
+**이럴 땐 안 맞는다**
+- 키로 한 행을 즉시 읽고 고치는 패턴 → 희소 인덱스는 최소 한 그래뉼(8,192행)을 읽는다. PG·Redis 로.
+- 유일성 보장이 필요한 곳 → MergeTree 의 PRIMARY KEY 는 중복을 막지 않는다. 유일성은 원천 DB 에서 지킨다.
+
+**누가 매일 만나나** — 데이터 엔지니어가 적재 배치 크기와 엔진 계열을 고를 때, SRE 가 `Too many parts` 경보나 파티션별 파트 수 그래프를 볼 때.
+
+**면접·실무 단골 질문**
+- Q. ClickHouse 에 1행씩 INSERT 하면 왜 안 되나? → INSERT 마다 파트가 생겨 머지가 못 따라가고, 파트 수 한계에서 지연·거부된다. 배치나 async_insert.
+- Q. ReplacingMergeTree 인데 중복이 보이는 이유는? → 머지 시점이 정해져 있지 않다. 질의에서 `FINAL`·`argMax` 로 접는다.
+
 ## 실습 체크리스트
 
 - [ ] 작은 INSERT 를 10번 해서 파트 10개를 만들고 `system.parts` 로 확인, `OPTIMIZE … FINAL` 후 다시 확인

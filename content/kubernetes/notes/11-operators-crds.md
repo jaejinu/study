@@ -149,6 +149,27 @@ func (r *RedisCacheReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 > 이어서 읽기: [심화 — 대안과 설계: Pulumi·CDK·Crossplane, 저장소 구조, 멀티 환경·계정, 거버넌스, 재해 복구](/iac/notes/08-alternatives-design) — Crossplane — 클라우드 리소스도 CRD 로
 
+## 실전에서는 어디에 쓰이나
+
+> Operator 는 사람이 런북을 보며 하던 Day-2 운영(백업·장애 조치·업그레이드)을 컨트롤러 코드로 옮긴 것이다. 실무에서는 직접 만드는 일보다 검증된 Operator 를 고르고 그 CR 을 다루는 일이 훨씬 많다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 사내 DB 플랫폼 | Postgres 백업·스위치오버·PITR 자동화 | CloudNativePG 의 Cluster·ScheduledBackup CR | 관리형 RDS 류 — 운영 부담 최소 |
+| 도메인이 많은 SaaS | TLS 인증서 발급·갱신 자동화 | cert-manager Certificate + ACME Issuer | 수동 갱신 — 만료 사고 |
+| 플랫폼 엔지니어링 | "서비스 하나 = 리소스 하나" 추상화 | 자체 Operator(kubebuilder) 또는 Crossplane | Helm 템플릿 — 생성만 하고 지속 조정은 없다 |
+| 관측 스택 | 앱 팀이 스크레이프·알림 규칙을 선언 | Prometheus Operator 의 ServiceMonitor·PrometheusRule | 중앙 설정 파일 |
+| 외부 자원을 만드는 컨트롤러 | 삭제 시 클라우드 디스크·DNS 정리 누락 | finalizer 로 정리 후 삭제 | 수동 정리 스크립트 |
+
+**이럴 땐 안 맞는다**
+- 무상태 앱 배포 → Deployment + Helm/Kustomize 로 충분하다.
+- 상태 있는 미들웨어 Operator 를 직접 작성 → 장애 경로를 다 다루려면 오랜 운영 경험이 필요하다. 검증된 오픈소스나 관리형을 쓴다.
+
+**누가 매일 만나나** — 플랫폼 엔지니어는 Operator 업그레이드, CR 의 `status.conditions` 확인, 내부 CRD 설계를 한다. 백엔드는 `kubectl get <CR>` 로 자기 DB·인증서 상태를 본다.
+
+**면접·실무 단골 질문**
+- Q. reconcile 은 왜 멱등·레벨 기반이어야 하나? → 이벤트는 유실·중복될 수 있으니 "지금 상태 vs 원하는 상태" 비교로 몇 번을 돌아도 같은 결과로 수렴해야 한다.
+
 ## 실습 체크리스트
 
 - [ ] 위 CRD 를 kind 에 적용하고 `kubectl get rc`, `kubectl explain` 으로 스키마·출력 컬럼 확인

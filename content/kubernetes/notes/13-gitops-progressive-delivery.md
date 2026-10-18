@@ -146,6 +146,27 @@ pnpm k8s:rollouts:watch
 - Argo Rollouts 의 CRD 는 커서 `kubectl apply` 의 어노테이션 한도(256KB)를 넘는다. `kubectl apply --server-side` 로 설치해야 한다(`pnpm k8s:rollouts` 에 반영).
 - 카나리 실측: `study:dev2` 로 바꾸자 25%(1/4) → 60초 pause → AnalysisRun(`target-up`, `app-redis-up` 각 3/3 Successful) → 50% → 60초 → 100%, 약 3분에 Healthy. 분석이 실패하면 같은 경로로 자동 롤백된다.
 
+## 실전에서는 어디에 쓰이나
+
+> GitOps 는 배포 기록을 "누가 kubectl 을 쳤나" 에서 "어떤 커밋이 머지됐나" 로 바꾼다. 여러 팀·여러 클러스터·감사 요구가 있는 조직에서 사실상 기본 방식이 됐고, 점진적 배포는 그 위에 메트릭 판정을 얹는다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 규제 산업(핀테크·공공) | 배포 승인·감사 이력 | 매니페스트 저장소 PR 리뷰 = 배포 승인, ArgoCD 동기화 | CI 가 `kubectl apply` push — CI 에 클러스터 자격 증명 |
+| 리전별 클러스터를 둔 SaaS | 수십 개 클러스터에 같은 앱 일관 배포 | ApplicationSet 클러스터 생성기 | 클러스터마다 별도 파이프라인 |
+| 운영 중 손으로 바꾼 설정 | 드리프트 감지·복구 | `selfHeal`, OutOfSync 알림 | 주기적 diff 스크립트 |
+| 커머스 결제 경로 신규 버전 | 오류율이 오르면 자동 롤백 | Argo Rollouts 카나리 + Prometheus AnalysisTemplate | 사람이 대시보드 보며 판단 |
+| 장애 시 롤백 | 수 분 안에 이전 상태로 | `git revert` → 자동 동기화 | `rollout undo` — git 과 어긋난다 |
+
+**이럴 땐 안 맞는다**
+- 클러스터 하나, 서비스 몇 개, 배포 담당 한 명 → ArgoCD 운영이 오히려 부담이다. CI 의 `helm upgrade`·`kubectl apply` 로 충분하다.
+- 성공률 지표 없이 카나리 → 판정할 메트릭이 없으면 자동 롤백은 의미가 없다. 관측을 먼저 갖춘다.
+
+**누가 매일 만나나** — 앱 개발자는 이미지 태그 PR 을 올리고 Sync/Health 상태를 본다. 플랫폼 팀은 ArgoCD·Rollouts 를 운영하고, SRE 는 분석 실패로 롤백된 카나리의 원인을 조사한다.
+
+**면접·실무 단골 질문**
+- Q. push 배포와 GitOps(pull) 의 차이는? → CI 가 클러스터 자격 증명을 갖고 밀어 넣느냐, 클러스터 안 에이전트가 git 을 당겨 지속 조정(드리프트 복구)하느냐.
+
 ## 실습 체크리스트
 
 - [ ] kind 에 ArgoCD 를 설치하고 이 저장소 `k8s/` 를 Application 으로 등록, Synced/Healthy 확인

@@ -130,6 +130,28 @@ QUIC 은 UDP 이고 연결 ID 로 식별된다([노트 02](/network-protocols/no
 
 > 이어서 읽기: [관측과 디버깅 — 어느 구간이 느린가](/network-protocols/notes/07-observing-debugging) · [HTTP/1.1 → 2 → 3](/network-protocols/notes/01-http1-http2-http3) · [서비스 메시 04 — 요청 단위 부하 분산](/service-mesh/notes/04-traffic-policy) · [서비스 메시 06 — 요청 비율 카나리](/service-mesh/notes/06-canary-traffic-split) · [서비스 메시 01 — 메시가 푸는 문제](/service-mesh/notes/01-what-mesh-solves) · [Nginx 02 — 리버스 프록시와 LB](/nginx/notes/02-reverse-proxy-lb)
 
+## 실전에서는 어디에 쓰이나
+
+> 트래픽을 여러 서버·지역으로 나누는 모든 곳 — 클라우드 LB, 쿠버네티스 Service·Ingress, CDN — 에서 "어느 계층에서 무엇을 보고 나누나" 가 쏠림·배포 중 5xx·지역별 지연을 정한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 쿠버네티스 gRPC 마이크로서비스 | 연결 하나에 요청이 몰려 Pod 하나만 과열 | 클라이언트 측 `round_robin` + 헤드리스 서비스, 또는 메시의 요청 단위 분산 | kube-proxy L4 — 연결 단위라 쏠림 |
+| 영상·대용량 다운로드 | LB 가 응답 대역폭의 병목 | DSR 로 백엔드가 클라이언트에 직접 응답 | NAT — LB 가 응답까지 감당 |
+| 무중단 배포하는 SaaS | 롤링 배포 중 잠깐 튀는 502 | 연결 드레이닝, `preStop sleep` | 즉시 종료 — Endpoint 제거와 SIGTERM 경쟁 |
+| 공개 DNS 리졸버·CDN 엣지 | 가까운 PoP 연결, DDoS 분산 흡수 | 애니캐스트로 같은 IP 를 여러 PoP 에서 BGP 광고 | GeoDNS — TTL 무시·리졸버 위치 오차 |
+| 글로벌 미디어 서비스 | 캐시 미스여도 원본 응답을 빠르게 | 엣지-원본 장기 연결 재사용 | 사용자 → 원본 직결 — 매번 핸드셰이크 |
+
+**이럴 땐 안 맞는다**
+- 경로·헤더 라우팅, 재시도, 카나리 가중치가 필요한데 L4 만 두는 것 — 요청을 보는 L7 프록시가 필요하다.
+- 장애 전환을 DNS TTL 에만 기대는 것 — 꼬리 캐시가 몇 분~몇 시간 남는다. LB·애니캐스트 수준 전환을 함께 둔다.
+
+**누가 매일 만나나** — 플랫폼·SRE 가 Ingress·LB 설정과 "배포 때마다 5xx" 를 조사할 때, 백엔드가 gRPC 클라이언트의 LB 정책과 클라이언트 IP 전달(X-Forwarded-For)을 정할 때.
+
+**면접·실무 단골 질문**
+- Q. gRPC 를 쿠버네티스 Service 뒤에 두면 왜 한 Pod 로 쏠리나? → kube-proxy 는 연결 단위로 고르는데 HTTP/2 는 연결 하나에 모든 요청을 싣는다.
+- Q. L4 와 L7 LB 는 언제 쓰나? → L4 는 빠르고 연결 단위, L7 은 경로 라우팅·재시도가 되는 요청 단위. 보통 L4 를 앞에, L7 을 뒤에 둔다.
+
 ## 실습 체크리스트
 
 - [ ] gRPC 서버를 Deployment 3개로 띄우고 kube-proxy 로 1000 요청을 보내 Pod 별 분포를 확인

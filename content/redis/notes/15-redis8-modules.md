@@ -166,6 +166,29 @@ Prometheus 히스토그램은 버킷 경계를 미리 정해야 하지만 t-dige
 - `pnpm redis:docker` 의 `study-redis`(redis:8-alpine)는 모듈이 내장돼 있다. brew `redis-server` 로 띄우면 실험실의 JSON·Search·Bloom·TimeSeries 실험이 "모듈 없음" 으로 건너뛰어진다. 환경 점검 카드가 이를 알려 준다.
 - AI 시스템 주제의 벡터 검색 실험과 AI 도우미의 노트 검색은 지금은 단순 키워드 점수(사이트 검색)를 쓰지만, 노트 수가 늘면 위 `idx:notes` 같은 벡터 인덱스로 옮기는 것이 자연스러운 다음 단계다.
 
+## 실전에서는 어디에 쓰이나
+
+> 이미 Redis 를 쓰는 팀이 문서 저장·2차 인덱스·벡터 검색·시계열을 별도 시스템 없이 붙이고 싶을 때 등장한다. 특히 RAG 의 벡터 저장소 후보로 자주 검토된다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| AI 서비스 RAG | 문서 청크 유사도 검색 + 메타 필터 | `FT.CREATE … VECTOR HNSW`, KNN + TAG 필터 | pgvector, OpenSearch kNN, 전용 벡터 DB |
+| AI 챗봇 응답 캐시 | 비슷한 질문의 LLM 호출 재사용 | 질문 임베딩으로 KNN, 거리가 임계값 이하면 캐시 응답 | 정확 일치 키 캐시 |
+| 커머스 상품 필터 | 가격 범위 + 카테고리 조합 조회 | Hash + `FT.SEARCH` NUMERIC·TAG 조건 | ZSet 수동 인덱스, OpenSearch |
+| SaaS 사용자 설정 문서 | 중첩 JSON 의 일부 필드 갱신 | `JSON.SET $.a.b`, `JSON.NUMINCRBY` | Hash 평탄화, 문서 DB |
+| IoT 센서·앱 내부 지표 | 소규모 시계열 보관·다운샘플 | `TS.ADD`, `TS.CREATERULE`, `RETENTION` | Prometheus, ClickHouse |
+
+**이럴 땐 안 맞는다**
+- 한국어 전문 검색 품질이 핵심인 검색 서비스 — 형태소 분석이 제한적이다. OpenSearch.
+- 모듈을 지원하지 않는 관리형 Redis 환경 — 배포 환경의 모듈 지원부터 확인한다.
+- 장기·대규모 메트릭 저장 — Prometheus·ClickHouse 가 맞다.
+
+**누가 매일 만나나** — ML·AI 엔지니어가 RAG 의 벡터 저장소를 고를 때, 백엔드 개발자가 "검색 서버를 따로 둘 만큼인가" 를 판단할 때.
+
+**면접·실무 단골 질문**
+- Q. HNSW 의 `M`·`EF_RUNTIME` 을 올리면 → 재현율은 오르고 메모리·질의 시간도 는다.
+- Q. Redis Search 인덱스는 언제 갱신되나 → 쓰기 명령 안에서 동기 갱신, 기존 키는 생성 직후 백그라운드 스캔.
+
 ## 실습 체크리스트
 
 - [ ] `MODULE LIST` 로 내 Redis 에 어떤 모듈이 있는지 확인하기

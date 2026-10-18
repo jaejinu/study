@@ -185,6 +185,28 @@ ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH
 - **카드 키 해시.** `src/lib/study.ts` 의 `cardKey` 는 `createHash("sha1").update(...).digest("hex").slice(0, 12)` — 바이트 해시를 hex 문자열로 바꿔 Redis Hash 필드 이름으로 쓴다.
 - **실험 결과의 바이트 수.** 실험 `node-stream-backpressure` 의 `maxBuffered` 는 `writable.writableLength`(바이트)다. 무시한 쪽 33,554,432 = 정확히 64KB × 512.
 
+## 실전에서는 어디에 쓰이나
+
+> 바이트 다루기는 업로드, 바이너리 프로토콜, 서명 검증, 스트리밍 텍스트 파싱처럼 "문자열이 아닌 데이터" 가 오가는 곳에서 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| AI 챗 응답 스트리밍 파서 | 청크 경계에서 한글이 깨짐 | `StringDecoder`, `setEncoding`, `TextDecoder({ stream: true })` | 줄 단위로 모은 뒤 디코딩 |
+| 결제·웹훅 서명 검증 | 비교 시간 차이로 서명 정보 유출 | HMAC 결과를 `crypto.timingSafeEqual` 로 비교 | 검증 라이브러리 |
+| IoT·게임 서버 TCP 프로토콜 | 메시지 경계가 없는 스트림 | 길이 접두 프레이밍, `readUInt32BE` | Protobuf·gRPC |
+| 크기 제한이 있는 메시지 API | 문자 수로 계산해 한도 초과 | `Buffer.byteLength` 로 바이트 계산 | 서버 측 검증 |
+| AI 임베딩 저장 | 벡터를 JSON 숫자 배열로 두면 큼 | `Float32Array` 바이트로 저장 | 벡터 DB 클라이언트 |
+
+**이럴 땐 안 맞는다**
+- 응답에 실릴 수 있는 버퍼에 `allocUnsafe` — 이전 메모리 내용이 샐 수 있다. `alloc` 을 쓰거나 즉시 전부 덮어쓴다.
+- 큰 버퍼에서 잘라낸 작은 조각을 캐시에 오래 보관 — 원본 전체가 붙잡힌다. `Buffer.from` 으로 복사한다.
+
+**누가 매일 만나나** — 백엔드 개발자가 업로드·다운로드·서명 검증을 구현할 때, 보안 담당이 토큰 비교 코드를 리뷰할 때, SRE 가 RSS 는 큰데 힙은 작은 프로세스를 볼 때.
+
+**면접·실무 단골 질문**
+- Q. 힙 상한을 줬는데 컨테이너가 OOM 나는 이유 → Buffer 는 V8 힙 밖(`arrayBuffers`)이라 `--max-old-space-size` 에 안 잡힌다.
+- Q. `subarray` 와 `Buffer.from` 의 차이 → 메모리를 공유하는 뷰 vs 복사.
+
 ## 실습 체크리스트
 
 - [ ] 한글·이모지 문자열의 `length` 와 `Buffer.byteLength` 비교

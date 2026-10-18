@@ -172,6 +172,32 @@ $ node -e "setInterval(()=>{},1000).unref(); console.log(process.getActiveResour
 - **실험은 자식 프로세스로 돈다.** 이 주제의 실험(`src/code-lab/nodejs.ts`)은 `execFile(process.execPath, …)` 로 별도 Node 를 띄운다. 이벤트 루프를 막거나 힙을 터뜨리는 코드를 서버 프로세스에서 돌리면 사이트 전체가 멈추기 때문이다. 12 노트에서 이 선택을 다시 다룬다.
 - **이벤트 루프 지연은 이미 수집되고 있다.** `src/lib/metrics.ts` 의 `collectDefaultMetrics({ prefix: "study_process_" })` 는 `study_process_nodejs_eventloop_lag_seconds` 를 `/api/metrics` 로 내보낸다. Grafana 에서 이 값이 튀면 누군가 메인 스레드를 막은 것이다.
 
+## 실전에서는 어디에 쓰이나 — Node.js 지도
+
+> 실무에서 Node.js 는 주로 "I/O 를 많이 기다리는 서버" 를 맡는다. API·BFF·실시간 연결·SSR 처럼 대기가 길고 계산이 짧은 일에 강하고, 메인 스레드를 오래 잡는 계산에는 약하다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 웹 프론트의 BFF·SSR 서버 | 이벤트 루프, 메인 스레드를 막지 않는 코드 | [이벤트 루프의 단계](/nodejs/notes/02-event-loop-phases) |
+| 채팅·알림·LLM 응답 스트리밍 | 스트림과 백프레셔, SSE | [스트림과 백프레셔](/nodejs/notes/06-streams-backpressure) |
+| 여러 서비스를 부르는 API 게이트웨이 | keep-alive, 연결 풀, 타임아웃 | [네트워크와 HTTP](/nodejs/notes/07-network-http) |
+| 외부 API 를 대량 호출하는 배치 | 동시성 제한, 재시도·취소 | [비동기 패턴과 에러 처리](/nodejs/notes/04-async-patterns-errors) |
+| 이미지·PDF 생성 같은 CPU 작업 | 워커 풀, 자식 프로세스 | [worker_threads · cluster · child_process](/nodejs/notes/12-workers-cluster-child-process) |
+| 컨테이너에서 OOMKilled 반복 | 힙 상한, 컨테이너 메모리 | [GC 와 힙 구조](/nodejs/notes/10-gc-heap) |
+| "가끔 느린" 운영 서버 | 이벤트 루프 지연, CPU 프로파일 | [프로파일링과 진단](/nodejs/notes/13-profiling-diagnostics) |
+| 배포 중 요청 끊김·의존성 사고 | graceful shutdown, 공급망 | [운영과 보안](/nodejs/notes/14-operations-security) |
+
+**회사 규모에 따라**
+- 스타트업: 프론트와 같은 언어(TypeScript)로 맞추려고 Node 서버 하나에 API·SSR·간단한 작업을 함께 둔다.
+- 성장기: CPU 작업을 워커·별도 서비스로 떼고, 컨테이너 여러 개로 수평 확장하며 이벤트 루프 지연·힙 메트릭을 대시보드에 올린다.
+- 대규모 조직: BFF·실시간·SSR 계층에 Node 를 두고 핵심 도메인은 다른 언어 서비스와 섞는다. 플랫폼 팀이 Node 버전·베이스 이미지·종료 처리·관측 계측을 표준으로 제공한다.
+
+**이럴 땐 안 맞는다**
+- 요청마다 CPU 를 오래 쓰는 계산(영상 인코딩, 대규모 수치 연산, 모델 학습) — 메인 스레드가 막힌다. Go·Rust·JVM 서비스나 네이티브 라이브러리를 쓰는 별도 서비스로 뗀다.
+- 공유 메모리를 많이 쓰는 복잡한 멀티스레드 처리 — SharedArrayBuffer 는 바이트 배열뿐이라 제한적이다. 스레드 모델이 강한 언어.
+
+**누가 매일 만나나** — 풀스택·백엔드 개발자가 API·SSR 서버를 만들 때, SRE 가 이벤트 루프 지연·힙 알림이나 종료 코드 134·137 을 볼 때, 플랫폼 팀이 Node 베이스 이미지와 런타임 업그레이드를 관리할 때.
+
 ## 정리
 
 | 질문 | 답 |

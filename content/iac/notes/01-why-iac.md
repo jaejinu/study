@@ -115,6 +115,31 @@ IaC 는 이 두 층을 모두 다룬다: **인프라 층**(네트워크·클러�
 - **드리프트**: 코드 밖에서 바꾸면 코드가 거짓말이 된다 → [06 노트](/iac/notes/06-drift-policy-testing).
 - **프로바이더 공급망**: 프로바이더 바이너리는 서명 검증되지만(`.terraform.lock.hcl` 의 해시), 모듈 레지스트리는 공급망 — 버전 고정·소스 검토 — [보안 05](/security/notes/05-container-supply-chain).
 
+## 실전에서는 어디에 쓰이나 — IaC 지도
+
+> IaC 는 클라우드 계정·네트워크·클러스터·DB 같은 인프라를 코드로 선언해 리뷰·재현·감사가 가능하게 만드는 일이다. 콘솔에서 손으로 만든 "눈송이" 를 없애고, 환경 복제와 재해 복구를 PR 하나와 apply 한 번으로 바꾸는 것이 실무의 목적이다.
+
+| 서비스·상황 | 이 주제의 어떤 부분이 | 더 읽기 |
+|---|---|---|
+| 새 서비스의 DB·버킷·DNS 만들기 | HCL, 프로바이더, plan 기호 읽기 | [Terraform 핵심 모델](/iac/notes/02-terraform-core-model) |
+| 개발·스테이징·운영을 같은 모양으로 | 변수, `for_each`, tfvars, validation | [변수·출력·표현식](/iac/notes/03-variables-expressions) |
+| 여러 팀이 같은 규약으로 인프라 생성 | 모듈 인터페이스, 버전 고정, 얇은 래퍼 | [모듈 설계와 레지스트리](/iac/notes/04-modules-registry) |
+| CI 가 apply 하는 팀 협업 | 원격 백엔드·잠금, import·moved, 환경 분리 | [상태 관리 심화](/iac/notes/05-state-management-deep) |
+| 금융·공공의 보안·컴플라이언스 | 드리프트 감시, OPA 정책, PR plan 코멘트 | [드리프트·정책·테스트](/iac/notes/06-drift-policy-testing) |
+| 쿠버네티스 플랫폼 부트스트랩 | 클러스터 + Helm + ArgoCD 경계 | [Kubernetes·Docker 프로바이더](/iac/notes/07-provider-kubernetes-docker) |
+| 멀티 계정·셀프서비스·DR 리허설 | Pulumi·Crossplane 비교, 거버넌스, 재현 연습 | [대안과 설계](/iac/notes/08-alternatives-design) |
+
+**회사 규모에 따라** — 스타트업은 콘솔 클릭으로 시작했다가 두 번째 환경이 필요해질 때 루트 모듈 하나와 원격 state 로 옮기며, 관리형 서비스 위주라 리소스 수가 적다.
+성장기에는 환경·계층별로 state 를 나누고, PR 에 plan 코멘트·보호된 apply·정책 검사를 붙이며 공용 모듈을 만든다.
+대규모 조직에서는 플랫폼 팀이 계정 생성 자동화·모듈 카탈로그·골든 패스를 제공하고, 태깅·비용·보안 규칙을 파이프라인과 조직 정책으로 강제하며 드리프트 감시와 DR 리허설을 정기 운영한다.
+
+**이럴 땐 안 맞는다**
+- 한 번 쓰고 버릴 실험 리소스 → 코드화 비용이 더 크다. 대신 지우는 것을 잊지 않게 수명 태그를 단다.
+- 서버 안의 패키지·설정 구성 → Terraform 의 영역이 아니다. 이미지 베이킹(Packer, Dockerfile)이나 Ansible 로.
+- 하루에도 여러 번 바뀌는 앱 배포 → 인프라 IaC 로 하면 느리다. 워크로드는 GitOps(ArgoCD)로.
+
+**누가 매일 만나나** — 플랫폼·SRE·DevOps 엔지니어는 매일 plan 을 읽고 apply 를 승인하고, 백엔드 개발자는 새 큐·버킷·DB 가 필요할 때 모듈 호출 PR 을 올리며, 보안 엔지니어는 정책 위반 리포트를 본다.
+
 ## 실습 체크리스트
 
 - [ ] 실험 `iac-plan-apply-docker` 를 돌리고 plan 출력의 `+`, `No changes`, `must be replaced` 를 각각 설명

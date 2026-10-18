@@ -186,6 +186,28 @@ KV 는 키마다 마지막 값을 남기는 스트림이다. 버전 이력, 변�
 | 운영 무게 | 매우 가벼움 | 가벼움 | 중간 | 무거움 (KRaft 로 가벼워짐) |
 | 엣지·IoT | 강함 (리프 노드) | 강함 | 보통 | 약함 |
 
+## 실전에서는 어디에 쓰이나
+
+> 잃어도 되는 실시간 값의 방송, 로드밸런서 없는 서비스 간 RPC, 엣지·IoT 연결처럼 가볍고 빠른 메시징이 필요할 때, 그리고 같은 서버에 신뢰성을 얹고 싶을 때 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| 배달·모빌리티 실시간 위치 | 잦은 위치 갱신 방송, 잃어도 다음 값이 옴 | core NATS subject 와일드카드 구독 | Kafka — 저장·배치 오버헤드가 불필요 |
+| 마이크로서비스 내부 RPC | LB 없이 수평 확장되는 요청-응답 | request-reply + 큐 그룹 | gRPC + 서비스 디스커버리·LB |
+| 공장 설비·IoT 데이터 | 현장 장비와 클라우드 연결 | 리프 노드 + JetStream 저장 | MQTT 브로커 |
+| SaaS 백그라운드 작업 | 지연 재시도·최대 배달 횟수를 설정으로 | JetStream WorkQueue + `nak(delay)`·`max_deliver` | RabbitMQ DLX + TTL 조합 |
+| 사내 플랫폼 설정 배포 | 기능 플래그 변경을 즉시 전파 | JetStream KV `watch` | etcd·Consul |
+
+**이럴 땐 안 맞는다**
+- 결제·주문처럼 잃으면 안 되는 메시지를 core NATS 로 — 저장도 ack 도 없다. JetStream 이나 다른 영속 브로커를 쓴다.
+- 커넥터·스키마 레지스트리 같은 대규모 데이터 파이프라인 생태계가 필요할 때 — Kafka 생태계가 넓다.
+
+**누가 매일 만나나** — 백엔드·플랫폼 엔지니어가 서비스 간 경량 통신을 설계할 때, IoT·엣지 담당이 현장 장비와 클라우드 연결을 꾸릴 때.
+
+**면접·실무 단골 질문**
+- Q. core NATS 와 JetStream 의 차이는? → core 는 저장·ack 없는 at-most-once, JetStream 은 스트림 저장 + 명시적 ack + 재배달의 at-least-once.
+- Q. JetStream 의 dead letter 는 어떻게 만드나? → 별도 큐가 없다. max_deliver 어드바이저리의 `stream_seq` 로 원본을 읽어 dead letter 스트림·DB 로 옮긴다.
+
 ## 실습 체크리스트
 
 - [ ] `pnpm mq:up` 후 http://localhost:18222/jsz 에서 실험 중 스트림·컨슈머 수가 바뀌는 것 보기

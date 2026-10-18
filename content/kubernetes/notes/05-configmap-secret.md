@@ -125,6 +125,26 @@ stringData:                  # 평문으로 쓰면 저장 시 base64 로 변환
 kubectl create secret docker-registry ghcr --docker-server=ghcr.io --docker-username=U --docker-password=TOKEN
 ```
 
+## 실전에서는 어디에 쓰이나
+
+> 환경마다 다른 설정과 비밀값을 이미지 밖에 두는 장치다. 실무 사고는 대개 "바꿨는데 반영이 안 된다" 와 "비밀값이 git 에 올라갔다" 두 가지 모양으로 온다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| SaaS 멀티 환경 배포 | 검증한 이미지를 그대로 prod 에 | 환경별 ConfigMap 을 Kustomize overlay 로, `envFrom` 주입 | 환경별 이미지 빌드 — 검증본과 운영본이 달라진다 |
+| Nginx·Redis 같은 미들웨어 | 설정 파일 통째 관리와 변경 시 재기동 | 파일 마운트 + configMapGenerator 해시로 자동 롤링 업데이트 | 이미지에 설정 굽기 |
+| 핀테크 결제 연동 | PG API 키·DB 비밀번호를 git 에 남기지 않기 | External Secrets Operator 로 Vault·Secrets Manager 에서 Secret 생성 | Sealed Secrets·SOPS 로 암호화해 커밋 |
+| 사설 레지스트리를 쓰는 사내 플랫폼 | 노드가 사내 이미지를 pull | `dockerconfigjson` Secret + `imagePullSecrets` | 노드 IAM 역할로 레지스트리 인증 |
+
+**이럴 땐 안 맞는다**
+- 큰 데이터나 사용자별·실시간으로 바뀌는 값 → ConfigMap 은 크기 제한(1MiB)이 있고 etcd 에 저장된다. 오브젝트 스토리지·DB·피처 플래그 서비스를 쓴다.
+- Secret 만으로 보안이 끝났다고 보기 → base64 는 암호화가 아니다. etcd 암호화, RBAC 최소화, 외부 비밀 저장소가 함께 필요하다.
+
+**누가 매일 만나나** — 백엔드는 환경 변수로 주입한 값을 바꾸고 `rollout restart` 를 잊어 "반영 안 됨" 을 겪는다. 보안·플랫폼 팀은 Secret 읽기 권한 감사와 비밀 저장소 연동을 관리한다.
+
+**면접·실무 단골 질문**
+- Q. ConfigMap 을 바꿨는데 앱이 옛 값을 쓴다면? → 환경 변수는 시작 시 고정, subPath 마운트는 갱신 안 됨, 앱이 파일을 다시 안 읽음 — 셋 중 무엇인지 보고 재시작이나 해시 이름 패턴으로 해결.
+
 ## 실습 체크리스트
 
 - [ ] `kubectl get cm -n study -o yaml` 로 kustomize 가 만든 redis-config 내용 확인

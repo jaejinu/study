@@ -188,6 +188,28 @@ docker inspect -f '{{.Name}} {{.State.Status}} restart={{.HostConfig.RestartPoli
 # /study-redis running restart=unless-stopped health=healthy
 ```
 
+## 실전에서는 어디에 쓰이나
+
+> run·ps·logs·exec 와 종료 코드, 재시작 정책은 "컨테이너가 왜 죽었나·왜 응답이 없나" 를 묻는 모든 장애 대응의 첫 단계에서 등장한다.
+
+| 어디서 | 무엇을 풀려고 | 어떻게 쓰나 | 다른 선택지 |
+|---|---|---|---|
+| SaaS 백엔드 배포 직후 | 새 버전 컨테이너가 계속 재시작 | `docker inspect` 로 exit 코드·`OOMKilled`·`RestartCount` 확인 | 오케스트레이터라면 `kubectl describe` 가 같은 역할 |
+| 커머스 롤링 배포 | 배포 중 처리 중이던 요청 유실 | exec 형식 CMD 로 PID 1 이 SIGTERM 을 받아 graceful shutdown | 셸 형식 CMD 는 `--init`(tini) 로 보완 |
+| 사내 개발 서버 | 같은 와이파이에서 무인증 DB 가 노출 | `-p 127.0.0.1:포트:포트` 로 로컬에만 바인딩 | 방화벽(ufw)은 Docker iptables 규칙보다 뒤라 믿기 어렵다 |
+| 데이터 배치 작업 | 일회성 마이그레이션·리포트 작업 | `docker run --rm` 으로 실행 후 종료 코드 0 확인 | 크론 + 호스트 설치 스크립트 |
+| 단일 VM 소규모 운영 | 서버 재부팅 후 서비스 자동 복구 | `--restart unless-stopped` | systemd 유닛, 오케스트레이터 |
+
+**이럴 땐 안 맞는다**
+- 여러 호스트에 걸친 수십 개 컨테이너를 손으로 `run` 하는 것 — 선언형 Compose 나 Kubernetes 로 넘어간다.
+- 운영 컨테이너에 `exec` 로 들어가 설정을 고치는 것 — 다음 재시작에 사라지므로 이미지·설정을 고쳐 다시 배포한다.
+
+**누가 매일 만나나** — 백엔드 개발자는 로컬에서 `logs -f` 로 앱을 확인할 때, SRE 는 종료 코드 137·143 을 보고 메모리 문제인지 정상 종료인지 가를 때 만난다.
+
+**면접·실무 단골 질문**
+- Q. 종료 코드 137 은 무엇을 뜻하나 → 128+9 = SIGKILL. `OOMKilled` 가 true 면 메모리 제한, false 면 kill 이나 stop 타임아웃.
+- Q. `docker stop` 이 10초씩 걸린다 → 셸이 PID 1 이라 SIGTERM 이 앱에 안 간다. exec 형식 CMD 나 `--init` 을 쓴다.
+
 ## 실습 체크리스트
 
 - [ ] `docker run` 으로 Redis 를 띄우고 `docker exec` 로 redis-cli 접속
