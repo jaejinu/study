@@ -1,4 +1,4 @@
-import { exportBackup, listBackupFiles, summarize } from "@/lib/backup";
+import { backupMirrorDir, exportBackup, listBackupFiles, summarize } from "@/lib/backup";
 import { RecordsActions } from "./RecordsActions";
 import { isReadOnly } from "@/lib/read-only";
 import { ReadOnlyPageNotice } from "@/components/ReadOnlyNotice";
@@ -26,6 +26,7 @@ export default async function RecordsPage() {
     error = (e as Error).message;
   }
   const files = await listBackupFiles();
+  const mirror = backupMirrorDir();
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-bold tracking-tight">학습 기록</h1>
@@ -52,7 +53,13 @@ export default async function RecordsPage() {
 
       <section className="mt-6 rounded-xl border border-border bg-surface p-5">
         <h2 className="mb-1 font-semibold">자동 백업</h2>
-        <p className="mb-3 text-[13px] text-muted">서버가 켜져 있으면 하루 한 번 <code>backups/</code> 폴더에 저장하고 최근 14개만 남깁니다. 터미널에서는 <code>pnpm backup</code>, 복원은 <code>pnpm backup:restore backups/파일.json</code>.</p>
+        <p className="mb-3 text-[13px] text-muted">서버가 켜져 있으면 하루 한 번 <code>backups/</code> 폴더에 저장하고 최근 14개만 남깁니다. 터미널에서는 <code>pnpm backup</code>, 복원은 <code>pnpm backup:restore backups/파일.json</code>.
+          {mirror ? (
+            <> 사본은 이 Mac 밖 <code>{mirror.replace(/^.*com~apple~CloudDocs/, "iCloud Drive")}</code> 에도 저장해 최근 60개를 남깁니다 (<code>STUDY_BACKUP_MIRROR</code> 로 위치 변경·<code>off</code>).</>
+          ) : (
+            <> 이 Mac 밖 사본이 꺼져 있습니다 — <code>STUDY_BACKUP_MIRROR=&lt;폴더&gt;</code> 로 동기화 폴더를 지정하세요.</>
+          )}
+        </p>
         {files.length === 0 ? (
           <p className="text-sm text-muted">아직 자동 백업 파일이 없습니다.</p>
         ) : (

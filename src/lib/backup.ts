@@ -1,4 +1,6 @@
+import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { ensureConnected, getRedis } from "./redis";
 import { assertWritable, isReadOnly } from "./read-only";
@@ -9,6 +11,26 @@ import { assertWritable, isReadOnly } from "./read-only";
  */
 export const BACKUP_PATTERNS = ["progress:*", "quiz:stats:*", "study:*", "lab:runs:*", "memo:*"] as const;
 export const BACKUP_DIR = path.join(process.cwd(), "backups");
+
+/**
+ * 백업 사본을 둘 이 Mac 밖의 폴더. 학습 기록은 로컬 Redis 에만 있고 저장소는 iCloud 밖(~/dev)에 있으므로,
+ * 디스크가 망가지면 backups/ 도 같이 잃는다. 기본값은 iCloud Drive 의 "Study Backups" (iCloud 가 없으면 끔).
+ * STUDY_BACKUP_MIRROR=<폴더> 로 바꾸고, STUDY_BACKUP_MIRROR=off 로 끈다.
+ */
+export function backupMirrorDir(): string | null {
+  const env = process.env.STUDY_BACKUP_MIRROR?.trim();
+  if (env === "off" || env === "0") return null;
+  if (env) return env;
+  const icloud = path.join(os.homedir(), "Library", "Mobile Documents", "com~apple~CloudDocs");
+  return existsSync(icloud) ? path.join(icloud, "Study Backups") : null;
+}
+
+const BACKUP_FILE = /^study-\d{8}-\d{4}\.json$/;
+
+async function prune(dir: string, keep: number) {
+  const files = (await fs.readdir(dir)).filter((f) => BACKUP_FILE.test(f)).sort();
+  for (const old of files.slice(0, Math.max(0, files.length - keep))) await fs.rm(path.join(dir, old));
+}
 
 type Entry =
   | { key: string; type: "set"; ttl: number; value: string[] }
@@ -87,8 +109,8 @@ export async function importBackup(b: Backup, mode: "merge" | "replace" = "merge
   return { keys: b.keys.length };
 }
 
-/** backups/study-YYYYMMDD-HHMM.json 으로 저장하고 오래된 것은 keep 개만 남긴다 */
-export async function writeBackupFile(keep = 14): Promise<{ file: string; keys: number }> {
+/** backups/study-YYYYMMDD-HHMM.json 으로 저장하고 오래된 것은 keep 개만 남긴다. 사본은 backupMirrorDir() 에 */
+export async function writeBackupFile(keep = 14): Promise<{ file: string; keys: number; mirror?: string }> {
   assertWritable("백업 파일 쓰기");
   const b = await exportBackup();
   await fs.mkdir(BACKUP_DIR, { recursive: true });
@@ -97,9 +119,21 @@ export async function writeBackupFile(keep = 14): Promise<{ file: string; keys: 
   const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`; // 로컬 시각
   const file = path.join(BACKUP_DIR, `study-${stamp}.json`);
   await fs.writeFile(file, JSON.stringify(b, null, 2));
-  const files = (await fs.readdir(BACKUP_DIR)).filter((f) => /^study-\d{8}-\d{4}\.json$/.test(f)).sort();
-  for (const old of files.slice(0, Math.max(0, files.length - keep))) await fs.rm(path.join(BACKUP_DIR, old));
-  return { file, keys: b.keys.length };
+  await prune(BACKUP_DIR, keep);
+  // 사본은 더 오래(약 두 달) 남긴다. 사본 실패가 로컬 백업을 실패시키지는 않는다
+  let mirror: string | undefined;
+  const mdir = backupMirrorDir();
+  if (mdir) {
+    try {
+      await fs.mkdir(mdir, { recursive: true });
+      mirror = path.join(mdir, path.basename(file));
+      await fs.copyFile(file, mirror);
+      await prune(mdir, 60);
+    } catch {
+      mirror = undefined;
+    }
+  }
+  return { file, keys: b.keys.length, mirror };
 }
 
 export async function listBackupFiles(): Promise<{ name: string; size: number; mtime: number }[]> {

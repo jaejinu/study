@@ -11,6 +11,6 @@ if (cmd === "restore") {
   console.log(`복원 완료: 키 ${r.keys}개 (${mode === "replace" ? "덮어쓰기" : "합치기"})`);
 } else {
   const r = await writeBackupFile();
-  console.log(`백업 저장: ${r.file} (키 ${r.keys}개)`);
+  console.log(`백업 저장: ${r.file} (키 ${r.keys}개)${r.mirror ? `\n사본: ${r.mirror}` : ""}`);
 }
 process.exit(0);
