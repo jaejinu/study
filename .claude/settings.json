@@ -8,7 +8,8 @@
       { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-bash.mjs\"", "timeout": 10 }] }
     ],
     "PostToolUse": [
-      { "matcher": "Edit|Write|MultiEdit", "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-content.mjs\" post", "timeout": 15 }] }
+      { "matcher": "Edit|Write|MultiEdit", "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-content.mjs\" post", "timeout": 15 }] },
+      { "matcher": "Edit|Write|MultiEdit", "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/lint-file.mjs\"", "timeout": 60, "statusMessage": "ESLint" }] }
     ],
     "Stop": [
       { "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-content.mjs\" stop", "timeout": 30 }] }
